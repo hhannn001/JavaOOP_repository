@@ -1,0 +1,35 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Java build output
+*.class
+/out/
+/target/
+/build/
+/bin/
+/.gradle/
+
+# IDE files
+.idea/
+*.iml
+.vscode/
+.project
+.classpath
+.settings/
+
+# Logs and temporary files
+*.log
+*.tmp
+*.swp
+*.swo
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+
+# Node tooling, if added for the prototype
+node_modules/
+dist/
