@@ -1,0 +1,52 @@
+digraph G {
+graph [rankdir=TB, bgcolor="white", pad="0.45", nodesep="0.45", ranksep="0.75", dpi=160, splines=polyline, fontname="Helvetica", fontsize=24, labelloc=t, labeljust=l, label="03  |  CODE ROOM — Repository & JDBC Adapter\n "];
+node [shape=plain, fontname="Helvetica"];
+edge [fontname="Helvetica", fontsize=10, color="#627086", fontcolor="#46546a", arrowsize=0.8];
+UserRepository [label=<<TABLE BORDER="1" CELLBORDER="1" CELLSPACING="0" CELLPADDING="9" COLOR="#8896a9"><TR><TD ALIGN="LEFT" BGCOLOR="#e6edf2"><FONT POINT-SIZE="10" COLOR="#536075">entities</FONT><BR ALIGN="LEFT"/><B>UserRepository</B></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT"><FONT POINT-SIZE="11">&lt;&lt;interface&gt;&gt;<BR ALIGN="LEFT"/></FONT></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT"><FONT POINT-SIZE="11">+findByLoginId(loginId) Optional&lt;UserAccount&gt;<BR ALIGN="LEFT"/></FONT></TD></TR></TABLE>>];
+MapRepository [label=<<TABLE BORDER="1" CELLBORDER="1" CELLSPACING="0" CELLPADDING="9" COLOR="#8896a9"><TR><TD ALIGN="LEFT" BGCOLOR="#e6edf2"><FONT POINT-SIZE="10" COLOR="#536075">entities</FONT><BR ALIGN="LEFT"/><B>MapRepository</B></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT"><FONT POINT-SIZE="11">&lt;&lt;interface&gt;&gt;<BR ALIGN="LEFT"/></FONT></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT"><FONT POINT-SIZE="11">+findAll() List&lt;GameMap&gt;<BR ALIGN="LEFT"/>+findById(mapId) Optional&lt;GameMap&gt;<BR ALIGN="LEFT"/></FONT></TD></TR></TABLE>>];
+PuzzleRepository [label=<<TABLE BORDER="1" CELLBORDER="1" CELLSPACING="0" CELLPADDING="9" COLOR="#8896a9"><TR><TD ALIGN="LEFT" BGCOLOR="#e6edf2"><FONT POINT-SIZE="10" COLOR="#536075">entities</FONT><BR ALIGN="LEFT"/><B>PuzzleRepository</B></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT"><FONT POINT-SIZE="11">&lt;&lt;interface&gt;&gt;<BR ALIGN="LEFT"/></FONT></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT"><FONT POINT-SIZE="11">+findByMapId(mapId) List&lt;Puzzle&gt;<BR ALIGN="LEFT"/></FONT></TD></TR></TABLE>>];
+ClearRecordRepository [label=<<TABLE BORDER="1" CELLBORDER="1" CELLSPACING="0" CELLPADDING="9" COLOR="#8896a9"><TR><TD ALIGN="LEFT" BGCOLOR="#e6edf2"><FONT POINT-SIZE="10" COLOR="#536075">entities</FONT><BR ALIGN="LEFT"/><B>ClearRecordRepository</B></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT"><FONT POINT-SIZE="11">&lt;&lt;interface&gt;&gt;<BR ALIGN="LEFT"/></FONT></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT"><FONT POINT-SIZE="11">+findByUserId(userId) List&lt;ClearRecord&gt;<BR ALIGN="LEFT"/>+saveBest(record)<BR ALIGN="LEFT"/></FONT></TD></TR></TABLE>>];
+JdbcUserRepository [label=<<TABLE BORDER="1" CELLBORDER="1" CELLSPACING="0" CELLPADDING="9" COLOR="#8896a9"><TR><TD ALIGN="LEFT" BGCOLOR="#e6edf2"><FONT POINT-SIZE="10" COLOR="#536075">entities</FONT><BR ALIGN="LEFT"/><B>JdbcUserRepository</B></TD></TR></TABLE>>];
+JdbcMapRepository [label=<<TABLE BORDER="1" CELLBORDER="1" CELLSPACING="0" CELLPADDING="9" COLOR="#8896a9"><TR><TD ALIGN="LEFT" BGCOLOR="#e6edf2"><FONT POINT-SIZE="10" COLOR="#536075">entities</FONT><BR ALIGN="LEFT"/><B>JdbcMapRepository</B></TD></TR></TABLE>>];
+JdbcPuzzleRepository [label=<<TABLE BORDER="1" CELLBORDER="1" CELLSPACING="0" CELLPADDING="9" COLOR="#8896a9"><TR><TD ALIGN="LEFT" BGCOLOR="#e6edf2"><FONT POINT-SIZE="10" COLOR="#536075">entities</FONT><BR ALIGN="LEFT"/><B>JdbcPuzzleRepository</B></TD></TR></TABLE>>];
+JdbcClearRecordRepository [label=<<TABLE BORDER="1" CELLBORDER="1" CELLSPACING="0" CELLPADDING="9" COLOR="#8896a9"><TR><TD ALIGN="LEFT" BGCOLOR="#e6edf2"><FONT POINT-SIZE="10" COLOR="#536075">entities</FONT><BR ALIGN="LEFT"/><B>JdbcClearRecordRepository</B></TD></TR></TABLE>>];
+Database [label=<<TABLE BORDER="1" CELLBORDER="1" CELLSPACING="0" CELLPADDING="9" COLOR="#8896a9"><TR><TD ALIGN="LEFT" BGCOLOR="#f1e5dc"><FONT POINT-SIZE="10" COLOR="#536075">shared</FONT><BR ALIGN="LEFT"/><B>Database</B></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT"><FONT POINT-SIZE="11">+open() Connection<BR ALIGN="LEFT"/>+initialize()<BR ALIGN="LEFT"/></FONT></TD></TR></TABLE>>];
+LoginService [label=<<TABLE BORDER="1" CELLBORDER="1" CELLSPACING="0" CELLPADDING="9" COLOR="#8896a9"><TR><TD ALIGN="LEFT" BGCOLOR="#e8e1f6"><FONT POINT-SIZE="10" COLOR="#536075">features</FONT><BR ALIGN="LEFT"/><B>LoginService</B></TD></TR></TABLE>>];
+MapCatalogService [label=<<TABLE BORDER="1" CELLBORDER="1" CELLSPACING="0" CELLPADDING="9" COLOR="#8896a9"><TR><TD ALIGN="LEFT" BGCOLOR="#e8e1f6"><FONT POINT-SIZE="10" COLOR="#536075">features</FONT><BR ALIGN="LEFT"/><B>MapCatalogService</B></TD></TR></TABLE>>];
+GameFacade [label=<<TABLE BORDER="1" CELLBORDER="1" CELLSPACING="0" CELLPADDING="9" COLOR="#8896a9"><TR><TD ALIGN="LEFT" BGCOLOR="#e8e1f6"><FONT POINT-SIZE="10" COLOR="#536075">features</FONT><BR ALIGN="LEFT"/><B>GameFacade</B></TD></TR></TABLE>>];
+JdbcUserRepository -> UserRepository [style=dashed, arrowhead=empty, constraint=false];
+JdbcMapRepository -> MapRepository [style=dashed, arrowhead=empty, constraint=false];
+JdbcPuzzleRepository -> PuzzleRepository [style=dashed, arrowhead=empty, constraint=false];
+JdbcClearRecordRepository -> ClearRecordRepository [style=dashed, arrowhead=empty, constraint=false];
+JdbcUserRepository -> Database [arrowhead=vee];
+JdbcMapRepository -> Database [arrowhead=vee];
+JdbcPuzzleRepository -> Database [arrowhead=vee];
+JdbcClearRecordRepository -> Database [arrowhead=vee];
+LoginService -> UserRepository [arrowhead=vee];
+MapCatalogService -> MapRepository [arrowhead=vee];
+MapCatalogService -> ClearRecordRepository [arrowhead=vee];
+GameFacade -> MapRepository [arrowhead=vee];
+GameFacade -> PuzzleRepository [arrowhead=vee];
+GameFacade -> ClearRecordRepository [arrowhead=vee];
+{rank=same; LoginService; GameFacade; MapCatalogService;}
+{rank=same; UserRepository; MapRepository; PuzzleRepository; ClearRecordRepository;}
+{rank=same; JdbcUserRepository; JdbcMapRepository; JdbcPuzzleRepository; JdbcClearRecordRepository;}
+UserRepository -> JdbcUserRepository [style=invis];
+MapRepository -> JdbcMapRepository [style=invis];
+PuzzleRepository -> JdbcPuzzleRepository [style=invis];
+ClearRecordRepository -> JdbcClearRecordRepository [style=invis];
+legend [shape=plain, label=<<FONT POINT-SIZE="10" COLOR="#627086">+ public   /   - private     |     dashed arrow: dependency     |     solid arrow: reference<BR/>filled diamond: composition     |     hollow diamond: aggregation     |     hollow triangle: interface implementation</FONT>>];
+{rank=sink; legend;}
+UserRepository -> legend [style=invis];
+MapRepository -> legend [style=invis];
+PuzzleRepository -> legend [style=invis];
+ClearRecordRepository -> legend [style=invis];
+JdbcUserRepository -> legend [style=invis];
+JdbcMapRepository -> legend [style=invis];
+JdbcPuzzleRepository -> legend [style=invis];
+JdbcClearRecordRepository -> legend [style=invis];
+Database -> legend [style=invis];
+LoginService -> legend [style=invis];
+MapCatalogService -> legend [style=invis];
+GameFacade -> legend [style=invis];
+}

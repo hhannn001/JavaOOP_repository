@@ -1,0 +1,34 @@
+digraph G {
+graph [rankdir=TB, bgcolor="white", pad="0.45", nodesep="0.45", ranksep="0.75", dpi=160, splines=polyline, fontname="Helvetica", fontsize=24, labelloc=t, labeljust=l, label="02  |  CODE ROOM — Game domain & Facade\n "];
+node [shape=plain, fontname="Helvetica"];
+edge [fontname="Helvetica", fontsize=10, color="#627086", fontcolor="#46546a", arrowsize=0.8];
+GameFacade [label=<<TABLE BORDER="1" CELLBORDER="1" CELLSPACING="0" CELLPADDING="9" COLOR="#8896a9"><TR><TD ALIGN="LEFT" BGCOLOR="#e8e1f6"><FONT POINT-SIZE="10" COLOR="#536075">features</FONT><BR ALIGN="LEFT"/><B>GameFacade</B></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT"><FONT POINT-SIZE="11">-GameSession session<BR ALIGN="LEFT"/>-GameSetup setup<BR ALIGN="LEFT"/></FONT></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT"><FONT POINT-SIZE="11">+submit(objectId, answer) SubmitResult<BR ALIGN="LEFT"/>+selectItem(itemId) GameView<BR ALIGN="LEFT"/>+useKey(nowNanos) EscapeResult<BR ALIGN="LEFT"/></FONT></TD></TR></TABLE>>];
+GameSession [label=<<TABLE BORDER="1" CELLBORDER="1" CELLSPACING="0" CELLPADDING="9" COLOR="#8896a9"><TR><TD ALIGN="LEFT" BGCOLOR="#e6edf2"><FONT POINT-SIZE="10" COLOR="#536075">entities</FONT><BR ALIGN="LEFT"/><B>GameSession</B></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT"><FONT POINT-SIZE="11">-long userId<BR ALIGN="LEFT"/>-long mapId<BR ALIGN="LEFT"/>-GameStage stage<BR ALIGN="LEFT"/>-ItemId selectedItem<BR ALIGN="LEFT"/>-long startedAtNanos<BR ALIGN="LEFT"/>-Long clearedSeconds<BR ALIGN="LEFT"/></FONT></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT"><FONT POINT-SIZE="11">+inventory() List&lt;ItemId&gt;<BR ALIGN="LEFT"/>+select(itemId)<BR ALIGN="LEFT"/>+unlockDrawer()<BR ALIGN="LEFT"/>+unlockSafe()<BR ALIGN="LEFT"/>+escape(nowNanos)<BR ALIGN="LEFT"/></FONT></TD></TR></TABLE>>];
+Puzzle [label=<<TABLE BORDER="1" CELLBORDER="1" CELLSPACING="0" CELLPADDING="9" COLOR="#8896a9"><TR><TD ALIGN="LEFT" BGCOLOR="#e6edf2"><FONT POINT-SIZE="10" COLOR="#536075">entities</FONT><BR ALIGN="LEFT"/><B>Puzzle</B></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT"><FONT POINT-SIZE="11">-long puzzleId<BR ALIGN="LEFT"/>-long mapId<BR ALIGN="LEFT"/>-int stepNo<BR ALIGN="LEFT"/>-String code<BR ALIGN="LEFT"/>-AnswerType answerType<BR ALIGN="LEFT"/>-String answer<BR ALIGN="LEFT"/>-String hint<BR ALIGN="LEFT"/></FONT></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT"><FONT POINT-SIZE="11">+check(rawAnswer) AnswerCheck<BR ALIGN="LEFT"/></FONT></TD></TR></TABLE>>];
+GameSetup [label=<<TABLE BORDER="1" CELLBORDER="1" CELLSPACING="0" CELLPADDING="9" COLOR="#8896a9"><TR><TD ALIGN="LEFT" BGCOLOR="#e8e1f6"><FONT POINT-SIZE="10" COLOR="#536075">features</FONT><BR ALIGN="LEFT"/><B>GameSetup</B></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT"><FONT POINT-SIZE="11">+GameMap map<BR ALIGN="LEFT"/>+List&lt;Puzzle&gt; puzzles<BR ALIGN="LEFT"/></FONT></TD></TR></TABLE>>];
+GameView [label=<<TABLE BORDER="1" CELLBORDER="1" CELLSPACING="0" CELLPADDING="9" COLOR="#8896a9"><TR><TD ALIGN="LEFT" BGCOLOR="#e8e1f6"><FONT POINT-SIZE="10" COLOR="#536075">features</FONT><BR ALIGN="LEFT"/><B>GameView</B></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT"><FONT POINT-SIZE="11">+GameStage stage<BR ALIGN="LEFT"/>+List&lt;ItemView&gt; items<BR ALIGN="LEFT"/>+ItemId selectedItem<BR ALIGN="LEFT"/>+long elapsedSeconds<BR ALIGN="LEFT"/></FONT></TD></TR></TABLE>>];
+ItemView [label=<<TABLE BORDER="1" CELLBORDER="1" CELLSPACING="0" CELLPADDING="9" COLOR="#8896a9"><TR><TD ALIGN="LEFT" BGCOLOR="#e8e1f6"><FONT POINT-SIZE="10" COLOR="#536075">features</FONT><BR ALIGN="LEFT"/><B>ItemView</B></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT"><FONT POINT-SIZE="11">+ItemId id<BR ALIGN="LEFT"/>+String title<BR ALIGN="LEFT"/>+String content<BR ALIGN="LEFT"/></FONT></TD></TR></TABLE>>];
+GameStage [label=<<TABLE BORDER="1" CELLBORDER="1" CELLSPACING="0" CELLPADDING="9" COLOR="#8896a9"><TR><TD ALIGN="LEFT" BGCOLOR="#e6edf2"><FONT POINT-SIZE="10" COLOR="#536075">entities</FONT><BR ALIGN="LEFT"/><B>GameStage</B></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT"><FONT POINT-SIZE="11">&lt;&lt;enumeration&gt;&gt;<BR ALIGN="LEFT"/>START<BR ALIGN="LEFT"/>DRAWER_OPEN<BR ALIGN="LEFT"/>SAFE_OPEN<BR ALIGN="LEFT"/>ESCAPED<BR ALIGN="LEFT"/></FONT></TD></TR></TABLE>>];
+ItemId [label=<<TABLE BORDER="1" CELLBORDER="1" CELLSPACING="0" CELLPADDING="9" COLOR="#8896a9"><TR><TD ALIGN="LEFT" BGCOLOR="#e6edf2"><FONT POINT-SIZE="10" COLOR="#536075">entities</FONT><BR ALIGN="LEFT"/><B>ItemId</B></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT"><FONT POINT-SIZE="11">&lt;&lt;enumeration&gt;&gt;<BR ALIGN="LEFT"/>NOTE1<BR ALIGN="LEFT"/>NOTE2<BR ALIGN="LEFT"/>KEY<BR ALIGN="LEFT"/></FONT></TD></TR></TABLE>>];
+ClearRecord [label=<<TABLE BORDER="1" CELLBORDER="1" CELLSPACING="0" CELLPADDING="9" COLOR="#8896a9"><TR><TD ALIGN="LEFT" BGCOLOR="#e6edf2"><FONT POINT-SIZE="10" COLOR="#536075">entities</FONT><BR ALIGN="LEFT"/><B>ClearRecord</B></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT"><FONT POINT-SIZE="11">+long userId<BR ALIGN="LEFT"/>+long mapId<BR ALIGN="LEFT"/>+long bestSeconds<BR ALIGN="LEFT"/></FONT></TD></TR></TABLE>>];
+GameFacade -> GameSession [dir=both, arrowtail=diamond, arrowhead=none];
+GameFacade -> GameSetup [arrowhead=vee];
+GameSetup -> Puzzle [arrowhead=vee];
+GameSession -> GameStage [arrowhead=vee];
+GameSession -> ItemId [arrowhead=vee];
+GameFacade -> Puzzle [style=dashed, arrowhead=vee, label="validates answer"];
+GameFacade -> GameView [style=dashed, arrowhead=vee, label="returns snapshot"];
+GameView -> ItemView [dir=both, arrowtail=odiamond, arrowhead=none];
+GameFacade -> ClearRecord [style=dashed, arrowhead=vee, label="creates on escape"];
+legend [shape=plain, label=<<FONT POINT-SIZE="10" COLOR="#627086">+ public   /   - private     |     dashed arrow: dependency     |     solid arrow: reference<BR/>filled diamond: composition     |     hollow diamond: aggregation     |     hollow triangle: interface implementation</FONT>>];
+{rank=sink; legend;}
+GameFacade -> legend [style=invis];
+GameSession -> legend [style=invis];
+Puzzle -> legend [style=invis];
+GameSetup -> legend [style=invis];
+GameView -> legend [style=invis];
+ItemView -> legend [style=invis];
+GameStage -> legend [style=invis];
+ItemId -> legend [style=invis];
+ClearRecord -> legend [style=invis];
+}

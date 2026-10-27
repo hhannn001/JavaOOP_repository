@@ -1,0 +1,73 @@
+classDiagram
+    class GameFacade {
+        -GameSession session
+        -GameSetup setup
+        +submit(objectId, answer) SubmitResult
+        +selectItem(itemId) GameView
+        +useKey(nowNanos) EscapeResult
+    }
+    class GameSession {
+        -long userId
+        -long mapId
+        -GameStage stage
+        -ItemId selectedItem
+        -long startedAtNanos
+        -Long clearedSeconds
+        +inventory() List~ItemId~
+        +select(itemId)
+        +unlockDrawer()
+        +unlockSafe()
+        +escape(nowNanos)
+    }
+    class Puzzle {
+        -long puzzleId
+        -long mapId
+        -int stepNo
+        -String code
+        -AnswerType answerType
+        -String answer
+        -String hint
+        +check(rawAnswer) AnswerCheck
+    }
+    class GameSetup {
+        +GameMap map
+        +List~Puzzle~ puzzles
+    }
+    class GameView {
+        +GameStage stage
+        +List~ItemView~ items
+        +ItemId selectedItem
+        +long elapsedSeconds
+    }
+    class ItemView {
+        +ItemId id
+        +String title
+        +String content
+    }
+    class GameStage {
+        <<enumeration>>
+        START
+        DRAWER_OPEN
+        SAFE_OPEN
+        ESCAPED
+    }
+    class ItemId {
+        <<enumeration>>
+        NOTE1
+        NOTE2
+        KEY
+    }
+    class ClearRecord {
+        +long userId
+        +long mapId
+        +long bestSeconds
+    }
+    GameFacade *-- GameSession
+    GameFacade --> GameSetup
+    GameSetup --> Puzzle
+    GameSession --> GameStage
+    GameSession --> ItemId
+    GameFacade ..> Puzzle : validates answer
+    GameFacade ..> GameView : returns snapshot
+    GameView o-- ItemView
+    GameFacade ..> ClearRecord : creates on escape

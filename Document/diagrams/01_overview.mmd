@@ -1,0 +1,61 @@
+classDiagram
+    class Main {
+        +main(args)
+    }
+    class MainFrame {
+        -CardLayout layout
+        +showPage(name)
+    }
+    class AppController {
+        -LoginUser currentUser
+        +onLogin(user)
+        +openMap(mapId)
+        +backToMaps()
+        +logout()
+    }
+    class LoginPage {
+        +showError(message)
+    }
+    class LoginService {
+        +login(loginId, password) LoginResult
+    }
+    class MapSelectionPage {
+        +render(cards)
+    }
+    class MapCatalogService {
+        +listForUser(userId) List~MapCard~
+    }
+    class GamePage {
+        +render(view)
+        +disposeGame()
+    }
+    class GameFacade {
+        +loadMap(mapId) GameSetup
+        +start(userId, setup, nowNanos) GameView
+        +inspect(objectId) InspectResult
+        +submit(objectId, answer) SubmitResult
+        +selectItem(itemId) GameView
+        +useKey(nowNanos) EscapeResult
+        +saveClear(record)
+        +view(nowNanos) GameView
+    }
+    class RoomPanel
+    class InventoryPanel
+    class CluePanel
+    class AnswerInputPanel
+    class ResultPanel
+
+    Main ..> AppController : constructor wiring
+    Main ..> MainFrame
+    AppController --> MainFrame
+    AppController --> LoginPage
+    AppController --> MapSelectionPage
+    AppController --> GamePage
+    LoginPage --> LoginService
+    MapSelectionPage --> MapCatalogService
+    GamePage --> GameFacade
+    GamePage *-- RoomPanel
+    GamePage *-- InventoryPanel
+    GamePage *-- CluePanel
+    GamePage *-- AnswerInputPanel
+    GamePage *-- ResultPanel

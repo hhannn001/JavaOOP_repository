@@ -1,0 +1,45 @@
+classDiagram
+    class UserRepository {
+        <<interface>>
+        +findByLoginId(loginId) Optional~UserAccount~
+    }
+    class MapRepository {
+        <<interface>>
+        +findAll() List~GameMap~
+        +findById(mapId) Optional~GameMap~
+    }
+    class PuzzleRepository {
+        <<interface>>
+        +findByMapId(mapId) List~Puzzle~
+    }
+    class ClearRecordRepository {
+        <<interface>>
+        +findByUserId(userId) List~ClearRecord~
+        +saveBest(record)
+    }
+    class JdbcUserRepository
+    class JdbcMapRepository
+    class JdbcPuzzleRepository
+    class JdbcClearRecordRepository
+    class Database {
+        +open() Connection
+        +initialize()
+    }
+    class LoginService
+    class MapCatalogService
+    class GameFacade
+
+    JdbcUserRepository ..|> UserRepository
+    JdbcMapRepository ..|> MapRepository
+    JdbcPuzzleRepository ..|> PuzzleRepository
+    JdbcClearRecordRepository ..|> ClearRecordRepository
+    JdbcUserRepository --> Database
+    JdbcMapRepository --> Database
+    JdbcPuzzleRepository --> Database
+    JdbcClearRecordRepository --> Database
+    LoginService --> UserRepository
+    MapCatalogService --> MapRepository
+    MapCatalogService --> ClearRecordRepository
+    GameFacade --> MapRepository
+    GameFacade --> PuzzleRepository
+    GameFacade --> ClearRecordRepository
