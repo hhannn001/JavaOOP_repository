@@ -8,6 +8,7 @@
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23192a29'/%3E%3Cpath d='M9 9h14v18H9z' fill='%23d7b67a'/%3E%3Cpath d='M12 12h8v15h-8z' fill='%232c4541'/%3E%3Cpath d='M17 19h2v2h-2z' fill='%23d7b67a'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="style.css">
   <script src="room.js" defer></script>
+  <script src="flow.js" defer></script>
   <script src="game.js" defer></script>
 </head>
 <body>
@@ -23,7 +24,51 @@
     <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3"/></symbol>
     <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/></symbol>
   </svg>
-  <main class="room-stage" id="roomStage" aria-label="방탈출 게임: 마지막 컴파일">
+  <section class="scene login-scene" id="loginScene" aria-labelledby="loginTitle">
+    <div class="scene-grain" aria-hidden="true"></div>
+    <div class="login-wall" aria-hidden="true"><span class="wall-lamp"></span><span class="wall-frame">CODE<br>ROOM</span><span class="wall-lamp"></span></div>
+    <div class="login-door" aria-hidden="true"><div class="door-arch"><div class="door-panel"><span class="door-number">01</span><span class="door-knob"></span></div></div></div>
+    <form class="login-placard" id="loginForm" novalidate>
+      <span class="scene-kicker">입장 기록 · 01</span>
+      <h1 id="loginTitle">CODE ROOM</h1>
+      <p>코드를 읽고, 잠긴 방에서 나가세요.</p>
+      <label for="loginId">플레이어 ID</label>
+      <input id="loginId" name="loginId" autocomplete="username" maxlength="24" placeholder="이름을 적어주세요" required>
+      <label for="loginPassword">입장 암호</label>
+      <input id="loginPassword" name="password" type="password" autocomplete="current-password" placeholder="아무 암호나 입력" required>
+      <p class="login-error" id="loginError" role="status" aria-live="polite"></p>
+      <button class="scene-action" type="submit">입장하기 <svg class="icon"><use href="#i-arrow"/></svg></button>
+      <small>시연용 화면입니다. 입력한 계정은 서버로 전송되지 않습니다.</small>
+    </form>
+    <span class="scene-floor" aria-hidden="true"></span>
+  </section>
+
+  <section class="scene map-scene" id="mapScene" aria-labelledby="mapTitle" hidden>
+    <div class="scene-grain" aria-hidden="true"></div>
+    <header class="map-marquee"><span>CODE ROOM · 층별 안내</span><h1 id="mapTitle">오늘 열 수 있는 문</h1><p>포스터를 골라 방에 입장하세요.</p></header>
+    <div class="poster-wall" aria-label="맵 포스터 목록">
+      <button class="escape-poster playable" id="libraryPoster" aria-label="마지막 컴파일, 잠긴 서재 입장">
+        <span class="poster-top">ROOM 01 <span>OPEN</span></span>
+        <span class="poster-illustration library-art" aria-hidden="true"><i class="art-window"></i><i class="art-shelf"></i><i class="art-desk"></i><i class="art-light"></i></span>
+        <span class="poster-title">마지막<br>컴파일</span><span class="poster-sub">잠긴 서재 · 배열과 반복문</span><span class="poster-foot">입장 가능 <svg class="icon"><use href="#i-arrow"/></svg></span>
+      </button>
+      <div class="escape-poster locked" aria-label="사라진 연구 기록, 준비 중">
+        <span class="poster-top">ROOM 02 <span>SEALED</span></span>
+        <span class="poster-illustration lab-art" aria-hidden="true"><i class="art-flask"></i><i class="art-paper"></i></span>
+        <span class="poster-title">사라진<br>연구 기록</span><span class="poster-sub">연구실 · 조건문</span><span class="poster-foot">준비 중 <svg class="icon"><use href="#i-lock"/></svg></span>
+      </div>
+      <div class="escape-poster locked" aria-label="멈춰버린 기계실, 준비 중">
+        <span class="poster-top">ROOM 03 <span>SEALED</span></span>
+        <span class="poster-illustration machine-art" aria-hidden="true"><i class="art-gear"></i><i class="art-meter"></i></span>
+        <span class="poster-title">멈춰버린<br>기계실</span><span class="poster-sub">기계실 · 문자열</span><span class="poster-foot">준비 중 <svg class="icon"><use href="#i-lock"/></svg></span>
+      </div>
+    </div>
+    <footer class="map-footer"><span id="playerGreeting">플레이어</span><button id="logoutButton" type="button">로그아웃</button></footer>
+    <span class="scene-floor" aria-hidden="true"></span>
+  </section>
+
+  <main class="room-stage" id="roomStage" aria-label="방탈출 게임: 마지막 컴파일" hidden>
+    <button class="map-return" id="backToMaps" type="button">← 맵 선택</button>
     <div class="world-viewport" id="worldViewport">
       <div class="room-world">
         <canvas id="roomCanvas" width="960" height="600" aria-hidden="true"></canvas>
