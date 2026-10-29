@@ -1,7 +1,5 @@
 package coderoom.shared.db;
 
-import java.lang.RuntimeException;
-
 /**
  * 담당: G
  * 역할: 저장소 장애를 상위 기능에 전달하는 예외.

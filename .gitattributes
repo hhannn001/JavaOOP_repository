@@ -1,2 +1,6 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Wrapper must run on Linux/macOS and Windows
+mvnw text eol=lf
+mvnw.cmd text eol=crlf
