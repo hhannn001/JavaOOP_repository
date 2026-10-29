@@ -294,6 +294,7 @@
   document.addEventListener('keydown', event => {
     if (event.key === 'Escape' && panel && !document.querySelector('dialog[open]')) closePanel();
   });
+  window.addEventListener('code-room:enter', reset);
   render();
   save();
   if (state.stage === 1) caption('다시 서재에 돌아왔다. 격자 메모로 벽의 다이얼을 열어보자.');
