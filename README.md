@@ -13,6 +13,5 @@ Java 소스는 `src/main/java/coderoom`, 리소스는 `src/main/resources`에 �
 ## 빌드 및 검사
 
 JDK 17 이상에서 `./mvnw clean verify` (Windows: `mvnw.cmd clean verify`)로 Java 빌드·린트·테스트를 실행합니다.
-HTML 프로토타입은 Node.js 22에서 `npm ci --ignore-scripts` 후 `npm run lint`로 검사합니다.
 
 - [CI·보안 검사·CodeRabbit 설치 안내](Document/CI_및_코드리뷰.md)

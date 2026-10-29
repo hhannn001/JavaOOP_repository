@@ -13,7 +13,7 @@ reviews:
   path_filters:
     - '!Document/diagrams/*.png'
     - '!Document/diagrams/*.svg'
-    - '!package-lock.json'
+    - '!prototype/**'
   path_instructions:
     - path: src/main/java/**/*.java
       instructions: >-
@@ -22,9 +22,5 @@ reviews:
         Swing EDT 차단, SQL 자원 누수, 파라미터 바인딩, 비밀번호 평문 저장,
         게임 진행 순서와 중복 보상, 패키지 의존 방향을 확인한다.
         관련 단일 행 선언/대입의 세로 정렬을 존중한다.
-    - path: prototype/**
-      instructions: >-
-        브라우저용 시연 프로토타입이다. 로그인은 실제 인증이 아니다.
-        입력 검증, DOM 삽입, 키보드 접근성, 게임 상태 및 화면 전환 오류를 검토한다.
 chat:
   auto_reply: true

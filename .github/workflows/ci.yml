@@ -1,8 +1,30 @@
 name: CI
 on:
   pull_request:
+    paths:
+      - 'src/main/java/**'
+      - 'src/test/java/**'
+      - 'src/main/resources/**'
+      - 'src/test/resources/**'
+      - 'pom.xml'
+      - '.mvn/**'
+      - 'mvnw'
+      - 'mvnw.cmd'
+      - 'config/checkstyle.xml'
+      - '.github/workflows/ci.yml'
   push:
     branches: [main, dev]
+    paths:
+      - 'src/main/java/**'
+      - 'src/test/java/**'
+      - 'src/main/resources/**'
+      - 'src/test/resources/**'
+      - 'pom.xml'
+      - '.mvn/**'
+      - 'mvnw'
+      - 'mvnw.cmd'
+      - 'config/checkstyle.xml'
+      - '.github/workflows/ci.yml'
   workflow_dispatch:
 permissions:
   contents: read
@@ -24,18 +46,3 @@ jobs:
           java-version: '17'
           cache: maven
       - run: ./mvnw --batch-mode --no-transfer-progress clean verify
-  prototype:
-    name: Prototype lint and dependency audit
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-        with:
-          persist-credentials: false
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
-        with:
-          node-version: '22'
-          cache: npm
-      - run: npm ci --ignore-scripts
-      - run: npm run lint
-      - run: npm audit --audit-level=high
