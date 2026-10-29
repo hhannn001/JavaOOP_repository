@@ -1,0 +1,26 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+language: ko-KR
+reviews:
+  profile: chill
+  request_changes_workflow: false
+  high_level_summary: true
+  poem: false
+  auto_review:
+    enabled: true
+    auto_incremental_review: true
+    drafts: false
+    base_branches: [main, dev]
+  path_filters:
+    - '!Document/diagrams/*.png'
+    - '!Document/diagrams/*.svg'
+    - '!prototype/**'
+  path_instructions:
+    - path: src/main/java/**/*.java
+      instructions: >-
+        Java Swing/FSD 프로젝트다. 현재 선언과 주석만 있는 초안은 의도된 상태다.
+        TODO 자체를 버그로 지적하지 말고 구현된 로직의 결함을 확인한다.
+        Swing EDT 차단, SQL 자원 누수, 파라미터 바인딩, 비밀번호 평문 저장,
+        게임 진행 순서와 중복 보상, 패키지 의존 방향을 확인한다.
+        관련 단일 행 선언/대입의 세로 정렬을 존중한다.
+chat:
+  auto_reply: true
