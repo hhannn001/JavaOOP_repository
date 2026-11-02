@@ -1,5 +1,13 @@
 package coderoom.app;
 
+import java.awt.GraphicsEnvironment;
+import java.util.Objects;
+import java.util.concurrent.ExecutionException;
+import java.util.function.Consumer;
+import javax.swing.JOptionPane;
+import javax.swing.SwingUtilities;
+import javax.swing.SwingWorker;
+
 /**
  * 담당: A
  * 역할: 실행 진입점과 객체 조립.
@@ -15,4 +23,55 @@ public class Main {
     // [구현 예정]
     // main(String[] args): DB 초기화 완료 후 SwingUtilities.invokeLater로 화면을 생성한다.
     // 초기화 실패 시 오류를 알리고 정상 실행으로 진행하지 않는다.
+
+    /** G의 DB 초기화와 실제 서비스 조립을 연결할 경계. 테스트 드라이버가 스텁을 주입한다. */
+    public interface Bootstrap {
+        void initialize();
+        AppController createController();
+    }
+
+    /** B~G가 아직 초안이므로 운영 실행으로 오인하지 않도록 미연동 상태를 알린다. */
+    public static void main(String[] args) {
+        String message = "B~G 구현은 아직 연결되지 않았습니다. A 연동은 테스트 드라이버로 검증합니다.";
+        if (GraphicsEnvironment.isHeadless()) {
+            System.err.println(message);
+        } else {
+            SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(null, message,
+                    "CODE ROOM · 연동 대기", JOptionPane.INFORMATION_MESSAGE));
+        }
+    }
+
+    /** DB 준비를 EDT 밖에서 완료한 경우에만 화면을 만든다. 실패 시 정상 흐름을 시작하지 않는다. */
+    public static SwingWorker<Void, Void> launch(Bootstrap bootstrap, Consumer<Throwable> onFailure) {
+        Objects.requireNonNull(bootstrap);
+        Objects.requireNonNull(onFailure);
+        SwingWorker<Void, Void> startup = new SwingWorker<>() {
+            @Override
+            protected Void doInBackground() {
+                bootstrap.initialize();
+                return null;
+            }
+
+            @Override
+            protected void done() {
+                if (isCancelled()) {
+                    return;
+                }
+                try {
+                    get();
+                    bootstrap.createController().start();
+                } catch (InterruptedException exception) {
+                    Thread.currentThread().interrupt();
+                    onFailure.accept(exception);
+                } catch (ExecutionException exception) {
+                    onFailure.accept(exception.getCause());
+                } catch (RuntimeException exception) {
+                    onFailure.accept(exception);
+                }
+            }
+        };
+        startup.execute();
+        return startup;
+    }
+
 }
