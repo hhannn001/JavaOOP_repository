@@ -15,3 +15,10 @@ Java 소스는 `src/main/java/coderoom`, 리소스는 `src/main/resources`에 �
 JDK 17 이상에서 `./mvnw clean verify` (Windows: `mvnw.cmd clean verify`)로 Java 빌드·린트·테스트를 실행합니다.
 
 - [CI·보안 검사·CodeRabbit 설치 안내](Document/CI_및_코드리뷰.md)
+
+## 테스트 개발 및 QA
+
+- [파트별 테스트 스텁·드라이버 실행 및 실제 구현 연결](Document/Test_드라이버_가이드.md)
+- [담당별 QA 시나리오와 완료 기준](Document/QA_체크리스트.md)
+
+현재 테스트는 테스트 전용 대역을 검증합니다. 실제 Java 기능·Swing·SQLite QA는 구현 후 별도로 진행합니다.
