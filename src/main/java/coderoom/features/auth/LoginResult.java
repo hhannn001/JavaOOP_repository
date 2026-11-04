@@ -1,16 +1,28 @@
 package coderoom.features.auth;
 
-/**
- * 담당: B
- * 역할: 로그인 결과 전달값.
- * 직접 선언한 상속·구현 관계 없음.
- * 설계 초안: 필드·생성자·메서드는 아래 주석을 기준으로 구현한다.
- */
-public class LoginResult {
-    // [필드 예정]
-    // 성공 여부, 안내 메시지, 성공 시 coderoom.entities.user.LoginUser.
-    // 실패 시 사용자를 포함하지 않는다. 비밀번호·해시는 포함하지 않는다.
+import coderoom.entities.user.LoginUser;
+import java.util.Objects;
 
-    // [구현 예정]
-    // 읽기 전용 값 객체로 구현한다. JDK 합의 후 record로 바꿔도 된다.
+/**
+ * 담당: B. 비밀번호와 해시를 포함하지 않는 읽기 전용 로그인 결과.
+ * 성공 시에만 user가 존재하며, 실패 시 user는 null이다.
+ */
+public record LoginResult(boolean success, String message, LoginUser user) {
+    public LoginResult {
+        Objects.requireNonNull(message, "안내 메시지가 필요합니다.");
+        if (message.isBlank()) {
+            throw new IllegalArgumentException("안내 메시지는 비어 있을 수 없습니다.");
+        }
+        if (success != (user != null)) {
+            throw new IllegalArgumentException("성공한 로그인 결과에만 사용자가 있어야 합니다.");
+        }
+    }
+
+    public static LoginResult success(LoginUser user) {
+        return new LoginResult(true, "로그인되었습니다.", Objects.requireNonNull(user, "사용자가 필요합니다."));
+    }
+
+    public static LoginResult failure(String message) {
+        return new LoginResult(false, message, null);
+    }
 }

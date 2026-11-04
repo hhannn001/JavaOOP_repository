@@ -6,7 +6,9 @@ package coderoom.entities.user;
  * 구현 계약: coderoom.entities.user.UserRepository
  * 설계 초안: 필드·생성자·메서드는 아래 주석을 기준으로 구현한다.
  */
-public class JdbcUserRepository implements UserRepository {
+public abstract class JdbcUserRepository implements UserRepository {
+    // UserRepository 계약만 먼저 확정했다. 실제 JDBC 조회 구현 단계에서 abstract를 제거한다.
+    // 미구현 조회가 빈 결과를 반환하거나 정상 동작으로 오인되지 않도록 인스턴스화를 막는다.
     // [연결]
     // coderoom.shared.db.Database를 생성자로 받는다.
     // 같은 패키지의 UserRepository 계약을 구현한다.
