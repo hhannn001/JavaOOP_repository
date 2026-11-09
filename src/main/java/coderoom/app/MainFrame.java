@@ -1,12 +1,18 @@
 package coderoom.app;
 
 import java.awt.CardLayout;
+import java.awt.GraphicsEnvironment;
+import java.awt.Taskbar;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.awt.image.BufferedImage;
+import java.io.IOException;
+import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.BooleanSupplier;
+import javax.imageio.ImageIO;
 import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
@@ -23,9 +29,11 @@ public class MainFrame extends JFrame implements AppController.Host {
     // java.awt.CardLayout과 화면 컨테이너를 보유한다.
 
     // [구현 예정]
-    // showPage(name): 로그인·맵 선택·게임 화면을 전환한다.
+    // showPage(name): 로그인·대시보드·맵 선택·게임 화면을 전환한다.
     // 창 종료 시 현재 GamePage의 타이머와 작업을 정리하도록 콜백을 호출한다.
     // 게임 화면에서는 방이 창의 전체 콘텐츠 영역을 채우도록 배치한다.
+
+    private static final BufferedImage ICON = loadIcon();
 
     // 같은 이름의 화면을 교체할 때 이전 컴포넌트도 제거하여 계정 데이터를 남기지 않는다.
     private final CardLayout layout             = new CardLayout();
@@ -38,6 +46,14 @@ public class MainFrame extends JFrame implements AppController.Host {
         super("CODE ROOM");
         requireEdt();
         setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
+        setIconImage(ICON);
+        // 지원되는 데스크톱 환경에서는 Dock·작업 표시줄에도 같은 아이콘을 사용한다.
+        if (!GraphicsEnvironment.isHeadless() && Taskbar.isTaskbarSupported()) {
+            Taskbar taskbar = Taskbar.getTaskbar();
+            if (taskbar.isSupported(Taskbar.Feature.ICON_IMAGE)) {
+                taskbar.setIconImage(ICON);
+            }
+        }
         setContentPane(container);
         setSize(1280, 800);
         setLocationRelativeTo(null);
@@ -102,6 +118,19 @@ public class MainFrame extends JFrame implements AppController.Host {
     private static void requireEdt() {
         if (!SwingUtilities.isEventDispatchThread()) {
             throw new IllegalStateException("화면 조작은 EDT에서 실행해야 합니다.");
+        }
+    }
+
+    /** 앱 아이콘을 클래스패스에서 읽어 실행 위치와 관계없이 적용한다. */
+    private static BufferedImage loadIcon() {
+        URL resource = MainFrame.class.getResource("/images/app/code-room-icon.png");
+        if (resource == null) {
+            throw new IllegalStateException("앱 아이콘 이미지가 없습니다.");
+        }
+        try {
+            return ImageIO.read(resource);
+        } catch (IOException exception) {
+            throw new IllegalStateException("앱 아이콘 이미지를 읽을 수 없습니다.", exception);
         }
     }
 }

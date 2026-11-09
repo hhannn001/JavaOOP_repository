@@ -187,6 +187,8 @@ final class AIntegrationStubs {
         Consumer<LoginUser> login;
         LongConsumer open;
         Runnable logout;
+        Runnable openMaps;
+        Runnable dashboard;
         Runnable back;
         Runnable restart;
         LoginUser mapUser;
@@ -201,10 +203,16 @@ final class AIntegrationStubs {
             return new JPanel();
         }
         @Override
-        public JComponent maps(LoginUser user, LongConsumer callback, Runnable exit) {
+        public JComponent dashboard(LoginUser user, Runnable open, Runnable exit) {
+            openMaps = open;
+            logout   = exit;
+            return new JPanel();
+        }
+        @Override
+        public JComponent maps(LoginUser user, LongConsumer callback, Runnable returnToDashboard) {
             mapUser = user;
             open    = callback;
-            logout  = exit;
+            dashboard = returnToDashboard;
             mapLoads++;
             return new JPanel();
         }

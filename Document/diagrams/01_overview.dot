@@ -4,7 +4,8 @@ node [shape=plain, fontname="Helvetica"];
 edge [fontname="Helvetica", fontsize=10, color="#627086", fontcolor="#46546a", arrowsize=0.8];
 Main [label=<<TABLE BORDER="1" CELLBORDER="1" CELLSPACING="0" CELLPADDING="9" COLOR="#8896a9"><TR><TD ALIGN="LEFT" BGCOLOR="#dde7f5"><FONT POINT-SIZE="10" COLOR="#536075">app</FONT><BR ALIGN="LEFT"/><B>Main</B></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT"><FONT POINT-SIZE="11">+main(args)<BR ALIGN="LEFT"/></FONT></TD></TR></TABLE>>];
 MainFrame [label=<<TABLE BORDER="1" CELLBORDER="1" CELLSPACING="0" CELLPADDING="9" COLOR="#8896a9"><TR><TD ALIGN="LEFT" BGCOLOR="#dde7f5"><FONT POINT-SIZE="10" COLOR="#536075">app</FONT><BR ALIGN="LEFT"/><B>MainFrame</B></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT"><FONT POINT-SIZE="11">-CardLayout layout<BR ALIGN="LEFT"/></FONT></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT"><FONT POINT-SIZE="11">+showPage(name)<BR ALIGN="LEFT"/></FONT></TD></TR></TABLE>>];
-AppController [label=<<TABLE BORDER="1" CELLBORDER="1" CELLSPACING="0" CELLPADDING="9" COLOR="#8896a9"><TR><TD ALIGN="LEFT" BGCOLOR="#dde7f5"><FONT POINT-SIZE="10" COLOR="#536075">app</FONT><BR ALIGN="LEFT"/><B>AppController</B></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT"><FONT POINT-SIZE="11">-LoginUser currentUser<BR ALIGN="LEFT"/></FONT></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT"><FONT POINT-SIZE="11">+onLogin(user)<BR ALIGN="LEFT"/>+openMap(mapId)<BR ALIGN="LEFT"/>+backToMaps()<BR ALIGN="LEFT"/>+logout()<BR ALIGN="LEFT"/></FONT></TD></TR></TABLE>>];
+AppController [label=<<TABLE BORDER="1" CELLBORDER="1" CELLSPACING="0" CELLPADDING="9" COLOR="#8896a9"><TR><TD ALIGN="LEFT" BGCOLOR="#dde7f5"><FONT POINT-SIZE="10" COLOR="#536075">app</FONT><BR ALIGN="LEFT"/><B>AppController</B></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT"><FONT POINT-SIZE="11">-LoginUser currentUser<BR ALIGN="LEFT"/></FONT></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT"><FONT POINT-SIZE="11">+onLogin(user)<BR ALIGN="LEFT"/>+openMaps()<BR ALIGN="LEFT"/>+backToDashboard()<BR ALIGN="LEFT"/>+openMap(mapId)<BR ALIGN="LEFT"/>+backToMaps()<BR ALIGN="LEFT"/>+logout()<BR ALIGN="LEFT"/></FONT></TD></TR></TABLE>>];
+DashboardPage [label=<<TABLE BORDER="1" CELLBORDER="1" CELLSPACING="0" CELLPADDING="9" COLOR="#8896a9"><TR><TD ALIGN="LEFT" BGCOLOR="#dde7f5"><FONT POINT-SIZE="10" COLOR="#536075">app</FONT><BR ALIGN="LEFT"/><B>DashboardPage</B></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT"><FONT POINT-SIZE="11">+DashboardPage(user, openMaps, logout)<BR ALIGN="LEFT"/></FONT></TD></TR></TABLE>>];
 LoginPage [label=<<TABLE BORDER="1" CELLBORDER="1" CELLSPACING="0" CELLPADDING="9" COLOR="#8896a9"><TR><TD ALIGN="LEFT" BGCOLOR="#def0ed"><FONT POINT-SIZE="10" COLOR="#536075">pages</FONT><BR ALIGN="LEFT"/><B>LoginPage</B></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT"><FONT POINT-SIZE="11">+showError(message)<BR ALIGN="LEFT"/></FONT></TD></TR></TABLE>>];
 LoginService [label=<<TABLE BORDER="1" CELLBORDER="1" CELLSPACING="0" CELLPADDING="9" COLOR="#8896a9"><TR><TD ALIGN="LEFT" BGCOLOR="#e8e1f6"><FONT POINT-SIZE="10" COLOR="#536075">features</FONT><BR ALIGN="LEFT"/><B>LoginService</B></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT"><FONT POINT-SIZE="11">+login(loginId, password) LoginResult<BR ALIGN="LEFT"/></FONT></TD></TR></TABLE>>];
 MapSelectionPage [label=<<TABLE BORDER="1" CELLBORDER="1" CELLSPACING="0" CELLPADDING="9" COLOR="#8896a9"><TR><TD ALIGN="LEFT" BGCOLOR="#def0ed"><FONT POINT-SIZE="10" COLOR="#536075">pages</FONT><BR ALIGN="LEFT"/><B>MapSelectionPage</B></TD></TR><TR><TD ALIGN="LEFT" BALIGN="LEFT"><FONT POINT-SIZE="11">+render(cards)<BR ALIGN="LEFT"/></FONT></TD></TR></TABLE>>];
@@ -20,6 +21,7 @@ Main -> AppController [style=dashed, arrowhead=vee, label="constructor wiring"];
 Main -> MainFrame [style=dashed, arrowhead=vee];
 AppController -> MainFrame [arrowhead=vee];
 AppController -> LoginPage [arrowhead=vee];
+AppController -> DashboardPage [arrowhead=vee];
 AppController -> MapSelectionPage [arrowhead=vee];
 AppController -> GamePage [arrowhead=vee];
 LoginPage -> LoginService [arrowhead=vee];
@@ -30,13 +32,14 @@ GamePage -> InventoryPanel [dir=both, arrowtail=diamond, arrowhead=none];
 GamePage -> CluePanel [dir=both, arrowtail=diamond, arrowhead=none];
 GamePage -> AnswerInputPanel [dir=both, arrowtail=diamond, arrowhead=none];
 GamePage -> ResultPanel [dir=both, arrowtail=diamond, arrowhead=none];
-{rank=same; LoginPage; MapSelectionPage; GamePage;}
+{rank=same; LoginPage; DashboardPage; MapSelectionPage; GamePage;}
 legend [shape=plain, label=<<FONT POINT-SIZE="10" COLOR="#627086">+ public   /   - private     |     dashed arrow: dependency     |     solid arrow: reference<BR/>filled diamond: composition     |     hollow diamond: aggregation     |     hollow triangle: interface implementation</FONT>>];
 {rank=sink; legend;}
 Main -> legend [style=invis];
 MainFrame -> legend [style=invis];
 AppController -> legend [style=invis];
 LoginPage -> legend [style=invis];
+DashboardPage -> legend [style=invis];
 LoginService -> legend [style=invis];
 MapSelectionPage -> legend [style=invis];
 MapCatalogService -> legend [style=invis];

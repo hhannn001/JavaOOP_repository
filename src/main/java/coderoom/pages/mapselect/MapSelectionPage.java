@@ -1,6 +1,13 @@
 package coderoom.pages.mapselect;
 
+import java.awt.BorderLayout;
+import java.awt.FlowLayout;
+import java.util.Objects;
+import java.util.function.LongConsumer;
+import javax.swing.JButton;
+import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.SwingConstants;
 
 /**
  * 담당: C
@@ -20,4 +27,20 @@ public class MapSelectionPage extends JPanel {
 
     // [경계]
     // app.AppController나 다른 pages 슬라이스를 직접 import하지 않는다.
+
+    /** 맵 서비스 연동 전에는 첫 맵 선택과 대시보드 복귀만 제공한다. */
+    public MapSelectionPage(LongConsumer openMap, Runnable dashboard) {
+        Objects.requireNonNull(openMap);
+        Objects.requireNonNull(dashboard);
+        setLayout(new BorderLayout());
+        add(new JLabel("임시 진입점 구현", SwingConstants.CENTER), BorderLayout.CENTER);
+        JPanel actions = new JPanel(new FlowLayout());
+        JButton enter = new JButton("ROOM 01 · 서재 화면 보기");
+        enter.addActionListener(event -> openMap.accept(1L));
+        JButton exit = new JButton("대시보드로 돌아가기");
+        exit.addActionListener(event -> dashboard.run());
+        actions.add(enter);
+        actions.add(exit);
+        add(actions, BorderLayout.SOUTH);
+    }
 }

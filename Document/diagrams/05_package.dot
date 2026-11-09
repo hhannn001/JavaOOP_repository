@@ -5,7 +5,7 @@ digraph PackageDiagram {
 
   subgraph cluster_app {
     label="app"; color="#aec3e1"; style="rounded,filled"; fillcolor="#edf3fb";
-    app [label="coderoom.app\nMain · MainFrame · AppController"];
+    app [label="coderoom.app\nMain · MainFrame · AppController\nAppScreens · DashboardPage"];
   }
   subgraph cluster_pages {
     label="pages"; color="#a7d4ca"; style="rounded,filled"; fillcolor="#ebf7f4";

@@ -2,10 +2,11 @@
 
 ## 범위
 
-운영 코드 변경은 A 소유의 `app/*`, `pages/game/*`에 한정한다. 기존 설계 주석은 보존하고 구현 설명을 추가했다. B~G의 초안 클래스·메서드·열거형·DB·위젯 내부는 수정하지 않는다.
+화면 전환과 임시 대시보드는 A 소유의 `app/*`, 게임 수명 관리는 `pages/game/*`에 둔다. 대시보드의 상세 계약은 [A 임시 대시보드](A_임시_대시보드.md)를 따른다.
 
 - `MainFrame`: JFrame 하나, CardLayout 화면 교체, 제거, 종료 콜백.
-- `AppController`: 로그인 → 맵 → 게임 → 맵 복귀 → 로그아웃, 새 게임 생성, 이전 화면의 늦은 콜백 무시, 저장 중 이동 차단, 미저장 이탈 확인.
+- `AppController`: 로그인 → 대시보드 → 맵 → 게임 → 맵 복귀, 대시보드 복귀·로그아웃, 새 게임 생성, 이전 화면의 늦은 콜백 무시, 저장 중 이동 차단, 미저장 이탈 확인.
+- `DashboardPage`: 사용자·기록 API 연동 전의 흰 화면과 기능 버튼. 맵 이동·로그아웃만 연결한다.
 - `GamePage`: 위젯 배치와 이벤트 전달, SwingWorker 조회·저장, EDT 상태 변경, 저장 실패·동일 기록 재시도, 타이머 시작·종료, 폐기한 화면의 늦은 작업 결과 무시.
 - `Main.launch`: 초기화는 작업 스레드에서 실행하고 성공했을 때만 EDT에서 컨트롤러를 생성·시작한다.
 
@@ -16,7 +17,7 @@
 | 경계 | 테스트 대역 | 실제 연동 시 맡을 일 |
 | --- | --- | --- |
 | `AppController.Host` | `AIntegrationStubs.Host` | `MainFrame`이 이미 구현. 프레임 표시와 사용자 확인창은 조립 지점에서 연결 |
-| `AppController.Screens` | `AIntegrationStubs.Screens` | B/C 화면 생성, 로그인·맵 선택 콜백, 게임마다 새 Facade·위젯·GamePage 생성 |
+| `AppController.Screens` | `AIntegrationStubs.Screens` | A 대시보드와 B/C 화면 생성, 로그인·대시보드·맵 선택 콜백, 게임마다 새 Facade·위젯·GamePage 생성 |
 | `GamePage.GamePort` | `AIntegrationStubs.Game` | E의 GameFacade와 메서드 연결. 사용자 ID 추출·결과 DTO 변환도 실제 계약 확정 후 어댑터에서 처리 |
 | `GamePage.Widgets` | `AIntegrationStubs.Widgets` | D/F/G 위젯 조립, 같은 GameView 전달, 입력·아이템·저장 재시도 콜백 연결 |
 | `Main.Bootstrap` | 테스트의 익명 구현 | G의 DB 초기화, JDBC 저장소·서비스 조립, MainFrame 표시 |
@@ -25,7 +26,7 @@
 
 실제 연동 시 `ClearRecord`는 불변 값이어야 한다. A는 탈출 결과에 전달받은 기록을 보관하고 재시도에도 같은 인스턴스를 사용하며 저장 작업에서 게임 상태를 읽지 않는다. 현재 테스트는 빈 DTO의 인스턴스 전달과 수명만 검증한다. 비어 있는 `ItemId`·`RoomObjectId` 열거형 대신 테스트에서 null을 전달하는 것도 콜백 전달 검증에 한정한다.
 
-`Main.main`은 미연동 안내만 표시한다. 가짜 로그인·정답·기록을 운영 코드에 넣지 않았다. 따라서 현재 결과를 실제 플레이 가능한 게임이나 B~G 통합 완료로 해석하면 안 된다.
+`Main.main`은 A의 시연용 화면을 띄운다. `LoginPage`·`DashboardPage`·`MapSelectionPage`와 게임용 임시 포트의 화면으로 전환과 타이머 정리를 눈으로 확인할 수 있다. 시연용 버튼은 인증·정답 판정·기록 저장을 하지 않으며, 실제 플레이 가능한 게임이나 B~G 통합 완료를 의미하지 않는다.
 
 ## 검증 실행
 
