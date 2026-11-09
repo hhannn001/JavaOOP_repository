@@ -69,14 +69,21 @@ public class RoomPanel extends JPanel {
 
     private final BufferedImage background;
     private final Consumer<RoomObjectId> onObjectClick;
+    private final boolean fillScreen;
     private Hotspot hovered;
     private Hotspot pressed;
     private boolean showHotspots = false;
 
     /** 클릭된 물건을 알려 줄 콜백을 받는다. 실제 게임 규칙은 이 패널이 아니라 콜백 쪽이 처리한다. */
     public RoomPanel(Consumer<RoomObjectId> onObjectClick) {
+        this(onObjectClick, false);
+    }
+
+    /** 전체 화면 배치에서는 원본 비율을 유지하며 빈 공간 없이 채울 수 있다. */
+    public RoomPanel(Consumer<RoomObjectId> onObjectClick, boolean fillScreen) {
         this.onObjectClick = Objects.requireNonNull(onObjectClick);
         this.background    = loadBackground();
+        this.fillScreen    = fillScreen;
         setPreferredSize(new Dimension(960, 600));
         setBackground(LETTERBOX);
         setOpaque(true);
@@ -143,10 +150,11 @@ public class RoomPanel extends JPanel {
         }
     }
 
-    /** 그림 전체가 보이도록(잘리지 않게) 가장 크게 맞추고, 남는 공간은 양쪽에 똑같이 나눈다. */
+    /** 기본은 그림 전체를 보이고, 전체 화면 모드에서는 가장자리만 잘라 빈 공간을 없앤다. */
     private Layout fitToPanel() {
-        double scale = Math.min((double) getWidth() / background.getWidth(),
-                (double) getHeight() / background.getHeight());
+        double horizontal = (double) getWidth() / background.getWidth();
+        double vertical   = (double) getHeight() / background.getHeight();
+        double scale      = fillScreen ? Math.max(horizontal, vertical) : Math.min(horizontal, vertical);
         double offsetX = (getWidth() - background.getWidth() * scale) / 2.0;
         double offsetY = (getHeight() - background.getHeight() * scale) / 2.0;
         return new Layout(scale, offsetX, offsetY);

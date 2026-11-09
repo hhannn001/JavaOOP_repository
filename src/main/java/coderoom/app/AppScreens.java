@@ -11,23 +11,17 @@ import coderoom.features.gameplay.SubmitResult;
 import coderoom.pages.game.GamePage;
 import coderoom.pages.login.LoginPage;
 import coderoom.pages.mapselect.MapSelectionPage;
+import coderoom.widgets.room.RoomPanel;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Dialog;
 import java.awt.FlowLayout;
 import java.awt.Font;
-import java.awt.Graphics;
-import java.awt.Graphics2D;
 import java.awt.GridLayout;
-import java.awt.RenderingHints;
 import java.awt.Window;
-import java.awt.image.BufferedImage;
-import java.io.IOException;
-import java.net.URL;
 import java.util.function.Consumer;
 import java.util.function.LongConsumer;
-import javax.imageio.ImageIO;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JComponent;
@@ -99,7 +93,8 @@ final class AppScreens implements AppController.Screens {
 
         @Override
         public InspectResult inspect(RoomObjectId object) {
-            throw new UnsupportedOperationException("물건 조사는 게임 기능 연동 후 사용할 수 있습니다.");
+            // D의 클릭 콜백은 A까지 전달하되 E의 조사 결과가 구현될 때까지 빈 결과를 돌려준다.
+            return new InspectResult();
         }
 
         @Override
@@ -125,7 +120,12 @@ final class AppScreens implements AppController.Screens {
 
     /** 방 사진 위의 설정 버튼으로 중앙 메뉴를 열고 나가기만 A의 복귀 콜백에 연결한다. */
     private static final class DemoWidgets implements GamePage.Widgets {
-        private final JPanel room   = new RoomBackdrop();
+        private GamePage actions;
+        private final RoomPanel room = new RoomPanel(object -> {
+            if (actions != null) {
+                actions.inspect(object);
+            }
+        }, true);
         private final JPanel spacer = new JPanel();
 
         private DemoWidgets(Runnable back) {
@@ -175,11 +175,16 @@ final class AppScreens implements AppController.Screens {
         @Override
         public JComponent controls() { return spacer; }
         @Override
-        public void bind(GamePage actions) { }
+        public void bind(GamePage actions) {
+            // D의 물건 클릭은 A의 게임 조작 경계로 전달한다.
+            this.actions = actions;
+        }
         @Override
         public void render(GameView view) { }
         @Override
-        public void inspected(InspectResult result) { }
+        public void inspected(InspectResult result) {
+            // E의 조사 결과 DTO가 완성되면 여기에 안내·입력창 표시를 연결한다.
+        }
         @Override
         public void submitted(SubmitResult result) { }
         @Override
@@ -194,42 +199,4 @@ final class AppScreens implements AppController.Screens {
         public void result(GamePage.Escape escape, GamePage.SaveState state) { }
     }
 
-    /** 이미지 자체에 클릭 처리를 넣지 않아 D의 RoomPanel과 책임이 겹치지 않게 한다. */
-    private static final class RoomBackdrop extends JPanel {
-        private final BufferedImage image;
-
-        private RoomBackdrop() {
-            setBackground(DEEP);
-            setPreferredSize(new Dimension(960, 600));
-            URL resource = AppScreens.class.getResource("/images/room/study_locked.png");
-            if (resource == null) {
-                throw new IllegalStateException("서재 시연 이미지가 없습니다.");
-            }
-            try {
-                image = ImageIO.read(resource);
-            } catch (IOException exception) {
-                throw new IllegalStateException("서재 시연 이미지를 읽을 수 없습니다.", exception);
-            }
-        }
-
-        @Override
-        protected void paintComponent(Graphics graphics) {
-            super.paintComponent(graphics);
-            Graphics2D canvas = (Graphics2D) graphics.create();
-            try {
-                canvas.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
-                        RenderingHints.VALUE_INTERPOLATION_BILINEAR);
-                // 사진 비율은 유지하면서 게임 화면을 빈 여백 없이 채운다.
-                double scale = Math.max((double) getWidth() / image.getWidth(),
-                        (double) getHeight() / image.getHeight());
-                int width  = (int) Math.round(image.getWidth() * scale);
-                int height = (int) Math.round(image.getHeight() * scale);
-                int x      = (getWidth() - width) / 2;
-                int y      = (getHeight() - height) / 2;
-                canvas.drawImage(image, x, y, width, height, null);
-            } finally {
-                canvas.dispose();
-            }
-        }
-    }
 }

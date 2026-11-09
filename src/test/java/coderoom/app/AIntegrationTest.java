@@ -10,11 +10,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import coderoom.entities.user.LoginUser;
 import coderoom.pages.game.GamePage;
+import coderoom.widgets.room.RoomPanel;
 import java.awt.Component;
 import java.awt.Container;
 import java.awt.GraphicsEnvironment;
 import java.awt.Window;
 import java.awt.event.WindowEvent;
+import java.awt.event.MouseEvent;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -386,6 +388,17 @@ class AIntegrationTest {
         edt(() -> {
             assertEquals(0, countMessage(host.pages.get("game")));
             findButton(host.pages.get("game"), "설정");
+            RoomPanel room = findRoomPanel(host.pages.get("game"));
+            room.setSize(1586, 992);
+            // D의 서랍 클릭 영역이 실제 A 게임 화면에서도 이벤트를 받는지 확인한다.
+            long when = System.currentTimeMillis();
+            room.dispatchEvent(new MouseEvent(room, MouseEvent.MOUSE_MOVED, when, 0,
+                    600, 600, 0, false));
+            assertEquals("서랍장", room.getToolTipText());
+            room.dispatchEvent(new MouseEvent(room, MouseEvent.MOUSE_PRESSED, when, 0,
+                    600, 600, 1, false, MouseEvent.BUTTON1));
+            room.dispatchEvent(new MouseEvent(room, MouseEvent.MOUSE_RELEASED, when, 0,
+                    600, 600, 1, false, MouseEvent.BUTTON1));
             assertThrows(IllegalArgumentException.class,
                     () -> findButton(host.pages.get("game"), "맵 선택으로"));
             assertThrows(IllegalArgumentException.class,
@@ -425,6 +438,22 @@ class AIntegrationTest {
             }
         }
         throw new IllegalArgumentException("버튼 없음: " + title);
+    }
+
+    private static RoomPanel findRoomPanel(Component root) {
+        if (root instanceof RoomPanel room) {
+            return room;
+        }
+        if (root instanceof Container container) {
+            for (Component child : container.getComponents()) {
+                try {
+                    return findRoomPanel(child);
+                } catch (IllegalArgumentException ignored) {
+                    // 다음 자식 컴포넌트에서 D의 방 화면을 찾는다.
+                }
+            }
+        }
+        throw new IllegalArgumentException("방 화면 없음");
     }
 
     @Test
