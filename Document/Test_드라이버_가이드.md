@@ -27,7 +27,7 @@ Windows에서는 `./mvnw` 대신 `mvnw.cmd`를 사용한다. 결과는 `target/s
 
 | 담당 | 드라이버 / 개별 메서드 | 현재 검증 | 실제 연결 대상 / 후속 작업 |
 | --- | --- | --- | --- |
-| A | AFlowDriver / aFlow | 로그인→두 퍼즐→열쇠→탈출→저장→초기화 데이터 흐름 | AppController·GamePage 화면 전환, 작업 완료 콜백, 타이머 정리 검증 추가 |
+| A | AFlowDriver / aFlow | 로그인→두 퍼즐→열쇠→탈출→저장→초기화 데이터 흐름 | AppController의 로그인→대시보드→맵→게임 전환과 복귀, 작업 완료 콜백, 타이머 정리 검증 추가 |
 | B | BLoginDriver / bLogin | 정상·오답·없는 계정·빈 입력 | LoginService를 Auth로 연결하고 실제 PasswordVerifier 및 사용자 저장소 검증 |
 | C | CMapDriver / cMap | 카드 3개, 플레이 가능 1개, 신규 계정 기록 없음 | MapCatalogService를 Catalog로 연결, 기록 있는 계정 및 준비 중 맵 입장 차단 검증 |
 | D | DRoomDriver / dRoomStates | START→DRAWER_OPEN→SAFE_OPEN 화면 데이터 준비 | 각 View를 RoomPanel 렌더링 입력으로 변환, 클릭·리사이즈 수동 QA |

@@ -9,9 +9,14 @@ classDiagram
     class AppController {
         -LoginUser currentUser
         +onLogin(user)
+        +openMaps()
+        +backToDashboard()
         +openMap(mapId)
         +backToMaps()
         +logout()
+    }
+    class DashboardPage {
+        +DashboardPage(user, openMaps, logout)
     }
     class LoginPage {
         +showError(message)
@@ -49,6 +54,7 @@ classDiagram
     Main ..> MainFrame
     AppController --> MainFrame
     AppController --> LoginPage
+    AppController --> DashboardPage
     AppController --> MapSelectionPage
     AppController --> GamePage
     LoginPage --> LoginService
