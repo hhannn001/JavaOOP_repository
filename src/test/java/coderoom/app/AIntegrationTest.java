@@ -523,6 +523,7 @@ class AIntegrationTest {
                 }
             }
             assertTrue(frame != null, "시연 창이 화면에 표시되어야 합니다.");
+            assertEquals(256, frame.getIconImage().getWidth(null));
             JButton start = findButton(frame, "맵 선택 화면으로 이동");
             assertTrue(start.isShowing(), "시작 화면의 이동 버튼이 실제 창에 표시되어야 합니다.");
             assertTrue(start.getWidth() > 0 && start.getHeight() > 0);
