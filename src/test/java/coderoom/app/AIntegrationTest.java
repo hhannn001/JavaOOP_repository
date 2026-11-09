@@ -25,9 +25,11 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import javax.swing.JButton;
+import javax.swing.JDialog;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
+import javax.swing.Timer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
@@ -367,7 +369,7 @@ class AIntegrationTest {
     @Test
     void demoEntryScreensNavigateWithoutOtherOwnersFeatures() throws Exception {
         AIntegrationStubs.Host host = new AIntegrationStubs.Host();
-        AppController controller = edt(() -> new AppController(host, new DemoScreens(), () -> true));
+        AppController controller = edt(() -> new AppController(host, new AppScreens(), () -> true));
         edt(() -> {
             controller.start();
             assertEquals("login", host.visible);
@@ -382,11 +384,16 @@ class AIntegrationTest {
         });
         await(() -> ((GamePage) host.pages.get("game")).isTimerRunning());
         edt(() -> {
-            assertEquals(1, countMessage(host.pages.get("game")));
+            assertEquals(0, countMessage(host.pages.get("game")));
+            findButton(host.pages.get("game"), "설정");
+            assertThrows(IllegalArgumentException.class,
+                    () -> findButton(host.pages.get("game"), "맵 선택으로"));
+            assertThrows(IllegalArgumentException.class,
+                    () -> findButton(host.pages.get("game"), "화면 다시 열기"));
             return null;
         });
         edt(() -> {
-            findButton(host.pages.get("game"), "맵 선택으로").doClick();
+            controller.backToMaps();
             assertEquals("maps", host.visible);
             findButton(host.pages.get("maps"), "시작 화면으로 돌아가기").doClick();
             assertEquals("login", host.visible);
@@ -441,6 +448,21 @@ class AIntegrationTest {
             start.doClick();
             JButton enter = findButton(frame, "ROOM 01 · 서재 화면 보기");
             assertTrue(enter.isShowing(), "맵 화면의 이동 버튼이 실제 창에 표시되어야 합니다.");
+            enter.doClick();
+            JButton settings = findButton(frame, "설정");
+            assertTrue(settings.isShowing(), "설정 버튼이 게임 사진 위에 표시되어야 합니다.");
+            // 모달 창의 이벤트 루프에서 맨 아래 나가기 버튼을 눌러 화면 복귀를 확인한다.
+            Timer closeMenu = new Timer(100, event -> {
+                for (Window window : Window.getWindows()) {
+                    if (window instanceof JDialog dialog && dialog.isShowing()) {
+                        ((Timer) event.getSource()).stop();
+                        findButton(dialog, "나가기").doClick();
+                    }
+                }
+            });
+            closeMenu.start();
+            settings.doClick();
+            assertTrue(findButton(frame, "ROOM 01 · 서재 화면 보기").isShowing());
             frame.dispatchEvent(new WindowEvent(frame, WindowEvent.WINDOW_CLOSING));
             assertFalse(frame.isDisplayable());
             return null;

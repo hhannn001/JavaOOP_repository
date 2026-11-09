@@ -32,7 +32,7 @@ public class Main {
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
             MainFrame frame = new MainFrame();
-            AppController controller = new AppController(frame, new DemoScreens(), () -> true);
+            AppController controller = new AppController(frame, new AppScreens(), () -> true);
             controller.start();
             frame.setVisible(true);
         });

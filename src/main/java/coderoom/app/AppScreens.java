@@ -9,15 +9,19 @@ import coderoom.features.gameplay.GameView;
 import coderoom.features.gameplay.InspectResult;
 import coderoom.features.gameplay.SubmitResult;
 import coderoom.pages.game.GamePage;
+import coderoom.pages.login.LoginPage;
+import coderoom.pages.mapselect.MapSelectionPage;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
-import java.awt.Font;
+import java.awt.Dialog;
 import java.awt.FlowLayout;
+import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
-import java.awt.GridBagLayout;
+import java.awt.GridLayout;
 import java.awt.RenderingHints;
+import java.awt.Window;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.net.URL;
@@ -27,67 +31,37 @@ import javax.imageio.ImageIO;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JComponent;
-import javax.swing.JLabel;
+import javax.swing.JDialog;
 import javax.swing.JPanel;
-import javax.swing.SwingConstants;
+import javax.swing.SwingUtilities;
 import javax.swing.plaf.basic.BasicButtonUI;
 
-/** A의 화면 전환을 실행해 볼 수 있는 임시 화면. B~G의 기능을 대신 구현하지 않는다. */
-final class DemoScreens implements AppController.Screens {
+/**
+ * 담당: A
+ * 역할: AppController가 요청하는 화면의 생성과 연결.
+ * B·C의 실제 화면 클래스를 조립하고, 미구현 게임 기능에는 임시 포트를 제공한다.
+ * 다른 담당자의 인증·맵 조회·게임 규칙은 이 클래스에서 구현하지 않는다.
+ */
+final class AppScreens implements AppController.Screens {
     private static final Color DEEP  = new Color(21, 39, 30);
     private static final Color GOLD  = new Color(229, 194, 134);
-    private static final Color PAPER = new Color(233, 231, 206);
 
     @Override
     public JComponent login(Consumer<LoginUser> onLogin) {
-        JPanel page = page();
-        JButton enter = button("맵 선택 화면으로 이동");
-        // 사용자 값은 화면 전환 계약에만 사용하며 인증 성공으로 취급하지 않는다.
-        enter.addActionListener(event -> onLogin.accept(new LoginUser()));
-        page.add(actions(enter), BorderLayout.SOUTH);
-        return page;
+        // B 화면의 임시 생성자를 연결한다. 인증 서비스가 완성되면 이 조립 지점에서 교체한다.
+        return new LoginPage(onLogin);
     }
 
     @Override
     public JComponent maps(LoginUser user, LongConsumer openMap, Runnable logout) {
-        JPanel page = page();
-        JPanel gallery = new JPanel(new GridBagLayout());
-        gallery.setBackground(DEEP);
-        gallery.add(new PosterPreview());
-        page.add(gallery, BorderLayout.CENTER);
-        JButton enter = button("ROOM 01 · 서재 화면 보기");
-        enter.addActionListener(event -> openMap.accept(1L));
-        JButton exit = button("시작 화면으로 돌아가기");
-        exit.addActionListener(event -> logout.run());
-        page.add(actions(enter, exit), BorderLayout.SOUTH);
-        return page;
+        // C 화면의 임시 생성자를 연결한다. 맵 서비스가 완성되면 이 조립 지점에서 교체한다.
+        return new MapSelectionPage(openMap, logout);
     }
 
     @Override
     public GamePage game(LoginUser user, long mapId, Runnable back, Runnable restart) {
         // GamePage의 비동기 로딩·타이머 수명은 실제 A 코드로 확인한다.
-        return new GamePage(new DemoGame(), new DemoWidgets(back, restart));
-    }
-
-    private static JPanel page() {
-        JPanel page = new JPanel(new BorderLayout());
-        page.setBackground(DEEP);
-        page.setBorder(BorderFactory.createEmptyBorder(28, 32, 28, 32));
-        JLabel heading = new JLabel("임시 진입점 구현", SwingConstants.CENTER);
-        heading.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 42));
-        heading.setForeground(GOLD);
-        page.add(heading, BorderLayout.NORTH);
-        return page;
-    }
-
-    /** 이동 버튼을 창 하단에 고정해 화면 크기가 달라도 찾을 수 있게 한다. */
-    private static JPanel actions(JButton... buttons) {
-        JPanel actions = new JPanel(new FlowLayout(FlowLayout.CENTER, 18, 8));
-        actions.setBackground(DEEP);
-        for (JButton button : buttons) {
-            actions.add(button);
-        }
-        return actions;
+        return new GamePage(new DemoGame(), new DemoWidgets(back));
     }
 
     private static JButton button(String title) {
@@ -149,29 +123,57 @@ final class DemoScreens implements AppController.Screens {
         }
     }
 
-    /** 방 이미지 위에 안내를 얹고, 복귀·재시작 버튼만 A의 콜백에 연결한다. */
+    /** 방 사진 위의 설정 버튼으로 중앙 메뉴를 열고 나가기만 A의 복귀 콜백에 연결한다. */
     private static final class DemoWidgets implements GamePage.Widgets {
-        private final JPanel room     = new RoomBackdrop();
-        private final JPanel controls = new JPanel(new BorderLayout());
-        private final JLabel status   = new JLabel("임시 진입점 구현", SwingConstants.CENTER);
+        private final JPanel room   = new RoomBackdrop();
+        private final JPanel spacer = new JPanel();
 
-        private DemoWidgets(Runnable back, Runnable restart) {
-            controls.setBackground(DEEP);
-            controls.setBorder(BorderFactory.createEmptyBorder(12, 16, 12, 16));
-            status.setForeground(PAPER);
-            controls.add(status, BorderLayout.CENTER);
-            JButton goBack = button("맵 선택으로");
-            goBack.addActionListener(event -> back.run());
-            controls.add(goBack, BorderLayout.WEST);
-            JButton again = button("화면 다시 열기");
-            again.addActionListener(event -> restart.run());
-            controls.add(again, BorderLayout.EAST);
+        private DemoWidgets(Runnable back) {
+            // 투명한 상단 컨테이너가 설정 버튼만 우상단에 겹쳐 표시한다.
+            room.setLayout(new BorderLayout());
+            JPanel overlay = new JPanel(new FlowLayout(FlowLayout.RIGHT, 20, 16));
+            overlay.setOpaque(false);
+            JButton settings = button("설정");
+            settings.addActionListener(event -> openSettings(back));
+            overlay.add(settings);
+            room.add(overlay, BorderLayout.NORTH);
+            // GamePage의 SOUTH 슬롯은 높이를 차지하지 않게 해 사진이 창 아래까지 닿게 한다.
+            spacer.setPreferredSize(new Dimension(0, 0));
+            spacer.setOpaque(false);
+        }
+
+        /** 중앙 팝업에는 추후 메뉴 자리를 마련하고 나가기만 동작하게 한다. */
+        private void openSettings(Runnable back) {
+            Window owner = SwingUtilities.getWindowAncestor(room);
+            JDialog dialog = new JDialog(owner, "설정", Dialog.ModalityType.DOCUMENT_MODAL);
+            JPanel content = new JPanel(new BorderLayout(0, 24));
+            content.setBackground(DEEP);
+            content.setBorder(BorderFactory.createEmptyBorder(28, 32, 28, 32));
+            JPanel options = new JPanel(new GridLayout(2, 1, 0, 12));
+            options.setOpaque(false);
+            JButton sound = button("소리 · 준비 중");
+            sound.setEnabled(false);
+            JButton help = button("도움말 · 준비 중");
+            help.setEnabled(false);
+            options.add(sound);
+            options.add(help);
+            content.add(options, BorderLayout.CENTER);
+            JButton exit = button("나가기");
+            exit.addActionListener(event -> {
+                dialog.dispose();
+                back.run();
+            });
+            content.add(exit, BorderLayout.SOUTH);
+            dialog.setContentPane(content);
+            dialog.setSize(360, 300);
+            dialog.setLocationRelativeTo(room);
+            dialog.setVisible(true);
         }
 
         @Override
         public JComponent room() { return room; }
         @Override
-        public JComponent controls() { return controls; }
+        public JComponent controls() { return spacer; }
         @Override
         public void bind(GamePage actions) { }
         @Override
@@ -182,7 +184,7 @@ final class DemoScreens implements AppController.Screens {
         public void submitted(SubmitResult result) { }
         @Override
         public void status(String message) {
-            // 시연 화면에서는 내부 로딩 메시지를 표시하지 않고 요청한 문구를 유지한다.
+            // 게임 기능이 아직 연결되지 않아 작업 상태는 화면에 표시하지 않는다.
         }
         @Override
         public void busy(boolean busy) {
@@ -192,30 +194,6 @@ final class DemoScreens implements AppController.Screens {
         public void result(GamePage.Escape escape, GamePage.SaveState state) { }
     }
 
-    /** 포스터는 장식으로만 표시하며 입장 가능 여부는 화면의 버튼이 결정한다. */
-    private static final class PosterPreview extends JPanel {
-        private final BufferedImage image;
-
-        private PosterPreview() {
-            setPreferredSize(new Dimension(195, 280));
-            URL resource = DemoScreens.class.getResource("/images/posters/room01_last_compile.png");
-            if (resource == null) {
-                throw new IllegalStateException("서재 포스터 이미지가 없습니다.");
-            }
-            try {
-                image = ImageIO.read(resource);
-            } catch (IOException exception) {
-                throw new IllegalStateException("서재 포스터 이미지를 읽을 수 없습니다.", exception);
-            }
-        }
-
-        @Override
-        protected void paintComponent(Graphics graphics) {
-            super.paintComponent(graphics);
-            graphics.drawImage(image, 0, 0, getWidth(), getHeight(), null);
-        }
-    }
-
     /** 이미지 자체에 클릭 처리를 넣지 않아 D의 RoomPanel과 책임이 겹치지 않게 한다. */
     private static final class RoomBackdrop extends JPanel {
         private final BufferedImage image;
@@ -223,7 +201,7 @@ final class DemoScreens implements AppController.Screens {
         private RoomBackdrop() {
             setBackground(DEEP);
             setPreferredSize(new Dimension(960, 600));
-            URL resource = DemoScreens.class.getResource("/images/room/study_locked.png");
+            URL resource = AppScreens.class.getResource("/images/room/study_locked.png");
             if (resource == null) {
                 throw new IllegalStateException("서재 시연 이미지가 없습니다.");
             }
@@ -241,8 +219,8 @@ final class DemoScreens implements AppController.Screens {
             try {
                 canvas.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
                         RenderingHints.VALUE_INTERPOLATION_BILINEAR);
-                // 창 크기가 바뀌어도 원본 비율을 유지하고 남는 여백을 가운데 정렬한다.
-                double scale = Math.min((double) getWidth() / image.getWidth(),
+                // 사진 비율은 유지하면서 게임 화면을 빈 여백 없이 채운다.
+                double scale = Math.max((double) getWidth() / image.getWidth(),
                         (double) getHeight() / image.getHeight());
                 int width  = (int) Math.round(image.getWidth() * scale);
                 int height = (int) Math.round(image.getHeight() * scale);

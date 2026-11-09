@@ -1,6 +1,13 @@
 package coderoom.pages.login;
 
+import coderoom.entities.user.LoginUser;
+import java.awt.BorderLayout;
+import java.util.Objects;
+import java.util.function.Consumer;
+import javax.swing.JButton;
+import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.SwingConstants;
 
 /**
  * 담당: B
@@ -20,4 +27,15 @@ public class LoginPage extends JPanel {
 
     // [경계]
     // app.AppController나 다른 pages 슬라이스를 직접 import하지 않는다.
+
+    /** 실제 인증 서비스가 연결되기 전 화면 이동만 확인하는 최소 진입점이다. */
+    public LoginPage(Consumer<LoginUser> onLogin) {
+        Objects.requireNonNull(onLogin);
+        setLayout(new BorderLayout());
+        add(new JLabel("임시 진입점 구현", SwingConstants.CENTER), BorderLayout.CENTER);
+        JButton enter = new JButton("맵 선택 화면으로 이동");
+        // 임시 사용자로 콜백만 전달하며 인증 성공 여부는 검사하지 않는다.
+        enter.addActionListener(event -> onLogin.accept(new LoginUser()));
+        add(enter, BorderLayout.SOUTH);
+    }
 }
