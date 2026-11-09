@@ -12,6 +12,7 @@ import coderoom.entities.user.LoginUser;
 import coderoom.pages.game.GamePage;
 import coderoom.widgets.room.RoomPanel;
 import java.awt.Component;
+import java.awt.Color;
 import java.awt.Container;
 import java.awt.GraphicsEnvironment;
 import java.awt.Window;
@@ -88,6 +89,8 @@ class AIntegrationTest {
             controller.start();
             assertEquals("login", host.visible);
             screens.login.accept(first);
+            assertEquals("dashboard", host.visible);
+            screens.openMaps.run();
             assertSame(first, screens.mapUser);
             screens.open.accept(1);
             cleanup.add(screens.page);
@@ -112,10 +115,13 @@ class AIntegrationTest {
             assertEquals("maps", host.visible);
             assertEquals(2, screens.mapLoads);
             assertFalse(old.isTimerRunning());
+            screens.dashboard.run();
+            assertEquals("dashboard", host.visible);
             screens.logout.run();
             assertEquals("login", host.visible);
             assertEquals(1, host.pages.size());
             screens.login.accept(second);
+            screens.openMaps.run();
             assertSame(second, screens.mapUser);
             screens.open.accept(1);
             cleanup.add(screens.page);
@@ -239,6 +245,7 @@ class AIntegrationTest {
         edt(() -> {
             controller.start();
             screens.login.accept(new LoginUser());
+            screens.openMaps.run();
             screens.open.accept(1);
             cleanup.add(screens.page);
             return null;
@@ -268,6 +275,7 @@ class AIntegrationTest {
         edt(() -> {
             controller.start();
             screens.login.accept(new LoginUser());
+            screens.openMaps.run();
             screens.open.accept(1);
             cleanup.add(screens.page);
             return null;
@@ -312,6 +320,32 @@ class AIntegrationTest {
             assertTrue(host.close.getAsBoolean());
             screens.login.accept(new LoginUser());
             assertTrue(host.pages.isEmpty());
+            return null;
+        });
+    }
+
+    @Test
+    void discardedDashboardCallbacksCannotChangeTheCurrentScreen() throws Exception {
+        AIntegrationStubs.Host host       = new AIntegrationStubs.Host();
+        AIntegrationStubs.Screens screens = new AIntegrationStubs.Screens();
+        AppController controller          = edt(() -> new AppController(host, screens, () -> true));
+        edt(() -> {
+            controller.start();
+            screens.login.accept(new LoginUser());
+            assertEquals("dashboard", host.visible);
+            Runnable oldOpen   = screens.openMaps;
+            Runnable oldLogout = screens.logout;
+            oldOpen.run();
+            assertEquals("maps", host.visible);
+            oldLogout.run();
+            assertEquals("maps", host.visible);
+            screens.dashboard.run();
+            assertEquals("dashboard", host.visible);
+            oldOpen.run();
+            assertEquals("dashboard", host.visible);
+            screens.logout.run();
+            assertEquals("login", host.visible);
+            assertEquals(1, host.pages.size());
             return null;
         });
     }
@@ -367,7 +401,7 @@ class AIntegrationTest {
         assertThrows(IllegalStateException.class, page::disposeGame);
     }
 
-    /** 시연용 버튼을 실제 AppController에 연결해 세 화면을 왕복한다. */
+    /** 임시 대시보드를 포함한 화면 흐름과 맵 복귀를 확인한다. */
     @Test
     void demoEntryScreensNavigateWithoutOtherOwnersFeatures() throws Exception {
         AIntegrationStubs.Host host = new AIntegrationStubs.Host();
@@ -377,6 +411,11 @@ class AIntegrationTest {
             assertEquals("login", host.visible);
             assertEquals(1, countMessage(host.pages.get("login")));
             findButton(host.pages.get("login"), "맵 선택 화면으로 이동").doClick();
+            assertEquals("dashboard", host.visible);
+            DashboardPage dashboard = (DashboardPage) host.pages.get("dashboard");
+            assertEquals(Color.WHITE, dashboard.getBackground());
+            assertEquals(5, countButtons(dashboard));
+            findButton(host.pages.get("dashboard"), "맵 선택으로 이동").doClick();
             assertEquals("maps", host.visible);
             assertEquals(1, countMessage(host.pages.get("maps")));
             findButton(host.pages.get("maps"), "ROOM 01 · 서재 화면 보기").doClick();
@@ -408,7 +447,12 @@ class AIntegrationTest {
         edt(() -> {
             controller.backToMaps();
             assertEquals("maps", host.visible);
-            findButton(host.pages.get("maps"), "시작 화면으로 돌아가기").doClick();
+            findButton(host.pages.get("maps"), "대시보드로 돌아가기").doClick();
+            assertEquals("dashboard", host.visible);
+            findButton(host.pages.get("dashboard"), "맵 선택으로 이동").doClick();
+            assertEquals("maps", host.visible);
+            findButton(host.pages.get("maps"), "대시보드로 돌아가기").doClick();
+            findButton(host.pages.get("dashboard"), "로그아웃").doClick();
             assertEquals("login", host.visible);
             return null;
         });
@@ -419,6 +463,16 @@ class AIntegrationTest {
         if (root instanceof Container container) {
             for (Component child : container.getComponents()) {
                 count += countMessage(child);
+            }
+        }
+        return count;
+    }
+
+    private static int countButtons(Component root) {
+        int count = root instanceof JButton ? 1 : 0;
+        if (root instanceof Container container) {
+            for (Component child : container.getComponents()) {
+                count += countButtons(child);
             }
         }
         return count;
@@ -475,11 +529,20 @@ class AIntegrationTest {
             assertTrue(SwingUtilities.convertPoint(start, 0, 0, frame).y > frame.getHeight() / 2,
                     "이동 버튼은 창의 아래쪽에 있어야 합니다.");
             start.doClick();
+            JButton dashboardMaps = findButton(frame, "맵 선택으로 이동");
+            assertTrue(dashboardMaps.isShowing(), "대시보드의 맵 이동 버튼이 보여야 합니다.");
+            dashboardMaps.doClick();
             JButton enter = findButton(frame, "ROOM 01 · 서재 화면 보기");
             assertTrue(enter.isShowing(), "맵 화면의 이동 버튼이 실제 창에 표시되어야 합니다.");
             enter.doClick();
+            frame.validate();
             JButton settings = findButton(frame, "설정");
             assertTrue(settings.isShowing(), "설정 버튼이 게임 사진 위에 표시되어야 합니다.");
+            assertEquals(Color.WHITE, settings.getBackground());
+            assertTrue(settings.getWidth() > 0);
+            assertEquals(settings.getWidth(), settings.getHeight());
+            assertTrue(SwingUtilities.convertPoint(settings, 0, 0, frame).x > frame.getWidth() / 2,
+                    "설정 버튼은 게임 화면 우상단에 있어야 합니다.");
             // 모달 창의 이벤트 루프에서 맨 아래 나가기 버튼을 눌러 화면 복귀를 확인한다.
             Timer closeMenu = new Timer(100, event -> {
                 for (Window window : Window.getWindows()) {

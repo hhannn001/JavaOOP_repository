@@ -47,9 +47,15 @@ final class AppScreens implements AppController.Screens {
     }
 
     @Override
-    public JComponent maps(LoginUser user, LongConsumer openMap, Runnable logout) {
-        // C 화면의 임시 생성자를 연결한다. 맵 서비스가 완성되면 이 조립 지점에서 교체한다.
-        return new MapSelectionPage(openMap, logout);
+    public JComponent dashboard(LoginUser user, Runnable openMaps, Runnable logout) {
+        // A의 대시보드는 현재 사용자 세션만 받고 기록 데이터는 연동 전으로 표시한다.
+        return new DashboardPage(user, openMaps, logout);
+    }
+
+    @Override
+    public JComponent maps(LoginUser user, LongConsumer openMap, Runnable dashboard) {
+        // C의 기존 하단 버튼을 대시보드 복귀 콜백에 연결한다.
+        return new MapSelectionPage(openMap, dashboard);
     }
 
     @Override
@@ -70,6 +76,16 @@ final class AppScreens implements AppController.Screens {
         button.setForeground(DEEP);
         button.setBorder(BorderFactory.createEmptyBorder(13, 22, 13, 22));
         return button;
+    }
+
+    /** 화면마다 새 인스턴스를 만들면서 임시 설정 버튼의 모양만 공유한다. */
+    private static JButton settingsButton(Runnable openSettings) {
+        JButton settings = button("설정");
+        settings.setPreferredSize(new Dimension(64, 64));
+        settings.setBackground(Color.WHITE);
+        settings.setBorder(BorderFactory.createLineBorder(DEEP));
+        settings.addActionListener(event -> openSettings.run());
+        return settings;
     }
 
     /** 빈 DTO만 전달하여 A의 화면 수명과 전환을 확인하는 게임 포트다. */
@@ -133,9 +149,7 @@ final class AppScreens implements AppController.Screens {
             room.setLayout(new BorderLayout());
             JPanel overlay = new JPanel(new FlowLayout(FlowLayout.RIGHT, 20, 16));
             overlay.setOpaque(false);
-            JButton settings = button("설정");
-            settings.addActionListener(event -> openSettings(back));
-            overlay.add(settings);
+            overlay.add(settingsButton(() -> openSettings(back)));
             room.add(overlay, BorderLayout.NORTH);
             // GamePage의 SOUTH 슬롯은 높이를 차지하지 않게 해 사진이 창 아래까지 닿게 한다.
             spacer.setPreferredSize(new Dimension(0, 0));

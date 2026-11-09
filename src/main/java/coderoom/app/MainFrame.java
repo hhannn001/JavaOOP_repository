@@ -23,7 +23,7 @@ public class MainFrame extends JFrame implements AppController.Host {
     // java.awt.CardLayout과 화면 컨테이너를 보유한다.
 
     // [구현 예정]
-    // showPage(name): 로그인·맵 선택·게임 화면을 전환한다.
+    // showPage(name): 로그인·대시보드·맵 선택·게임 화면을 전환한다.
     // 창 종료 시 현재 GamePage의 타이머와 작업을 정리하도록 콜백을 호출한다.
     // 게임 화면에서는 방이 창의 전체 콘텐츠 영역을 채우도록 배치한다.
 
