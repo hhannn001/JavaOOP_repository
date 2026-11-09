@@ -10,7 +10,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import coderoom.entities.user.LoginUser;
 import coderoom.pages.game.GamePage;
+import java.awt.Component;
+import java.awt.Container;
 import java.awt.GraphicsEnvironment;
+import java.awt.Window;
 import java.awt.event.WindowEvent;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -21,6 +24,8 @@ import java.util.concurrent.FutureTask;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
+import javax.swing.JButton;
+import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 import org.junit.jupiter.api.AfterEach;
@@ -356,6 +361,90 @@ class AIntegrationTest {
         GamePage page                     = page(game, widgets);
         assertThrows(IllegalStateException.class, () -> page.load(new LoginUser(), 1));
         assertThrows(IllegalStateException.class, page::disposeGame);
+    }
+
+    /** 시연용 버튼을 실제 AppController에 연결해 세 화면을 왕복한다. */
+    @Test
+    void demoEntryScreensNavigateWithoutOtherOwnersFeatures() throws Exception {
+        AIntegrationStubs.Host host = new AIntegrationStubs.Host();
+        AppController controller = edt(() -> new AppController(host, new DemoScreens(), () -> true));
+        edt(() -> {
+            controller.start();
+            assertEquals("login", host.visible);
+            assertEquals(1, countMessage(host.pages.get("login")));
+            findButton(host.pages.get("login"), "맵 선택 화면으로 이동").doClick();
+            assertEquals("maps", host.visible);
+            assertEquals(1, countMessage(host.pages.get("maps")));
+            findButton(host.pages.get("maps"), "ROOM 01 · 서재 화면 보기").doClick();
+            assertEquals("game", host.visible);
+            cleanup.add((GamePage) host.pages.get("game"));
+            return null;
+        });
+        await(() -> ((GamePage) host.pages.get("game")).isTimerRunning());
+        edt(() -> {
+            assertEquals(1, countMessage(host.pages.get("game")));
+            return null;
+        });
+        edt(() -> {
+            findButton(host.pages.get("game"), "맵 선택으로").doClick();
+            assertEquals("maps", host.visible);
+            findButton(host.pages.get("maps"), "시작 화면으로 돌아가기").doClick();
+            assertEquals("login", host.visible);
+            return null;
+        });
+    }
+
+    private static int countMessage(Component root) {
+        int count = root instanceof JLabel label && "임시 진입점 구현".equals(label.getText()) ? 1 : 0;
+        if (root instanceof Container container) {
+            for (Component child : container.getComponents()) {
+                count += countMessage(child);
+            }
+        }
+        return count;
+    }
+
+    private static JButton findButton(Component root, String title) {
+        if (root instanceof JButton button && title.equals(button.getText())) {
+            return button;
+        }
+        if (root instanceof Container container) {
+            for (Component child : container.getComponents()) {
+                try {
+                    return findButton(child, title);
+                } catch (IllegalArgumentException ignored) {
+                    // 같은 화면의 다음 컴포넌트에서 버튼을 계속 찾는다.
+                }
+            }
+        }
+        throw new IllegalArgumentException("버튼 없음: " + title);
+    }
+
+    @Test
+    void mainOpensTheDemoFrame() throws Exception {
+        Assumptions.assumeFalse(GraphicsEnvironment.isHeadless(), "실제 창은 디스플레이 환경에서 검증");
+        Main.main(new String[0]);
+        edt(() -> {
+            MainFrame frame = null;
+            for (Window window : Window.getWindows()) {
+                if (window instanceof MainFrame candidate && candidate.isShowing()) {
+                    frame = candidate;
+                    break;
+                }
+            }
+            assertTrue(frame != null, "시연 창이 화면에 표시되어야 합니다.");
+            JButton start = findButton(frame, "맵 선택 화면으로 이동");
+            assertTrue(start.isShowing(), "시작 화면의 이동 버튼이 실제 창에 표시되어야 합니다.");
+            assertTrue(start.getWidth() > 0 && start.getHeight() > 0);
+            assertTrue(SwingUtilities.convertPoint(start, 0, 0, frame).y > frame.getHeight() / 2,
+                    "이동 버튼은 창의 아래쪽에 있어야 합니다.");
+            start.doClick();
+            JButton enter = findButton(frame, "ROOM 01 · 서재 화면 보기");
+            assertTrue(enter.isShowing(), "맵 화면의 이동 버튼이 실제 창에 표시되어야 합니다.");
+            frame.dispatchEvent(new WindowEvent(frame, WindowEvent.WINDOW_CLOSING));
+            assertFalse(frame.isDisplayable());
+            return null;
+        });
     }
 
     @Test

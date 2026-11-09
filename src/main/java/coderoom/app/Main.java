@@ -1,10 +1,8 @@
 package coderoom.app;
 
-import java.awt.GraphicsEnvironment;
 import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
-import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
 
@@ -30,15 +28,14 @@ public class Main {
         AppController createController();
     }
 
-    /** B~G가 아직 초안이므로 운영 실행으로 오인하지 않도록 미연동 상태를 알린다. */
+    /** A의 화면 전환과 창 수명을 직접 확인할 수 있는 시연 창을 띄운다. */
     public static void main(String[] args) {
-        String message = "B~G 구현은 아직 연결되지 않았습니다. A 연동은 테스트 드라이버로 검증합니다.";
-        if (GraphicsEnvironment.isHeadless()) {
-            System.err.println(message);
-        } else {
-            SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(null, message,
-                    "CODE ROOM · 연동 대기", JOptionPane.INFORMATION_MESSAGE));
-        }
+        SwingUtilities.invokeLater(() -> {
+            MainFrame frame = new MainFrame();
+            AppController controller = new AppController(frame, new DemoScreens(), () -> true);
+            controller.start();
+            frame.setVisible(true);
+        });
     }
 
     /** DB 준비를 EDT 밖에서 완료한 경우에만 화면을 만든다. 실패 시 정상 흐름을 시작하지 않는다. */
