@@ -46,9 +46,20 @@ public final class LoginPage extends JPanel {
     private boolean authenticated;
     private long generation;
 
+    /** 기존 A의 호출을 지원한다. 인증 서비스를 받기 전에는 로그인할 수 없다. */
+    public LoginPage(Consumer<LoginUser> onLogin) {
+        this(onLogin, null);
+    }
+
+    /** 인증 서비스가 연결된 실제 로그인 화면. */
     public LoginPage(LoginService service, Consumer<LoginUser> onLogin) {
+        this(onLogin, Objects.requireNonNull(service, "로그인 서비스가 필요합니다."));
+    }
+
+    /** 공통 화면 구성. service가 null이면 서비스 연결 대기 상태로 표시한다. */
+    private LoginPage(Consumer<LoginUser> onLogin, LoginService service) {
         requireEdt();
-        this.service = Objects.requireNonNull(service, "로그인 서비스가 필요합니다.");
+        this.service = service;
         this.onLogin = Objects.requireNonNull(onLogin, "로그인 성공 콜백이 필요합니다.");
         setLayout(new GridBagLayout());
         setBackground(BACKGROUND);
@@ -126,6 +137,10 @@ public final class LoginPage extends JPanel {
         loginButton.addActionListener(event -> submitLogin());
         passwordField.addActionListener(event -> submitLogin());
         loginIdField.addActionListener(event -> passwordField.requestFocusInWindow());
+        updateControls();
+        if (service == null) {
+            statusMessage.setText("인증 서비스 연결 대기 중입니다.");
+        }
     }
 
     /** 외부에서 받은 장애도 비밀값을 포함하지 않는 사용자용 메시지로 표시한다. */
@@ -137,7 +152,7 @@ public final class LoginPage extends JPanel {
 
     private void submitLogin() {
         requireEdt();
-        if (busy || authenticated) {
+        if (service == null || busy || authenticated) {
             return;
         }
         String loginId = loginIdField.getText();
@@ -207,7 +222,7 @@ public final class LoginPage extends JPanel {
     }
 
     private void updateControls() {
-        boolean enabled = !busy && !authenticated;
+        boolean enabled = service != null && !busy && !authenticated;
         loginIdField.setEnabled(enabled);
         passwordField.setEnabled(enabled);
         loginButton.setEnabled(enabled);

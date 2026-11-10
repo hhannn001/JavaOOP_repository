@@ -4,6 +4,7 @@ import coderoom.entities.game.ItemId;
 import coderoom.entities.game.RoomObjectId;
 import coderoom.entities.record.ClearRecord;
 import coderoom.entities.user.LoginUser;
+import coderoom.features.auth.LoginService;
 import coderoom.features.gameplay.GameSetup;
 import coderoom.features.gameplay.GameView;
 import coderoom.features.gameplay.InspectResult;
@@ -20,6 +21,7 @@ import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.GridLayout;
 import java.awt.Window;
+import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.function.LongConsumer;
 import javax.swing.BorderFactory;
@@ -40,10 +42,15 @@ final class AppScreens implements AppController.Screens {
     private static final Color DEEP  = new Color(21, 39, 30);
     private static final Color GOLD  = new Color(229, 194, 134);
 
+    private final LoginService loginService;
+
+    AppScreens(LoginService loginService) {
+        this.loginService = Objects.requireNonNull(loginService, "로그인 서비스가 필요합니다.");
+    }
+
     @Override
     public JComponent login(Consumer<LoginUser> onLogin) {
-        // B 화면의 임시 생성자를 연결한다. 인증 서비스가 완성되면 이 조립 지점에서 교체한다.
-        return new LoginPage(onLogin);
+        return new LoginPage(loginService, onLogin);
     }
 
     @Override

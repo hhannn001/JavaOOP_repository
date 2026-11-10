@@ -1,6 +1,14 @@
 package coderoom.app;
 
+import coderoom.entities.user.UserAccount;
+import coderoom.entities.user.UserRepository;
+import coderoom.features.auth.LoginService;
+import coderoom.features.auth.PasswordVerifier;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 import javax.swing.SwingUtilities;
@@ -28,14 +36,35 @@ public class Main {
         AppController createController();
     }
 
-    /** A의 화면 전환과 창 수명을 직접 확인할 수 있는 시연 창을 띄운다. */
+    /** 메모리 시연 계정으로 실제 인증 후 A의 화면 전환을 확인한다. DB 연동은 별도다. */
     public static void main(String[] args) {
+        // 해시 생성은 EDT 밖에서 수행한다. demo1~demo3 / test-only는 로컬 시연 전용이다.
+        LoginService loginService = createDemoLoginService();
         SwingUtilities.invokeLater(() -> {
             MainFrame frame = new MainFrame();
-            AppController controller = new AppController(frame, new AppScreens(), () -> true);
+            frame.setTitle("CODE ROOM · 시연");
+            AppController controller = new AppController(frame, new AppScreens(loginService), () -> true);
             controller.start();
             frame.setVisible(true);
         });
+    }
+
+    /** G의 DB가 준비되면 Main의 조립 지점에서 실제 JdbcUserRepository로 교체한다. */
+    private static LoginService createDemoLoginService() {
+        PasswordVerifier verifier = new PasswordVerifier();
+        Map<String, UserAccount> accounts = new HashMap<>();
+        char[] password = "test-only".toCharArray();
+        try {
+            for (long id = 1; id <= 3; id++) {
+                String loginId = "demo" + id;
+                accounts.put(loginId, new UserAccount(id, loginId, verifier.hash(password)));
+            }
+        } finally {
+            Arrays.fill(password, '\0');
+        }
+        Map<String, UserAccount> readOnlyAccounts = Map.copyOf(accounts);
+        UserRepository users = id -> Optional.ofNullable(readOnlyAccounts.get(id));
+        return new LoginService(users, verifier);
     }
 
     /** DB 준비를 EDT 밖에서 완료한 경우에만 화면을 만든다. 실패 시 정상 흐름을 시작하지 않는다. */
