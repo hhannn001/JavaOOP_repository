@@ -11,4 +11,8 @@ public class StorageException extends RuntimeException {
     // 메시지와 원인 예외를 받는 생성자를 추가하고 super(message, cause)를 호출한다.
     // 사용자 오답·계정 없음 같은 정상적인 실패에는 사용하지 않는다.
     // 화면에는 사용자용 안내를 표시하고 DB 접속 정보·해시 등 민감한 값은 노출하지 않는다.
+
+    public StorageException(String message, Throwable cause) {
+        super(message, cause);
+    }
 }

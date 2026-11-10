@@ -1,5 +1,7 @@
 package coderoom.entities.record;
 
+import java.util.List;
+
 /**
  * 담당: G
  * 역할: 도메인 저장소 계약.
@@ -9,8 +11,11 @@ package coderoom.entities.record;
 public interface ClearRecordRepository {
     // [메서드 계약 예정]
     // findByUserId(userId): List<ClearRecord>.
-    // saveBest(record): void.
+    List<ClearRecord> findByUserId(long userId);
 
+    // saveBest(record): void.
+    void saveBest(ClearRecord record);
+    
     // [실패 처리]
     // 조회·저장 장애는 coderoom.shared.db.StorageException으로 전달한다.
     // 인터페이스 메서드 선언도 구현 단계에서 추가한다. 현재는 주석만 둔다.
