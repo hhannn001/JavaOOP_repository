@@ -31,8 +31,10 @@ import javax.swing.JButton;
 import javax.swing.JDialog;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JPasswordField;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
+import javax.swing.JTextField;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
@@ -73,7 +75,7 @@ class AIntegrationTest {
     }
 
     private void start(GamePage page, AIntegrationStubs.Widgets widgets) throws Exception {
-        edt(() -> { page.load(new LoginUser(), 1); return null; });
+        edt(() -> { page.load(new LoginUser(1L, "test"), 1); return null; });
         await(() -> !widgets.busy);
         assertTrue(edt(page::isTimerRunning));
     }
@@ -83,8 +85,8 @@ class AIntegrationTest {
         AIntegrationStubs.Host host       = new AIntegrationStubs.Host();
         AIntegrationStubs.Screens screens = new AIntegrationStubs.Screens();
         AppController controller          = edt(() -> new AppController(host, screens, () -> true));
-        LoginUser first                   = new LoginUser();
-        LoginUser second                  = new LoginUser();
+        LoginUser first                   = new LoginUser(1L, "test");
+        LoginUser second                  = new LoginUser(2L, "other");
         edt(() -> {
             controller.start();
             assertEquals("login", host.visible);
@@ -141,8 +143,8 @@ class AIntegrationTest {
         game.loadGate = new CountDownLatch(1);
         GamePage page = page(game, widgets);
         edt(() -> {
-            page.load(new LoginUser(), 8);
-            page.load(new LoginUser(), 9);
+            page.load(new LoginUser(1L, "test"), 8);
+            page.load(new LoginUser(1L, "test"), 9);
             assertFalse(page.canLeave(() -> true));
             page.submit(null, "ignored");
             return null;
@@ -161,7 +163,7 @@ class AIntegrationTest {
         AIntegrationStubs.Widgets widgets = new AIntegrationStubs.Widgets();
         game.loadFailure = true;
         GamePage page = page(game, widgets);
-        edt(() -> { page.load(new LoginUser(), 1); return null; });
+        edt(() -> { page.load(new LoginUser(1L, "test"), 1); return null; });
         await(() -> !widgets.busy);
         assertFalse(edt(page::isTimerRunning));
         assertTrue(widgets.message.contains("불러오지 못"));
@@ -223,7 +225,7 @@ class AIntegrationTest {
         AIntegrationStubs.Widgets widgets = new AIntegrationStubs.Widgets();
         game.loadGate = new CountDownLatch(1);
         GamePage page = page(game, widgets);
-        edt(() -> { page.load(new LoginUser(), 1); return null; });
+        edt(() -> { page.load(new LoginUser(1L, "test"), 1); return null; });
         AIntegrationStubs.gate(game.loading);
         edt(() -> { page.disposeGame(); page.disposeGame(); return null; });
         game.loadGate.countDown();
@@ -244,7 +246,7 @@ class AIntegrationTest {
         AppController controller          = edt(() -> new AppController(host, screens, () -> true));
         edt(() -> {
             controller.start();
-            screens.login.accept(new LoginUser());
+            screens.login.accept(new LoginUser(1L, "test"));
             screens.openMaps.run();
             screens.open.accept(1);
             cleanup.add(screens.page);
@@ -274,7 +276,7 @@ class AIntegrationTest {
         AppController controller          = edt(() -> new AppController(host, screens, () -> discard[0]));
         edt(() -> {
             controller.start();
-            screens.login.accept(new LoginUser());
+            screens.login.accept(new LoginUser(1L, "test"));
             screens.openMaps.run();
             screens.open.accept(1);
             cleanup.add(screens.page);
@@ -313,12 +315,12 @@ class AIntegrationTest {
         edt(() -> {
             controller.start();
             Consumer<LoginUser> old = screens.login;
-            old.accept(new LoginUser());
+            old.accept(new LoginUser(1L, "test"));
             screens.logout.run();
-            old.accept(new LoginUser());
+            old.accept(new LoginUser(1L, "test"));
             assertEquals("login", host.visible);
             assertTrue(host.close.getAsBoolean());
-            screens.login.accept(new LoginUser());
+            screens.login.accept(new LoginUser(1L, "test"));
             assertTrue(host.pages.isEmpty());
             return null;
         });
@@ -331,7 +333,7 @@ class AIntegrationTest {
         AppController controller          = edt(() -> new AppController(host, screens, () -> true));
         edt(() -> {
             controller.start();
-            screens.login.accept(new LoginUser());
+            screens.login.accept(new LoginUser(1L, "test"));
             assertEquals("dashboard", host.visible);
             Runnable oldOpen   = screens.openMaps;
             Runnable oldLogout = screens.logout;
@@ -397,20 +399,36 @@ class AIntegrationTest {
         AIntegrationStubs.Game game       = new AIntegrationStubs.Game();
         AIntegrationStubs.Widgets widgets = new AIntegrationStubs.Widgets();
         GamePage page                     = page(game, widgets);
-        assertThrows(IllegalStateException.class, () -> page.load(new LoginUser(), 1));
+        assertThrows(IllegalStateException.class, () -> page.load(new LoginUser(1L, "test"), 1));
         assertThrows(IllegalStateException.class, page::disposeGame);
+    }
+
+    /** 새 로컬 시연 계정이 실제 인증 서비스에서 성공하고 오답은 거부되는지 확인한다. */
+    @Test
+    void testAccountAuthenticates() {
+        var service = Main.createDemoLoginService();
+        char[] password = "test1234".toCharArray();
+        var result = service.login("test", password);
+        assertTrue(result.success());
+        assertEquals(new LoginUser(4L, "test"), result.user());
+        assertEquals('\0', password[0]);
+        assertFalse(service.login("test", "wrong".toCharArray()).success());
     }
 
     /** 임시 대시보드를 포함한 화면 흐름과 맵 복귀를 확인한다. */
     @Test
     void demoEntryScreensNavigateWithoutOtherOwnersFeatures() throws Exception {
         AIntegrationStubs.Host host = new AIntegrationStubs.Host();
-        AppController controller = edt(() -> new AppController(host, new AppScreens(), () -> true));
+        var loginService = Main.createDemoLoginService();
+        AppController controller = edt(() -> new AppController(host, new AppScreens(loginService), () -> true));
         edt(() -> {
             controller.start();
             assertEquals("login", host.visible);
-            assertEquals(1, countMessage(host.pages.get("login")));
-            findButton(host.pages.get("login"), "맵 선택 화면으로 이동").doClick();
+            submitLogin(host.pages.get("login"));
+            return null;
+        });
+        await(() -> "dashboard".equals(host.visible));
+        edt(() -> {
             assertEquals("dashboard", host.visible);
             DashboardPage dashboard = (DashboardPage) host.pages.get("dashboard");
             assertEquals(Color.WHITE, dashboard.getBackground());
@@ -468,6 +486,29 @@ class AIntegrationTest {
         return count;
     }
 
+    /** B 로그인 폼에 시연 계정을 입력하고 실제 비동기 로그인 경로를 실행한다. */
+    private static void submitLogin(Component root) {
+        ((JTextField) findNamed(root, "loginId")).setText("test");
+        ((JPasswordField) findNamed(root, "password")).setText("test1234");
+        findButton(root, "로그인").doClick();
+    }
+
+    private static Component findNamed(Component root, String name) {
+        if (name.equals(root.getName())) {
+            return root;
+        }
+        if (root instanceof Container container) {
+            for (Component child : container.getComponents()) {
+                try {
+                    return findNamed(child, name);
+                } catch (IllegalArgumentException ignored) {
+                    // 다음 자식 컴포넌트에서 이름이 지정된 입력란을 찾는다.
+                }
+            }
+        }
+        throw new IllegalArgumentException("컴포넌트 없음: " + name);
+    }
+
     private static int countButtons(Component root) {
         int count = root instanceof JButton ? 1 : 0;
         if (root instanceof Container container) {
@@ -514,22 +555,27 @@ class AIntegrationTest {
     void mainOpensTheDemoFrame() throws Exception {
         Assumptions.assumeFalse(GraphicsEnvironment.isHeadless(), "실제 창은 디스플레이 환경에서 검증");
         Main.main(new String[0]);
-        edt(() -> {
-            MainFrame frame = null;
+        MainFrame frame = edt(() -> {
+            MainFrame found = null;
             for (Window window : Window.getWindows()) {
                 if (window instanceof MainFrame candidate && candidate.isShowing()) {
-                    frame = candidate;
+                    found = candidate;
                     break;
                 }
             }
-            assertTrue(frame != null, "시연 창이 화면에 표시되어야 합니다.");
-            assertEquals(256, frame.getIconImage().getWidth(null));
-            JButton start = findButton(frame, "맵 선택 화면으로 이동");
-            assertTrue(start.isShowing(), "시작 화면의 이동 버튼이 실제 창에 표시되어야 합니다.");
-            assertTrue(start.getWidth() > 0 && start.getHeight() > 0);
-            assertTrue(SwingUtilities.convertPoint(start, 0, 0, frame).y > frame.getHeight() / 2,
-                    "이동 버튼은 창의 아래쪽에 있어야 합니다.");
-            start.doClick();
+            assertTrue(found != null, "시연 창이 화면에 표시되어야 합니다.");
+            assertEquals(256, found.getIconImage().getWidth(null));
+            submitLogin(found);
+            return found;
+        });
+        await(() -> {
+            try {
+                return findButton(frame, "맵 선택으로 이동").isShowing();
+            } catch (IllegalArgumentException ignored) {
+                return false;
+            }
+        });
+        edt(() -> {
             JButton dashboardMaps = findButton(frame, "맵 선택으로 이동");
             assertTrue(dashboardMaps.isShowing(), "대시보드의 맵 이동 버튼이 보여야 합니다.");
             dashboardMaps.doClick();

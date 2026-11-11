@@ -38,7 +38,7 @@ public class Main {
 
     /** 메모리 시연 계정으로 실제 인증 후 A의 화면 전환을 확인한다. DB 연동은 별도다. */
     public static void main(String[] args) {
-        // 해시 생성은 EDT 밖에서 수행한다. demo1~demo3 / test-only는 로컬 시연 전용이다.
+        // 해시 생성은 EDT 밖에서 수행한다. 시연 계정은 실행 중 메모리에만 보관한다.
         LoginService loginService = createDemoLoginService();
         SwingUtilities.invokeLater(() -> {
             MainFrame frame = new MainFrame();
@@ -50,17 +50,21 @@ public class Main {
     }
 
     /** G의 DB가 준비되면 Main의 조립 지점에서 실제 JdbcUserRepository로 교체한다. */
-    private static LoginService createDemoLoginService() {
+    static LoginService createDemoLoginService() {
         PasswordVerifier verifier = new PasswordVerifier();
         Map<String, UserAccount> accounts = new HashMap<>();
-        char[] password = "test-only".toCharArray();
+        char[] demoPassword = "test-only".toCharArray();
+        char[] testPassword = "test1234".toCharArray();
         try {
             for (long id = 1; id <= 3; id++) {
                 String loginId = "demo" + id;
-                accounts.put(loginId, new UserAccount(id, loginId, verifier.hash(password)));
+                accounts.put(loginId, new UserAccount(id, loginId, verifier.hash(demoPassword)));
             }
+            // 요청한 로컬 테스트 계정은 기존 시연 계정과 다른 ID로 추가한다.
+            accounts.put("test", new UserAccount(4L, "test", verifier.hash(testPassword)));
         } finally {
-            Arrays.fill(password, '\0');
+            Arrays.fill(demoPassword, '\0');
+            Arrays.fill(testPassword, '\0');
         }
         Map<String, UserAccount> readOnlyAccounts = Map.copyOf(accounts);
         UserRepository users = id -> Optional.ofNullable(readOnlyAccounts.get(id));

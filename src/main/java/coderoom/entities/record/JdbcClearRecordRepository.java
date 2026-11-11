@@ -1,5 +1,7 @@
 package coderoom.entities.record;
 
+import java.util.List;
+
 /**
  * 담당: G
  * 역할: JDBC와 도메인 저장소 사이의 Adapter.
@@ -18,4 +20,16 @@ public class JdbcClearRecordRepository implements ClearRecordRepository {
     // 계약의 각 메서드를 @Override로 구현한다. SQL은 PreparedStatement로 실행한다.
     // 호출마다 연결을 열고 Connection·Statement·ResultSet을 try-with-resources로 닫는다.
     // SQLException은 원인을 보존해 StorageException으로 변환한다.
+
+    /** G의 JDBC 연결 전에는 조회가 성공한 것처럼 빈 목록을 반환하지 않는다. */
+    @Override
+    public List<ClearRecord> findByUserId(long userId) {
+        throw new UnsupportedOperationException("클리어 기록 조회는 아직 구현되지 않았습니다.");
+    }
+
+    /** G의 JDBC 연결 전에는 저장이 성공한 것처럼 처리하지 않는다. */
+    @Override
+    public void saveBest(ClearRecord record) {
+        throw new UnsupportedOperationException("클리어 기록 저장은 아직 구현되지 않았습니다.");
+    }
 }
