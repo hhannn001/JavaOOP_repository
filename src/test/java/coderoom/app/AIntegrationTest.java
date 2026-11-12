@@ -431,9 +431,12 @@ class AIntegrationTest {
         edt(() -> {
             assertEquals("dashboard", host.visible);
             DashboardPage dashboard = (DashboardPage) host.pages.get("dashboard");
-            assertEquals(Color.WHITE, dashboard.getBackground());
-            assertEquals(5, countButtons(dashboard));
-            findButton(host.pages.get("dashboard"), "맵 선택으로 이동").doClick();
+            assertEquals(new Color(8, 19, 19), dashboard.getBackground());
+            assertEquals(4, countButtons(dashboard));
+            assertFalse(findButton(dashboard, "방 선택하기").isVisible());
+            dashboard.getActionMap().get("dismissIntro").actionPerformed(null);
+            assertTrue(findButton(dashboard, "방 선택하기").isVisible());
+            findButton(dashboard, "방 선택하기").doClick();
             assertEquals("maps", host.visible);
             assertEquals(1, countMessage(host.pages.get("maps")));
             findButton(host.pages.get("maps"), "ROOM 01 · 서재 화면 보기").doClick();
@@ -467,10 +470,10 @@ class AIntegrationTest {
             assertEquals("maps", host.visible);
             findButton(host.pages.get("maps"), "대시보드로 돌아가기").doClick();
             assertEquals("dashboard", host.visible);
-            findButton(host.pages.get("dashboard"), "맵 선택으로 이동").doClick();
+            findButton(host.pages.get("dashboard"), "방 선택하기").doClick();
             assertEquals("maps", host.visible);
             findButton(host.pages.get("maps"), "대시보드로 돌아가기").doClick();
-            findButton(host.pages.get("dashboard"), "로그아웃").doClick();
+            controller.logout();
             assertEquals("login", host.visible);
             return null;
         });
@@ -570,13 +573,16 @@ class AIntegrationTest {
         });
         await(() -> {
             try {
-                return findButton(frame, "맵 선택으로 이동").isShowing();
+                return findButton(frame, "방 선택하기").isShowing()
+                        || findButton(frame, "방 선택하기").getParent().isShowing();
             } catch (IllegalArgumentException ignored) {
                 return false;
             }
         });
         edt(() -> {
-            JButton dashboardMaps = findButton(frame, "맵 선택으로 이동");
+            JButton dashboardMaps = findButton(frame, "방 선택하기");
+            DashboardPage dashboard = (DashboardPage) dashboardMaps.getParent();
+            dashboard.getActionMap().get("dismissIntro").actionPerformed(null);
             assertTrue(dashboardMaps.isShowing(), "대시보드의 맵 이동 버튼이 보여야 합니다.");
             dashboardMaps.doClick();
             JButton enter = findButton(frame, "ROOM 01 · 서재 화면 보기");
@@ -585,7 +591,7 @@ class AIntegrationTest {
             frame.validate();
             JButton settings = findButton(frame, "설정");
             assertTrue(settings.isShowing(), "설정 버튼이 게임 사진 위에 표시되어야 합니다.");
-            assertEquals(Color.WHITE, settings.getBackground());
+            assertFalse(settings.isOpaque(), "설정 아이콘 뒤에 사각 배경이 없어야 합니다.");
             assertTrue(settings.getWidth() > 0);
             assertEquals(settings.getWidth(), settings.getHeight());
             assertTrue(SwingUtilities.convertPoint(settings, 0, 0, frame).x > frame.getWidth() / 2,

@@ -43,6 +43,7 @@ final class AppScreens implements AppController.Screens {
     private static final Color GOLD  = new Color(229, 194, 134);
 
     private final LoginService loginService;
+    private boolean introSeen;
 
     AppScreens(LoginService loginService) {
         this.loginService = Objects.requireNonNull(loginService, "로그인 서비스가 필요합니다.");
@@ -50,13 +51,16 @@ final class AppScreens implements AppController.Screens {
 
     @Override
     public JComponent login(Consumer<LoginUser> onLogin) {
-        return new LoginPage(loginService, onLogin);
+        return new LoginPage(loginService, user -> {
+            introSeen = false;
+            onLogin.accept(user);
+        });
     }
 
     @Override
     public JComponent dashboard(LoginUser user, Runnable openMaps, Runnable logout) {
         // A의 대시보드는 현재 사용자 세션만 받고 기록 데이터는 연동 전으로 표시한다.
-        return new DashboardPage(user, openMaps, logout);
+        return new DashboardPage(user, openMaps, logout, !introSeen, () -> introSeen = true);
     }
 
     @Override
@@ -85,13 +89,10 @@ final class AppScreens implements AppController.Screens {
         return button;
     }
 
-    /** 화면마다 새 인스턴스를 만들면서 임시 설정 버튼의 모양만 공유한다. */
+    /** 대시보드와 같은 회색 설정 아이콘 버튼을 게임 사진 위에도 겹쳐 표시한다. */
     private static JButton settingsButton(Runnable openSettings) {
-        JButton settings = button("설정");
+        JButton settings = DashboardPage.settingsIconButton(openSettings);
         settings.setPreferredSize(new Dimension(64, 64));
-        settings.setBackground(Color.WHITE);
-        settings.setBorder(BorderFactory.createLineBorder(DEEP));
-        settings.addActionListener(event -> openSettings.run());
         return settings;
     }
 
