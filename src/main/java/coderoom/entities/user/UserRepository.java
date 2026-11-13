@@ -1,16 +1,15 @@
 package coderoom.entities.user;
 
-/**
- * 담당: B
- * 역할: 도메인 저장소 계약.
- * 직접 선언한 상속·구현 관계 없음.
- * 설계 초안: 필드·생성자·메서드는 아래 주석을 기준으로 구현한다.
- */
-public interface UserRepository {
-    // [메서드 계약 예정]
-    // findByLoginId(loginId): Optional<UserAccount>.
+import java.util.Optional;
 
-    // [실패 처리]
-    // 조회·저장 장애는 coderoom.shared.db.StorageException으로 전달한다.
-    // 인터페이스 메서드 선언도 구현 단계에서 추가한다. 현재는 주석만 둔다.
+/** 담당: B. 사용자 계정 조회 계약. SQL이나 Swing에 의존하지 않는다. */
+@FunctionalInterface
+public interface UserRepository {
+    /**
+     * 로그인 ID로 계정을 찾는다. loginId는 null이나 공백이 아닌 값을 전달한다.
+     *
+     * @return 계정이 있으면 해당 계정, 계정이 없을 때만 Optional.empty()
+     * @throws coderoom.shared.db.StorageException DB 연결 또는 조회에 실패한 경우
+     */
+    Optional<UserAccount> findByLoginId(String loginId);
 }

@@ -4,6 +4,7 @@ import coderoom.entities.game.ItemId;
 import coderoom.entities.game.RoomObjectId;
 import coderoom.entities.record.ClearRecord;
 import coderoom.entities.user.LoginUser;
+import coderoom.features.auth.LoginService;
 import coderoom.features.gameplay.GameSetup;
 import coderoom.features.gameplay.GameView;
 import coderoom.features.gameplay.InspectResult;
@@ -20,6 +21,7 @@ import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.GridLayout;
 import java.awt.Window;
+import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.function.LongConsumer;
 import javax.swing.BorderFactory;
@@ -40,16 +42,25 @@ final class AppScreens implements AppController.Screens {
     private static final Color DEEP  = new Color(21, 39, 30);
     private static final Color GOLD  = new Color(229, 194, 134);
 
+    private final LoginService loginService;
+    private boolean introSeen;
+
+    AppScreens(LoginService loginService) {
+        this.loginService = Objects.requireNonNull(loginService, "로그인 서비스가 필요합니다.");
+    }
+
     @Override
     public JComponent login(Consumer<LoginUser> onLogin) {
-        // B 화면의 임시 생성자를 연결한다. 인증 서비스가 완성되면 이 조립 지점에서 교체한다.
-        return new LoginPage(onLogin);
+        return new LoginPage(loginService, user -> {
+            introSeen = false;
+            onLogin.accept(user);
+        });
     }
 
     @Override
     public JComponent dashboard(LoginUser user, Runnable openMaps, Runnable logout) {
         // A의 대시보드는 현재 사용자 세션만 받고 기록 데이터는 연동 전으로 표시한다.
-        return new DashboardPage(user, openMaps, logout);
+        return new DashboardPage(user, openMaps, logout, !introSeen, () -> introSeen = true);
     }
 
     @Override
@@ -78,13 +89,10 @@ final class AppScreens implements AppController.Screens {
         return button;
     }
 
-    /** 화면마다 새 인스턴스를 만들면서 임시 설정 버튼의 모양만 공유한다. */
+    /** 대시보드와 같은 회색 설정 아이콘 버튼을 게임 사진 위에도 겹쳐 표시한다. */
     private static JButton settingsButton(Runnable openSettings) {
-        JButton settings = button("설정");
+        JButton settings = DashboardPage.settingsIconButton(openSettings);
         settings.setPreferredSize(new Dimension(64, 64));
-        settings.setBackground(Color.WHITE);
-        settings.setBorder(BorderFactory.createLineBorder(DEEP));
-        settings.addActionListener(event -> openSettings.run());
         return settings;
     }
 

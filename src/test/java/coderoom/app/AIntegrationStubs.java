@@ -113,7 +113,7 @@ final class AIntegrationStubs {
     static final class Game implements GamePage.GamePort {
         final GameView view           = new GameView();
         final GameSetup setup         = new GameSetup();
-        final ClearRecord record      = new ClearRecord();
+        final ClearRecord record      = new ClearRecord(1L, 1L, 60L);
         final InspectResult inspected = new InspectResult();
         final SubmitResult submitted  = new SubmitResult();
         final List<ClearRecord> saved = new ArrayList<>();
