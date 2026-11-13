@@ -1,5 +1,13 @@
 package coderoom.shared.db;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+import java.sql.Statement;
+
 /**
  * 담당: G
  * 역할: SQLite 연결과 초기화.
@@ -15,4 +23,59 @@ public class Database {
     // initialize(): resources/db/schema.sql과 seed.sql을 이용해 테이블·시연 데이터를 준비한다.
     // 초기화는 반복 실행해도 기존 기록을 삭제하거나 시연 데이터를 중복 삽입하지 않아야 한다.
     // 연결을 전역으로 공유하지 않는다. SQLite JDBC 드라이버는 실제 구현 시 추가한다.
+
+    private final String url;
+ 
+    public Database() {
+        this("coderoom.db");
+    }
+ 
+    public Database(String dbFilePath) {
+        this.url = "jdbc:sqlite:" + dbFilePath;
+    }
+
+    public Connection open() {
+        try {
+            Connection conn = DriverManager.getConnection(url);
+            try (Statement st = conn.createStatement()) {
+                st.execute("PRAGMA foreign_keys = ON");
+            }
+            return conn;
+        } catch (SQLException e) {
+            throw new StorageException("데이터베이스에 연결할 수 없습니다.", e);
+        }
+    }
+
+  
+
+    public void initialize() {
+    try (Connection conn = open()) {
+        conn.setAutoCommit(false);
+        try {
+            runScript(conn, "/db/schema.sql");
+            runScript(conn, "/db/seed.sql");
+            conn.commit();
+        } catch (SQLException | IOException e) {
+            conn.rollback();
+            throw e;
+        }
+    } catch (SQLException | IOException e) {
+        throw new StorageException("데이터베이스 초기화에 실패했습니다.", e);
+    }
+}
+
+private void runScript(Connection conn, String resource) throws SQLException, IOException {
+    String script;
+    try (InputStream in = Database.class.getResourceAsStream(resource)) {
+        script = new String(in.readAllBytes(), StandardCharsets.UTF_8);
+    }
+
+    try (Statement st = conn.createStatement()) {
+        for (String sql : script.split(";")) {
+            if (!sql.isBlank()) {
+                st.execute(sql);
+            }
+        }
+    }
+}
 }
