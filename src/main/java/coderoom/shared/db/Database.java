@@ -67,7 +67,11 @@ public class Database {
 private void runScript(Connection conn, String resource) throws SQLException, IOException {
     String script;
     try (InputStream in = Database.class.getResourceAsStream(resource)) {
-        script = new String(in.readAllBytes(), StandardCharsets.UTF_8);
+    if (in == null) {
+            throw new IOException("SQL 파일을 찾을 수 없습니다: " + resource);
+        }
+
+    script = new String(in.readAllBytes(), StandardCharsets.UTF_8);
     }
 
     try (Statement st = conn.createStatement()) {
