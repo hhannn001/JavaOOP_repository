@@ -27,12 +27,12 @@ public class MapCard {
 
     // 사용자별 클리어 기록
     private boolean cleared;
-    private Integer bestSeconds;
-
+    private Long bestSeconds;
+    
     // 생성자
     public MapCard(int mapId, String title, String description,
                    String topic, String difficulty, String posterPath,
-                   boolean playable, boolean cleared, Integer bestSeconds) {
+                   boolean playable, boolean cleared, Long bestSeconds) {
 
         this.mapId = mapId;
         this.title = title;
@@ -77,7 +77,7 @@ public class MapCard {
         return cleared;
     }
 
-    public Integer getBestSeconds() {
+    public Long getBestSeconds() {
         return bestSeconds;
     }
 }
