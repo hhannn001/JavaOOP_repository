@@ -1,4 +1,3 @@
-
 package coderoom.pages.mapselect;
 
 import java.util.ArrayList;
@@ -18,7 +17,7 @@ public class MapSelectionPreview {
             // 테스트용 맵 데이터
             List<MapCard> cards = new ArrayList<>();
 
-            // 첫 번째 맵: 플레이 가능
+            // 테스트 1: 정상적인 맵
             cards.add(new MapCard(
                 1,
                 "The Last Compile",
@@ -31,25 +30,25 @@ public class MapSelectionPreview {
                 null
             ));
 
-            // 두 번째 맵: 준비 중
+            // 테스트 2: 잘못된 이미지 경로
             cards.add(new MapCard(
                 2,
                 "Missing Notes",
-                "사라진 코드를 찾아라.",
+                "이미지 경로 오류 테스트",
                 "Java",
                 "어려움",
-                "/images/posters/room02_missing_notes.png",
+                "/images/posters/wrong_image.png",
                 false,
                 false,
                 null
             ));
 
-            // 세 번째 맵: 준비 중
+            // 테스트 3: 제목과 설명이 비어 있는 맵
             cards.add(new MapCard(
                 3,
-                "Stopped Machine",
-                "멈춰버린 기계를 작동시켜라.",
-                "Python",
+                "",
+                "",
+                null,
                 "어려움",
                 "/images/posters/room03_stopped_machine.png",
                 false,
@@ -59,6 +58,8 @@ public class MapSelectionPreview {
 
             // 맵 선택 화면 생성
             MapSelectionPage page = new MapSelectionPage();
+
+            // 테스트할 목록 선택
             page.render(cards);
 
             // 테스트 창 생성
