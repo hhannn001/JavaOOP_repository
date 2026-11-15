@@ -1,6 +1,7 @@
 package coderoom.app;
 
 import java.awt.CardLayout;
+import coderoom.shared.ui.PageTransition;
 import java.awt.GraphicsEnvironment;
 import java.awt.Taskbar;
 import java.awt.event.WindowAdapter;
@@ -39,7 +40,9 @@ public class MainFrame extends JFrame implements AppController.Host {
     private final CardLayout layout             = new CardLayout();
     private final JPanel container              = new JPanel(layout);
     private final Map<String, JComponent> pages = new HashMap<>();
+    private final PageTransition transition     = new PageTransition();
     private BooleanSupplier closeRequest        = () -> true;
+    private String currentPage;
 
     /** 창을 하나만 생성하고 종료 가능 여부는 컨트롤러에 위임한다. EDT에서 호출한다. */
     public MainFrame() {
@@ -55,6 +58,7 @@ public class MainFrame extends JFrame implements AppController.Host {
             }
         }
         setContentPane(container);
+        setGlassPane(transition);
         setSize(1280, 800);
         setLocationRelativeTo(null);
         addWindowListener(new WindowAdapter() {
@@ -97,6 +101,10 @@ public class MainFrame extends JFrame implements AppController.Host {
     /** 로그아웃·게임 교체 시 더 이상 사용하지 않는 화면 참조를 제거한다. */
     public void removePage(String name) {
         requireEdt();
+        if (Objects.equals(currentPage, name)) {
+            transition.capture(container);
+            currentPage = null;
+        }
         JComponent previous = pages.remove(name);
         if (previous != null) {
             container.remove(previous);
@@ -111,7 +119,21 @@ public class MainFrame extends JFrame implements AppController.Host {
         if (!pages.containsKey(name)) {
             throw new IllegalArgumentException("등록되지 않은 화면: " + name);
         }
+        if (Objects.equals(currentPage, name)) {
+            return;
+        }
+        if (currentPage != null) {
+            transition.capture(container);
+        }
         layout.show(container, name);
+        currentPage = name;
+        transition.play();
+    }
+
+    @Override
+    public void dispose() {
+        transition.stop();
+        super.dispose();
     }
 
     // Swing 화면 변경을 작업 스레드에서 호출하는 실수를 조기에 차단한다.

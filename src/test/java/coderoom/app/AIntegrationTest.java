@@ -461,7 +461,14 @@ class AIntegrationTest {
             assertEquals(4, countButtons(dashboard));
             assertFalse(findButton(dashboard, "방 선택하기").isVisible());
             dashboard.getActionMap().get("dismissIntro").actionPerformed(null);
-            assertTrue(findButton(dashboard, "방 선택하기").isVisible());
+            assertFalse(findButton(dashboard, "방 선택하기").isVisible());
+            // 반복 Enter 입력은 진행 중인 애니메이션을 재시작하지 않는다.
+            dashboard.getActionMap().get("dismissIntro").actionPerformed(null);
+            return null;
+        });
+        await(() -> findButton(host.pages.get("dashboard"), "방 선택하기").isVisible());
+        edt(() -> {
+            DashboardPage dashboard = (DashboardPage) host.pages.get("dashboard");
             findButton(dashboard, "방 선택하기").doClick();
             assertEquals("maps", host.visible);
             assertEquals(0, countMessage(host.pages.get("maps")));
@@ -611,6 +618,12 @@ class AIntegrationTest {
             JButton dashboardMaps = findButton(frame, "방 선택하기");
             DashboardPage dashboard = (DashboardPage) dashboardMaps.getParent();
             dashboard.getActionMap().get("dismissIntro").actionPerformed(null);
+            assertFalse(dashboardMaps.isShowing());
+            return null;
+        });
+        await(() -> findButton(frame, "방 선택하기").isShowing());
+        edt(() -> {
+            JButton dashboardMaps = findButton(frame, "방 선택하기");
             assertTrue(dashboardMaps.isShowing(), "대시보드의 맵 이동 버튼이 보여야 합니다.");
             dashboardMaps.doClick();
             JButton enter = findButton(frame, "입장하기");

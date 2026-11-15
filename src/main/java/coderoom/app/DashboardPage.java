@@ -61,6 +61,8 @@ final class DashboardPage extends JPanel {
     private final Runnable logout;
     private final Runnable onIntroDismissed;
     private boolean introVisible;
+    private Timer introAnimation;
+    private float introProgress;
     private Timer lightningDelay;
     private Timer lightningPulse;
     private int lightningIndex;
@@ -194,11 +196,23 @@ final class DashboardPage extends JPanel {
     }
 
     private void dismissIntro() {
-        if (introVisible) {
-            introVisible = false;
-            applyIntroState();
-            onIntroDismissed.run();
+        if (!introVisible || introAnimation != null) {
+            return;
         }
+        long started = System.nanoTime();
+        introAnimation = new Timer(16, event -> {
+            float elapsed = Math.min(1f, (System.nanoTime() - started) / 900_000_000f);
+            introProgress = elapsed * elapsed * (3f - 2f * elapsed);
+            if (elapsed >= 1f) {
+                introAnimation.stop();
+                introAnimation = null;
+                introVisible   = false;
+                applyIntroState();
+                onIntroDismissed.run();
+            }
+            repaint();
+        });
+        introAnimation.start();
     }
 
     /** 배경, 창문 빗줄기, 불규칙한 번개, 제목 간판을 독립 레이어로 그린다. */
@@ -213,7 +227,7 @@ final class DashboardPage extends JPanel {
             drawAtScene(g, RAIN, 1250, 0, 280, 430);
         }
         if (introVisible) {
-            g.setColor(new Color(0, 0, 0, 150));
+            g.setColor(new Color(0, 0, 0, Math.round(150 * (1f - introProgress))));
             g.fillRect(0, 0, getWidth(), getHeight());
         }
         if (lightningOpacity > 0f) {
@@ -229,9 +243,12 @@ final class DashboardPage extends JPanel {
 
     /** 나무판과 제목·키 안내 이미지를 분리해서 그린다. */
     private void paintIntro(Graphics2D g) {
-        drawAtScene(g, PLANK, 415, 160, 755, 245);
-        drawAtScene(g, TITLE, 475, 218, 635, 154);
+        int offset = Math.round(430 * introProgress);
+        drawAtScene(g, PLANK, 415, 160 - offset, 755, 245);
+        drawAtScene(g, TITLE, 475, 218 - offset, 635, 154);
+        g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1f - introProgress));
         drawAtScene(g, PROMPT, 555, 457, 475, 41);
+        g.setComposite(AlphaComposite.SrcOver);
     }
 
     /** 호버 중인 책장·문·일지의 외곽에만 금빛 윤곽을 표시한다. */
@@ -317,6 +334,11 @@ final class DashboardPage extends JPanel {
     }
 
     @Override public void removeNotify() {
+        if (introAnimation != null) {
+            introAnimation.stop();
+            introAnimation = null;
+            introProgress  = 0f;
+        }
         if (lightningDelay != null) {
             lightningDelay.stop();
         }
