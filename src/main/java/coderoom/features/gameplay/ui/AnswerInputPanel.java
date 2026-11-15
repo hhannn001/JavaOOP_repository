@@ -1,11 +1,26 @@
 package coderoom.features.gameplay.ui;
 
-import java.awt.*;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Cursor;
+import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.FontMetrics;
+import java.awt.Graphics;
+import java.awt.GridLayout;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.util.function.Consumer;
 
-import javax.swing.*;
+import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.JButton;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JTextField;
+import javax.swing.SwingUtilities;
 import javax.swing.border.EmptyBorder;
 import javax.swing.text.AbstractDocument;
 import javax.swing.text.AttributeSet;
@@ -187,8 +202,8 @@ public class AnswerInputPanel extends JPanel {
         submitButton.setText("서랍 열기  →");
         messageLabel.setText(" ");
 
-        // 빈 입력칸에 점(.)이 표시되는 입력 필드
-        fourDigitField = createInputField();
+        // 빈 입력칸에 네 자리 안내용 점을 표시
+        fourDigitField = createInputField(". . . .");
 
         fourDigitField.setHorizontalAlignment(
                 JTextField.CENTER
@@ -263,7 +278,7 @@ public class AnswerInputPanel extends JPanel {
             final int index = i;
 
             // 빈칸에 점(.) 표시
-            JTextField field = createInputField();
+            JTextField field = createInputField(".");
 
             field.setHorizontalAlignment(
                     JTextField.CENTER
@@ -384,15 +399,15 @@ public class AnswerInputPanel extends JPanel {
             answer = builder.toString();
         }
 
-        // UI 테스트용 안내 메시지
-        showMessage("입력 완료: " + answer);
-
-        // [추후 연동 - A/E 담당]
-        // onSubmit.accept(answer);
-        //
-        // GamePage.submit(objectId, answer);
-        // 위 호출은 A 담당자가 연결
-        // 정답 비교는 GameFacade에서 처리
+        if (onSubmit != null) {
+            // 이전 안내를 지우고 입력값을 외부로 전달한다.
+            // A 담당자가 GamePage.submit에 연결하고 판정 결과를 showMessage로 표시한다.
+            showMessage(" ");
+            onSubmit.accept(answer);
+        } else {
+            // 외부 연결 전에는 UI 테스트용 안내 메시지를 표시한다.
+            showMessage("입력 완료: " + answer);
+        }
     }
 
     /**
@@ -451,10 +466,10 @@ public class AnswerInputPanel extends JPanel {
     }
 
     /**
-     * 빈 입력칸에 점(.) 표시
+     * 빈 입력칸에 안내용 문자열 표시
      * 실제 입력값에는 포함되지 않음.
      */
-    private JTextField createInputField() {
+    private JTextField createInputField(String placeholderText) {
 
         return new JTextField() {
 
@@ -477,13 +492,13 @@ public class AnswerInputPanel extends JPanel {
                             placeholder.getFontMetrics();
 
                     int x =
-                            (getWidth() - metrics.stringWidth(".")) / 2;
+                            (getWidth() - metrics.stringWidth(placeholderText)) / 2;
 
                     int y =
                             (getHeight() - metrics.getHeight()) / 2
                             + metrics.getAscent();
 
-                    placeholder.drawString(".", x, y);
+                    placeholder.drawString(placeholderText, x, y);
 
                 } finally {
                     placeholder.dispose();
@@ -507,7 +522,7 @@ public class AnswerInputPanel extends JPanel {
     }
 
     /**
-     * 추후 GamePage와 연결할 제출 콜백
+     * 형식 검사를 통과한 암호를 전달할 제출 콜백 등록
      */
     public void setOnSubmit(Consumer<String> onSubmit) {
         this.onSubmit = onSubmit;
