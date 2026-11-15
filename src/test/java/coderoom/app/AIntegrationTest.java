@@ -11,6 +11,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import coderoom.entities.user.LoginUser;
 import coderoom.pages.game.GamePage;
 import coderoom.widgets.room.RoomPanel;
+import coderoom.widgets.inventory.InventoryPanel;
+import coderoom.widgets.clue.CluePanel;
 import java.awt.Component;
 import java.awt.Color;
 import java.awt.Container;
@@ -415,6 +417,30 @@ class AIntegrationTest {
         assertFalse(service.login("test", "wrong".toCharArray()).success());
     }
 
+    @Test
+    void demoMountsExistingInventoryAndClueWidgets() throws Exception {
+        edt(() -> {
+            AppScreens screens = new AppScreens(Main.createDemoLoginService());
+            GamePage page      = screens.game(new LoginUser(4L, "test"), 1, () -> { }, () -> { });
+            cleanup.add(page);
+            InventoryPanel inventory = (InventoryPanel) findNamed(page, "gameInventory");
+            CluePanel clue           = (CluePanel) findNamed(page, "gameClue");
+            assertTrue(inventory.isVisible());
+            assertEquals(5, inventory.getComponentCount());
+            for (Component component : inventory.getComponents()) {
+                JButton slot = (JButton) component;
+                assertFalse(slot.isEnabled());
+                slot.doClick();
+            }
+            assertFalse(clue.isVisible());
+            clue.openClue();
+            assertTrue(clue.isVisible());
+            findButton(clue, "접어두기  X").doClick();
+            assertFalse(clue.isVisible());
+            return null;
+        });
+    }
+
     /** 임시 대시보드를 포함한 화면 흐름과 맵 복귀를 확인한다. */
     @Test
     void demoEntryScreensNavigateWithoutOtherOwnersFeatures() throws Exception {
@@ -438,8 +464,10 @@ class AIntegrationTest {
             assertTrue(findButton(dashboard, "방 선택하기").isVisible());
             findButton(dashboard, "방 선택하기").doClick();
             assertEquals("maps", host.visible);
-            assertEquals(1, countMessage(host.pages.get("maps")));
-            findButton(host.pages.get("maps"), "ROOM 01 · 서재 화면 보기").doClick();
+            assertEquals(0, countMessage(host.pages.get("maps")));
+            assertTrue(findButton(host.pages.get("maps"), "입장하기").isEnabled());
+            assertFalse(findButton(host.pages.get("maps"), "준비 중").isEnabled());
+            findButton(host.pages.get("maps"), "입장하기").doClick();
             assertEquals("game", host.visible);
             cleanup.add((GamePage) host.pages.get("game"));
             return null;
@@ -585,7 +613,7 @@ class AIntegrationTest {
             dashboard.getActionMap().get("dismissIntro").actionPerformed(null);
             assertTrue(dashboardMaps.isShowing(), "대시보드의 맵 이동 버튼이 보여야 합니다.");
             dashboardMaps.doClick();
-            JButton enter = findButton(frame, "ROOM 01 · 서재 화면 보기");
+            JButton enter = findButton(frame, "입장하기");
             assertTrue(enter.isShowing(), "맵 화면의 이동 버튼이 실제 창에 표시되어야 합니다.");
             enter.doClick();
             frame.validate();
@@ -607,7 +635,7 @@ class AIntegrationTest {
             });
             closeMenu.start();
             settings.doClick();
-            assertTrue(findButton(frame, "ROOM 01 · 서재 화면 보기").isShowing());
+            assertTrue(findButton(frame, "입장하기").isShowing());
             frame.dispatchEvent(new WindowEvent(frame, WindowEvent.WINDOW_CLOSING));
             assertFalse(frame.isDisplayable());
             return null;

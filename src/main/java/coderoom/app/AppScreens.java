@@ -2,9 +2,13 @@ package coderoom.app;
 
 import coderoom.entities.game.ItemId;
 import coderoom.entities.game.RoomObjectId;
+import coderoom.entities.map.GameMap;
+import coderoom.entities.map.MapRepository;
 import coderoom.entities.record.ClearRecord;
+import coderoom.entities.record.ClearRecordRepository;
 import coderoom.entities.user.LoginUser;
 import coderoom.features.auth.LoginService;
+import coderoom.features.mapcatalog.MapCatalogService;
 import coderoom.features.gameplay.GameSetup;
 import coderoom.features.gameplay.GameView;
 import coderoom.features.gameplay.InspectResult;
@@ -13,6 +17,8 @@ import coderoom.pages.game.GamePage;
 import coderoom.pages.login.LoginPage;
 import coderoom.pages.mapselect.MapSelectionPage;
 import coderoom.widgets.room.RoomPanel;
+import coderoom.widgets.inventory.InventoryPanel;
+import coderoom.widgets.clue.CluePanel;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
@@ -22,6 +28,8 @@ import java.awt.Font;
 import java.awt.GridLayout;
 import java.awt.Window;
 import java.util.Objects;
+import java.util.List;
+import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.LongConsumer;
 import javax.swing.BorderFactory;
@@ -43,10 +51,12 @@ final class AppScreens implements AppController.Screens {
     private static final Color GOLD  = new Color(229, 194, 134);
 
     private final LoginService loginService;
+    private final MapCatalogService mapCatalog;
     private boolean introSeen;
 
     AppScreens(LoginService loginService) {
         this.loginService = Objects.requireNonNull(loginService, "로그인 서비스가 필요합니다.");
+        this.mapCatalog   = createDemoMapCatalog();
     }
 
     @Override
@@ -65,8 +75,34 @@ final class AppScreens implements AppController.Screens {
 
     @Override
     public JComponent maps(LoginUser user, LongConsumer openMap, Runnable dashboard) {
-        // C의 기존 하단 버튼을 대시보드 복귀 콜백에 연결한다.
-        return new MapSelectionPage(openMap, dashboard);
+        // C의 카탈로그 결과를 C의 포스터 화면에 전달한다. 현재 실행은 시연용 메모리 데이터다.
+        MapSelectionPage page = new MapSelectionPage(openMap, dashboard);
+        page.render(mapCatalog.listForUser(user.userId()));
+        return page;
+    }
+
+    /** DB 시드와 JDBC 드라이버가 준비되기 전까지 C 서비스의 화면 연결을 확인하는 데이터. */
+    private static MapCatalogService createDemoMapCatalog() {
+        List<GameMap> maps = List.of(
+                new GameMap(1, "The Last Compile", "마지막 컴파일을 완성하라.",
+                        "Java", "보통", "/images/posters/room01_last_compile.png", true),
+                new GameMap(2, "Missing Notes", "흩어진 단서를 모아라.",
+                        "Java", "어려움", "/images/posters/room02_missing_notes.png", false),
+                new GameMap(3, "Stopped Machine", "멈춘 장치를 다시 켜라.",
+                        "Java", "어려움", "/images/posters/room03_stopped_machine.png", false));
+        MapRepository mapRepository = new MapRepository() {
+            @Override public List<GameMap> findAll() { return maps; }
+            @Override public Optional<GameMap> findById(int mapId) {
+                return maps.stream().filter(map -> map.getMapId() == mapId).findFirst();
+            }
+        };
+        ClearRecordRepository recordRepository = new ClearRecordRepository() {
+            @Override public List<ClearRecord> findByUserId(long userId) { return List.of(); }
+            @Override public void saveBest(ClearRecord record) {
+                throw new UnsupportedOperationException("시연 카탈로그는 기록을 저장하지 않습니다.");
+            }
+        };
+        return new MapCatalogService(mapRepository, recordRepository);
     }
 
     @Override
@@ -150,7 +186,9 @@ final class AppScreens implements AppController.Screens {
                 actions.inspect(object);
             }
         }, true);
-        private final JPanel spacer = new JPanel();
+        private final JPanel spacer            = new JPanel();
+        private final InventoryPanel inventory = new InventoryPanel();
+        private final CluePanel clue           = new CluePanel();
 
         private DemoWidgets(Runnable back) {
             // 투명한 상단 컨테이너가 설정 버튼만 우상단에 겹쳐 표시한다.
@@ -159,6 +197,14 @@ final class AppScreens implements AppController.Screens {
             overlay.setOpaque(false);
             overlay.add(settingsButton(() -> openSettings(back)));
             room.add(overlay, BorderLayout.NORTH);
+            inventory.setName("gameInventory");
+            clue.setName("gameClue");
+            JPanel bottom = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 16));
+            bottom.setOpaque(false);
+            bottom.add(inventory);
+            room.add(bottom, BorderLayout.SOUTH);
+            room.add(clue, BorderLayout.WEST);
+            // ponytail: 빈 ItemId와 힌트 API가 완성되면 데이터만 전달한다. A에서 대체 구현하지 않는다.
             // GamePage의 SOUTH 슬롯은 높이를 차지하지 않게 해 사진이 창 아래까지 닿게 한다.
             spacer.setPreferredSize(new Dimension(0, 0));
             spacer.setOpaque(false);
@@ -200,6 +246,7 @@ final class AppScreens implements AppController.Screens {
         public void bind(GamePage actions) {
             // D의 물건 클릭은 A의 게임 조작 경계로 전달한다.
             this.actions = actions;
+            inventory.setOnItemSelected(actions::selectItem);
         }
         @Override
         public void render(GameView view) { }
