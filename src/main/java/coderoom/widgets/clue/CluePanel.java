@@ -1,8 +1,28 @@
 package coderoom.widgets.clue;
 import coderoom.features.gameplay.ItemView;
 
-import java.awt.*;
-import javax.swing.*;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.GradientPaint;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.Rectangle;
+import java.awt.TexturePaint;
+import java.awt.image.BufferedImage;
+import java.util.Random;
+import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.JButton;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JSeparator;
+import javax.swing.JTextArea;
+import javax.swing.SwingConstants;
 import javax.swing.border.EmptyBorder;
 
 /**
@@ -16,7 +36,6 @@ public class CluePanel extends JPanel {
     // 디자인 색상
     private static final Color PAPER = new Color(232, 228, 195);
     private static final Color DARK = new Color(35, 55, 42);
-    private static final Color CODE_BG = new Color(215, 215, 180);
     private static final Color TEXT = new Color(65, 70, 50);
     private static final Color GOLD = new Color(173, 160, 111);
 
@@ -60,7 +79,7 @@ public class CluePanel extends JPanel {
         add(top, BorderLayout.NORTH);
 
         // 2. 종이 영역
-        JPanel paper = new JPanel();
+        JPanel paper = new PaperPanel();
         paper.setLayout(new BoxLayout(paper, BoxLayout.Y_AXIS));
         paper.setBackground(PAPER);
         paper.setBorder(new EmptyBorder(20, 20, 20, 20));
@@ -74,11 +93,15 @@ public class CluePanel extends JPanel {
         titleLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         setupTextArea(descriptionArea, PAPER, 13);
-        setupTextArea(codeArea, CODE_BG, 12);
+        setupTextArea(codeArea, PAPER, 12);
+        descriptionArea.setOpaque(false);
+        codeArea.setOpaque(false);
         codeArea.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
         codeArea.setLineWrap(false);
 
         JScrollPane codeScroll = new JScrollPane(codeArea);
+        codeScroll.setOpaque(false);
+        codeScroll.getViewport().setOpaque(false);
         codeScroll.setPreferredSize(new Dimension(290, 165));
         codeScroll.setMaximumSize(
                 new Dimension(Integer.MAX_VALUE, 165));
@@ -149,6 +172,69 @@ public class CluePanel extends JPanel {
         // [추후 연동]
         // GamePage에서 선택된 ItemView 데이터를 전달받는다.
         // 단서 조회, 획득 여부 판단은 이 클래스에서 하지 않는다.
+    }
+
+    /** 이미지 파일 없이 고정된 섬유 무늬와 가장자리 음영을 그린다. */
+    private static class PaperPanel extends JPanel {
+        private static final int TILE_SIZE = 128;
+        private static final BufferedImage TEXTURE = createTexture();
+
+        private static BufferedImage createTexture() {
+            BufferedImage texture = new BufferedImage(
+                    TILE_SIZE, TILE_SIZE, BufferedImage.TYPE_INT_ARGB);
+            Graphics2D graphics = texture.createGraphics();
+            try {
+                // 고정 시드: 다시 그릴 때 무늬가 바뀌거나 깜박이지 않는다.
+                Random random = new Random(42L);
+                for (int i = 0; i < 1800; i++) {
+                    int x = random.nextInt(TILE_SIZE);
+                    int y = random.nextInt(TILE_SIZE);
+                    graphics.setColor(random.nextBoolean()
+                            ? new Color(112, 88, 48, 16)
+                            : new Color(255, 255, 240, 35));
+                    graphics.fillRect(x, y, 1, 1);
+                }
+                graphics.setColor(new Color(120, 95, 55, 12));
+                for (int i = 0; i < 100; i++) {
+                    int x = random.nextInt(TILE_SIZE);
+                    int y = random.nextInt(TILE_SIZE);
+                    graphics.drawLine(x, y, x + 2 + random.nextInt(4), y + 1);
+                }
+            } finally {
+                graphics.dispose();
+            }
+            return texture;
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            super.paintComponent(g);
+            int width = getWidth();
+            int height = getHeight();
+            if (width <= 0 || height <= 0) {
+                return;
+            }
+
+            Graphics2D graphics = (Graphics2D) g.create();
+            try {
+                graphics.setPaint(new GradientPaint(
+                        0, 0, new Color(245, 238, 211),
+                        width, height, PAPER));
+                graphics.fillRect(0, 0, width, height);
+                graphics.setPaint(new TexturePaint(
+                        TEXTURE, new Rectangle(0, 0, TILE_SIZE, TILE_SIZE)));
+                graphics.fillRect(0, 0, width, height);
+
+                // 옅은 음영을 겹쳐 가장자리가 조금 낡은 종이처럼 보이게 한다.
+                int edge = Math.min(12, Math.min(width, height) / 2);
+                for (int i = 0; i < edge; i++) {
+                    graphics.setColor(new Color(116, 88, 44, 18 - i));
+                    graphics.drawRect(i, i, width - 1 - i * 2, height - 1 - i * 2);
+                }
+            } finally {
+                graphics.dispose();
+            }
+        }
     }
 
     private void setupTextArea(
