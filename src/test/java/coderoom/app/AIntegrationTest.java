@@ -40,9 +40,29 @@ import javax.swing.JTextField;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.io.TempDir;
+import java.nio.file.Path;
+import coderoom.shared.db.Database;
+import coderoom.entities.user.JdbcUserRepository;
+import coderoom.features.auth.LoginService;
+import coderoom.features.auth.PasswordVerifier;
 
 /** A의 운영 컨트롤러와 GamePage를 실행하는 통합 드라이버. B~G 기능 자체의 성공을 뜻하지 않는다. */
 class AIntegrationTest {
+    @TempDir Path directory;
+    private Database database;
+
+    @BeforeEach
+    void initializeDatabase() {
+        database = new Database(directory.resolve("app.db").toString());
+        database.initialize();
+    }
+
+    private LoginService loginService() {
+        return new LoginService(new JdbcUserRepository(database), new PasswordVerifier());
+    }
+
     private final List<GamePage> cleanup = new ArrayList<>();
 
     private static <T> T edt(Callable<T> action) throws Exception {
@@ -408,7 +428,7 @@ class AIntegrationTest {
     /** 새 로컬 시연 계정이 실제 인증 서비스에서 성공하고 오답은 거부되는지 확인한다. */
     @Test
     void testAccountAuthenticates() {
-        var service = Main.createDemoLoginService();
+        var service = loginService();
         char[] password = "test1234".toCharArray();
         var result = service.login("test", password);
         assertTrue(result.success());
@@ -418,9 +438,9 @@ class AIntegrationTest {
     }
 
     @Test
-    void demoMountsExistingInventoryAndClueWidgets() throws Exception {
+    void databaseScreensMountInventoryAndClueWidgets() throws Exception {
         edt(() -> {
-            AppScreens screens = new AppScreens(Main.createDemoLoginService());
+            AppScreens screens = Main.createScreens(database);
             GamePage page      = screens.game(new LoginUser(4L, "test"), 1, () -> { }, () -> { });
             cleanup.add(page);
             InventoryPanel inventory = (InventoryPanel) findNamed(page, "gameInventory");
@@ -443,10 +463,9 @@ class AIntegrationTest {
 
     /** 임시 대시보드를 포함한 화면 흐름과 맵 복귀를 확인한다. */
     @Test
-    void demoEntryScreensNavigateWithoutOtherOwnersFeatures() throws Exception {
+    void databaseScreensNavigateAndLoadGame() throws Exception {
         AIntegrationStubs.Host host = new AIntegrationStubs.Host();
-        var loginService = Main.createDemoLoginService();
-        AppController controller = edt(() -> new AppController(host, new AppScreens(loginService), () -> true));
+        AppController controller = edt(() -> new AppController(host, Main.createScreens(database), () -> true));
         edt(() -> {
             controller.start();
             assertEquals("login", host.visible);
@@ -472,6 +491,10 @@ class AIntegrationTest {
             findButton(dashboard, "방 선택하기").doClick();
             assertEquals("maps", host.visible);
             assertEquals(0, countMessage(host.pages.get("maps")));
+            return null;
+        });
+        await(() -> hasButton(host.pages.get("maps"), "입장하기"));
+        edt(() -> {
             assertTrue(findButton(host.pages.get("maps"), "입장하기").isEnabled());
             assertFalse(findButton(host.pages.get("maps"), "준비 중").isEnabled());
             findButton(host.pages.get("maps"), "입장하기").doClick();
@@ -512,6 +535,81 @@ class AIntegrationTest {
             assertEquals("login", host.visible);
             return null;
         });
+    }
+
+    @Test
+    void databaseGameWidgetsSubmitBothPuzzlesAndSaveResult() throws Exception {
+        GamePage page = edt(() -> {
+            GamePage created = Main.createScreens(database).game(new LoginUser(4, "test"), 1, () -> {}, () -> {});
+            cleanup.add(created);
+            created.load(new LoginUser(4, "test"), 1);
+            return created;
+        });
+        await(page::isTimerRunning);
+        edt(() -> {
+            findButton(page, "메모 1").doClick();
+            assertTrue(findNamed(page, "gameClue").isVisible());
+            page.inspect(coderoom.entities.game.RoomObjectId.DRAWER);
+            java.util.List<JTextField> fields = new ArrayList<>();
+            collectFields(page, fields);
+            assertEquals(1, fields.size());
+            fields.get(0).setText("0000");
+            findButton(page, "서랍 열기  →").doClick();
+            assertFalse(hasButton(page, "메모 2"));
+            fields.get(0).setText("2312");
+            findButton(page, "서랍 열기  →").doClick();
+            findButton(page, "메모 2").doClick();
+            page.inspect(coderoom.entities.game.RoomObjectId.WALL_DIAL);
+            fields.clear();
+            collectFields(page, fields);
+            assertEquals(9, fields.size());
+            String answer = "423312133";
+            for (int i = 0; i < fields.size(); i++) {
+                fields.get(i).setText(answer.substring(i, i + 1));
+            }
+            findButton(page, "다이얼 확인  →").doClick();
+            findButton(page, "열쇠").doClick();
+            page.useKey();
+            assertFalse(page.isTimerRunning());
+            return null;
+        });
+        await(() -> hasLabel(page, "기록 저장 완료"));
+        var records = new coderoom.entities.record.JdbcClearRecordRepository(database).findByUserId(4);
+        assertEquals(1, records.size());
+        assertTrue(records.get(0).getBestSeconds() >= 0);
+    }
+
+    private static void collectFields(Component component, List<JTextField> fields) {
+        if (component instanceof JTextField field) {
+            fields.add(field);
+        }
+        if (component instanceof Container container) {
+            for (Component child : container.getComponents()) {
+                collectFields(child, fields);
+            }
+        }
+    }
+
+    private static boolean hasLabel(Component component, String text) {
+        if (component instanceof JLabel label && text.equals(label.getText())) {
+            return true;
+        }
+        if (component instanceof Container container) {
+            for (Component child : container.getComponents()) {
+                if (hasLabel(child, text)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private static boolean hasButton(Component root, String title) {
+        try {
+            return findButton(root, title).isShowing() || findButton(root, title).isVisible();
+        } catch (IllegalArgumentException exception) {
+            return false;
+        }
     }
 
     private static int countMessage(Component root) {
@@ -592,7 +690,19 @@ class AIntegrationTest {
     @Test
     void mainOpensTheDemoFrame() throws Exception {
         Assumptions.assumeFalse(GraphicsEnvironment.isHeadless(), "실제 창은 디스플레이 환경에서 검증");
-        Main.main(new String[0]);
+        String previous = System.getProperty("coderoom.db");
+        try {
+            System.setProperty("coderoom.db", directory.resolve("app.db").toString());
+            Main.main(new String[0]);
+        } finally {
+            if (previous == null) {
+                System.clearProperty("coderoom.db");
+            } else {
+                System.setProperty("coderoom.db", previous);
+            }
+        }
+        await(() -> java.util.Arrays.stream(Window.getWindows())
+                .anyMatch(window -> window instanceof MainFrame && window.isShowing()));
         MainFrame frame = edt(() -> {
             MainFrame found = null;
             for (Window window : Window.getWindows()) {
@@ -626,9 +736,17 @@ class AIntegrationTest {
             JButton dashboardMaps = findButton(frame, "방 선택하기");
             assertTrue(dashboardMaps.isShowing(), "대시보드의 맵 이동 버튼이 보여야 합니다.");
             dashboardMaps.doClick();
+            return null;
+        });
+        await(() -> hasButton(frame, "입장하기"));
+        edt(() -> {
             JButton enter = findButton(frame, "입장하기");
             assertTrue(enter.isShowing(), "맵 화면의 이동 버튼이 실제 창에 표시되어야 합니다.");
             enter.doClick();
+            return null;
+        });
+        await(() -> hasButton(frame, "메모 1"));
+        edt(() -> {
             frame.validate();
             JButton settings = findButton(frame, "설정");
             assertTrue(settings.isShowing(), "설정 버튼이 게임 사진 위에 표시되어야 합니다.");
@@ -648,6 +766,10 @@ class AIntegrationTest {
             });
             closeMenu.start();
             settings.doClick();
+            return null;
+        });
+        await(() -> hasButton(frame, "입장하기"));
+        edt(() -> {
             assertTrue(findButton(frame, "입장하기").isShowing());
             frame.dispatchEvent(new WindowEvent(frame, WindowEvent.WINDOW_CLOSING));
             assertFalse(frame.isDisplayable());

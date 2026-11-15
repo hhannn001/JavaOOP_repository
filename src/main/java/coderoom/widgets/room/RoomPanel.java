@@ -1,6 +1,7 @@
 package coderoom.widgets.room;
 
 import coderoom.entities.game.RoomObjectId;
+import coderoom.entities.game.GameStage;
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Cursor;
@@ -30,7 +31,7 @@ import javax.swing.JPanel;
  * 상위 타입: javax.swing.JPanel
  *
  * 1단계 구현 범위: 방 배경 그리기 + 창 크기에 맞춘 확대·축소 + 서랍·다이얼·문 등의 클릭 처리.
- * 아직 하지 않는 것(다음 단계): 단계별 그림 교체(열린 서랍·해제된 다이얼·열린 문), GameView 연동.
+ * 진행 단계는 열림 상태 문구로 표시한다. 배경 이미지는 공통으로 유지한다.
  *
  * 핵심 아이디어: 클릭 영역을 "화면 좌표"가 아니라 "그림 원본 좌표(1586×992)"로 적어 두고,
  * 그리기와 클릭 판정이 항상 같은 변환(layout)을 쓰게 해서 그림과 클릭 영역이 어긋나지 않게 한다.
@@ -70,6 +71,7 @@ public class RoomPanel extends JPanel {
     private final BufferedImage background;
     private final Consumer<RoomObjectId> onObjectClick;
     private final boolean fillScreen;
+    private GameStage stage = GameStage.START;
     private Hotspot hovered;
     private Hotspot pressed;
     private boolean showHotspots = false;
@@ -124,6 +126,13 @@ public class RoomPanel extends JPanel {
         repaint();
     }
 
+    public void setStage(GameStage stage) {
+        if (this.stage != stage) {
+            this.stage = Objects.requireNonNull(stage);
+            repaint();
+        }
+    }
+
     @Override
     protected void paintComponent(Graphics graphics) {
         super.paintComponent(graphics);
@@ -145,6 +154,17 @@ public class RoomPanel extends JPanel {
             g.scale(layout.scale(), layout.scale());
             g.drawImage(background, 0, 0, null);
             drawHighlights(g);
+            g.setColor(GOLD);
+            g.setFont(new java.awt.Font(java.awt.Font.SANS_SERIF, java.awt.Font.BOLD, 24));
+            if (stage.ordinal() >= GameStage.DRAWER_OPEN.ordinal()) {
+                g.drawString("서랍 열림", 565, 780);
+            }
+            if (stage.ordinal() >= GameStage.SAFE_OPEN.ordinal()) {
+                g.drawString("금고 열림", 960, 510);
+            }
+            if (stage == GameStage.ESCAPED) {
+                g.drawString("탈출 성공", 1310, 770);
+            }
         } finally {
             g.dispose();
         }

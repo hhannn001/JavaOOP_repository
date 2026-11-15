@@ -1,18 +1,20 @@
 package coderoom.app;
 
-import coderoom.entities.user.UserAccount;
-import coderoom.entities.user.UserRepository;
+import coderoom.entities.user.JdbcUserRepository;
+import coderoom.entities.map.JdbcMapRepository;
+import coderoom.entities.puzzle.JdbcPuzzleRepository;
+import coderoom.entities.record.JdbcClearRecordRepository;
+import coderoom.features.gameplay.GameFacade;
+import coderoom.features.mapcatalog.MapCatalogService;
+import coderoom.shared.db.Database;
+import javax.swing.JOptionPane;
 import coderoom.features.auth.LoginService;
 import coderoom.features.auth.PasswordVerifier;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
-import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
+import javax.swing.SwingUtilities;
 
 /**
  * 담당: A
@@ -26,8 +28,7 @@ public class Main {
     // Repository를 features의 서비스 생성자에 전달하고 AppController와 MainFrame을 연결한다.
     // 구체 JDBC 구현은 이 조립 지점에서만 직접 생성한다.
 
-    // [구현 예정]
-    // main(String[] args): DB 초기화 완료 후 SwingUtilities.invokeLater로 화면을 생성한다.
+    // DB 초기화 완료 후 EDT에서 화면을 생성한다.
     // 초기화 실패 시 오류를 알리고 정상 실행으로 진행하지 않는다.
 
     /** G의 DB 초기화와 실제 서비스 조립을 연결할 경계. 테스트 드라이버가 스텁을 주입한다. */
@@ -36,39 +37,40 @@ public class Main {
         AppController createController();
     }
 
-    /** 메모리 시연 계정으로 실제 인증 후 A의 화면 전환을 확인한다. DB 연동은 별도다. */
+    /** DB 초기화가 성공한 뒤에만 창을 연다. --init-db는 데이터 준비만 수행한다. */
     public static void main(String[] args) {
-        // 해시 생성은 EDT 밖에서 수행한다. 시연 계정은 실행 중 메모리에만 보관한다.
-        LoginService loginService = createDemoLoginService();
-        SwingUtilities.invokeLater(() -> {
-            MainFrame frame = new MainFrame();
-            frame.setTitle("CODE ROOM · 시연");
-            AppController controller = new AppController(frame, new AppScreens(loginService), () -> true);
-            controller.start();
-            frame.setVisible(true);
-        });
+        Database database = new Database(System.getProperty("coderoom.db", "coderoom.db"));
+        if (args.length == 1 && "--init-db".equals(args[0])) {
+            database.initialize();
+            System.out.println("DB 초기화 완료");
+            return;
+        }
+        SwingUtilities.invokeLater(() -> launch(new Bootstrap() {
+            @Override public void initialize() { database.initialize(); }
+            @Override public AppController createController() {
+                MainFrame frame = new MainFrame();
+                AppController controller = new AppController(frame, createScreens(database),
+                        () -> JOptionPane.showConfirmDialog(frame,
+                                "기록이 저장되지 않았습니다. 나가시겠습니까?", "기록 저장 확인",
+                                JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION);
+                frame.setVisible(true);
+                return controller;
+            }
+        }, failure -> {
+            System.err.println("DB 초기화 실패: " + failure.getMessage());
+            JOptionPane.showMessageDialog(null, "데이터베이스를 준비하지 못했습니다. DB 경로와 접근 권한을 확인하세요.",
+                    "CODE ROOM 시작 실패", JOptionPane.ERROR_MESSAGE);
+        }));
     }
 
-    /** G의 DB가 준비되면 Main의 조립 지점에서 실제 JdbcUserRepository로 교체한다. */
-    static LoginService createDemoLoginService() {
-        PasswordVerifier verifier = new PasswordVerifier();
-        Map<String, UserAccount> accounts = new HashMap<>();
-        char[] demoPassword = "test-only".toCharArray();
-        char[] testPassword = "test1234".toCharArray();
-        try {
-            for (long id = 1; id <= 3; id++) {
-                String loginId = "demo" + id;
-                accounts.put(loginId, new UserAccount(id, loginId, verifier.hash(demoPassword)));
-            }
-            // 요청한 로컬 테스트 계정은 기존 시연 계정과 다른 ID로 추가한다.
-            accounts.put("test", new UserAccount(4L, "test", verifier.hash(testPassword)));
-        } finally {
-            Arrays.fill(demoPassword, '\0');
-            Arrays.fill(testPassword, '\0');
-        }
-        Map<String, UserAccount> readOnlyAccounts = Map.copyOf(accounts);
-        UserRepository users = id -> Optional.ofNullable(readOnlyAccounts.get(id));
-        return new LoginService(users, verifier);
+    /** 구체 JDBC 저장소는 이 조립 지점에서만 생성한다. */
+    static AppScreens createScreens(Database database) {
+        JdbcUserRepository users          = new JdbcUserRepository(database);
+        JdbcMapRepository maps            = new JdbcMapRepository(database);
+        JdbcPuzzleRepository puzzles      = new JdbcPuzzleRepository(database);
+        JdbcClearRecordRepository records = new JdbcClearRecordRepository(database);
+        return new AppScreens(new LoginService(users, new PasswordVerifier()),
+                new MapCatalogService(maps, records), () -> new GameFacade(maps, puzzles, records));
     }
 
     /** DB 준비를 EDT 밖에서 완료한 경우에만 화면을 만든다. 실패 시 정상 흐름을 시작하지 않는다. */

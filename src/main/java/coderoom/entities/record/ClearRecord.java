@@ -15,15 +15,14 @@ public class ClearRecord {
     // 저장할 후보 기록 또는 조회한 최고 기록을 담는다.
     // 다른 엔티티 객체 대신 ID만 참조한다. 최고 기록 비교는 저장소가 담당한다.
     public ClearRecord(long userId, long mapId, long bestSeconds){
-        if(bestSeconds < 0){
-
+        if (userId <= 0 || mapId <= 0 || bestSeconds < 0) {
+            throw new IllegalArgumentException("사용자·맵 ID는 양수, 기록은 0 이상이어야 합니다.");
         }
-        this.userId = userId;
-        this.mapId = mapId;
+        this.userId      = userId;
+        this.mapId       = mapId;
         this.bestSeconds = bestSeconds;
-
     }
-    
+
     // 필수값 검증과 읽기 전용 접근자를 작성한다. Swing·SQL 코드는 넣지 않는다.
 
     public long getUserId() {

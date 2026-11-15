@@ -1,6 +1,6 @@
 -- 담당: G (사용자 해시 형식 B, 맵 데이터 C, 퍼즐 데이터 E와 합의)
 -- 임시 데이터: 맵 3개(플레이 가능 1개), 서재 퍼즐 2개.
--- 시연 계정은 인증 구현과 해시 형식을 합의한 뒤 별도로 추가한다.
+-- 로컬 시연 계정: test/test1234, demo1~3/test-only. PBKDF2 해시만 저장한다.
 -- 퍼즐 정답 문자열: 2312, 423312133. 코드의 실제 출력과 일치하도록 검증한다.
 -- 반복 초기화 시 기존 계정·퍼즐·클리어 기록을 덮어쓰지 않는다.
 -- 현재 Database의 세미콜론 분할 방식과 호환되도록 코드 안의 세미콜론은 char(59)로 표현한다.
@@ -41,4 +41,13 @@ for (int[] row : grid) {
 }',
      'GRID3X3', '423312133',
      '모든 칸의 숫자에 각각 1을 더하세요. 첫 번째 줄은 4, 2, 3입니다. 같은 방법으로 나머지 두 줄을 채워보세요.')
+ON CONFLICT DO NOTHING;
+
+-- 기존 계정의 비밀번호와 기록을 초기화하지 않는다.
+INSERT INTO users (user_id, login_id, password_hash)
+VALUES
+    (1, 'demo1', 'v1$pbkdf2-sha256$600000$9r/yyzWXdD2UlSJeXv/cIw==$tmojqlvKd2Fqyg1bgC09+LtJ8CcZhMpaai9oH0D8kFk='),
+    (2, 'demo2', 'v1$pbkdf2-sha256$600000$HZOwmM+4oBnaC0MeLraPDQ==$rr4oHhT58A0DbcHRsOx1bhmuBCmRFtNRJ5gcYeojNgQ='),
+    (3, 'demo3', 'v1$pbkdf2-sha256$600000$SPzEgYlB7exN4qJYxLqqgQ==$IpucdeWoAObMmFmjrJo0TXLMCTGRpQ4mv1LnoU2ckWc='),
+    (4, 'test', 'v1$pbkdf2-sha256$600000$u+LQ9iXt8nk19J7Fi9Nwaw==$n4p0xK2Vy+ICR04ICxgq4Oz3hzVd1Z//LRXBqWJEZwI=')
 ON CONFLICT DO NOTHING;

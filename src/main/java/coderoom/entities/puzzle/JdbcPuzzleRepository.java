@@ -1,20 +1,41 @@
 package coderoom.entities.puzzle;
 
-/**
- * 담당: G
- * 역할: JDBC와 도메인 저장소 사이의 Adapter.
- * 구현 계약: coderoom.entities.puzzle.PuzzleRepository
- * 설계 초안: 필드·생성자·메서드는 아래 주석을 기준으로 구현한다.
- */
-public class JdbcPuzzleRepository implements PuzzleRepository {
-    // [연결]
-    // coderoom.shared.db.Database를 생성자로 받는다.
-    // 같은 패키지의 PuzzleRepository 계약을 구현한다.
+import coderoom.shared.db.Database;
+import coderoom.shared.db.StorageException;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
 
-    // [구현 예정]
-    // puzzles를 map_id로 조회하고 step_no 순서로 반환한다.
-    // answer_type을 AnswerType으로 변환한다. 잘못된 형식은 숨기지 않는다.
-    // 계약의 각 메서드를 @Override로 구현한다. SQL은 PreparedStatement로 실행한다.
-    // 호출마다 연결을 열고 Connection·Statement·ResultSet을 try-with-resources로 닫는다.
-    // SQLException은 원인을 보존해 StorageException으로 변환한다.
+public final class JdbcPuzzleRepository implements PuzzleRepository {
+    private final Database database;
+
+    public JdbcPuzzleRepository(Database database) {
+        this.database = Objects.requireNonNull(database);
+    }
+
+    @Override
+    public List<Puzzle> findByMapId(long mapId) {
+        String sql = "SELECT puzzle_id, map_id, step_no, code, answer_type, answer, hint "
+                + "FROM puzzles WHERE map_id = ? ORDER BY step_no";
+        try (Connection connection = database.open();
+                PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setLong(1, mapId);
+            try (ResultSet rows = statement.executeQuery()) {
+                List<Puzzle> puzzles = new ArrayList<>();
+                while (rows.next()) {
+                    puzzles.add(new Puzzle(rows.getLong("puzzle_id"), rows.getLong("map_id"),
+                            rows.getInt("step_no"), rows.getString("code"),
+                            AnswerType.valueOf(rows.getString("answer_type")),
+                            rows.getString("answer"), rows.getString("hint")));
+                }
+                return List.copyOf(puzzles);
+            }
+        } catch (SQLException | IllegalArgumentException exception) {
+            throw new StorageException("퍼즐 데이터를 불러올 수 없습니다.", exception);
+        }
+    }
 }

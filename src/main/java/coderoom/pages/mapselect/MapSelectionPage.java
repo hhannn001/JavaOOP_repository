@@ -28,6 +28,9 @@ import javax.swing.JPanel;
 import javax.swing.SwingConstants;
 
 import coderoom.features.mapcatalog.MapCard;
+import coderoom.features.mapcatalog.MapCatalogService;
+import java.util.concurrent.ExecutionException;
+import javax.swing.SwingWorker;
 
 public class MapSelectionPage extends JPanel {
 
@@ -45,6 +48,7 @@ public class MapSelectionPage extends JPanel {
 	
     private final LongConsumer openMap;
     private final Runnable dashboard;
+    private SwingWorker<List<MapCard>, Void> loading;
 
     // 기존 미리보기 실행을 위한 기본 생성자
     public MapSelectionPage() {
@@ -59,6 +63,53 @@ public class MapSelectionPage extends JPanel {
 
         setLayout(new BorderLayout());
         setBackground(Color.WHITE);
+    }
+
+    /** 매번 DB에서 최고 기록을 다시 읽고, 실패 시 재시도와 복귀를 제공한다. */
+    public void load(MapCatalogService catalog, long userId) {
+        if (loading != null) {
+            loading.cancel(true);
+        }
+        showLoadStatus("맵 목록을 불러오는 중입니다.", null);
+        loading = new SwingWorker<>() {
+            @Override protected List<MapCard> doInBackground() { return catalog.listForUser(userId); }
+            @Override protected void done() {
+                if (loading != this || isCancelled()) {
+                    return;
+                }
+                loading = null;
+                try {
+                    render(get());
+                } catch (InterruptedException exception) {
+                    Thread.currentThread().interrupt();
+                    showLoadStatus("조회가 중단되었습니다.", () -> load(catalog, userId));
+                } catch (ExecutionException exception) {
+                    showLoadStatus("맵 목록을 불러오지 못했습니다.", () -> load(catalog, userId));
+                }
+            }
+        };
+        loading.execute();
+    }
+
+    private void showLoadStatus(String message, Runnable retry) {
+        removeAll();
+        add(new JLabel(message, SwingConstants.CENTER), BorderLayout.CENTER);
+        if (retry != null) {
+            JButton button = new JButton("다시 시도");
+            button.addActionListener(event -> retry.run());
+            add(button, BorderLayout.NORTH);
+        }
+        addDashboardButton();
+        revalidate();
+        repaint();
+    }
+
+    @Override public void removeNotify() {
+        if (loading != null) {
+            loading.cancel(true);
+            loading = null;
+        }
+        super.removeNotify();
     }
 
     // 맵 목록을 화면에 표시

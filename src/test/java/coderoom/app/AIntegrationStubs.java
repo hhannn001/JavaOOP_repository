@@ -111,11 +111,11 @@ final class AIntegrationStubs {
     }
 
     static final class Game implements GamePage.GamePort {
-        final GameView view           = new GameView();
-        final GameSetup setup         = new GameSetup();
+        final GameView view           = new GameView(coderoom.entities.game.GameStage.START, List.of(), null, 0);
+        final GameSetup setup         = new GameSetup(new coderoom.entities.map.GameMap(1, "Test", "", "Java", "보통", "", true), List.of());
         final ClearRecord record      = new ClearRecord(1L, 1L, 60L);
-        final InspectResult inspected = new InspectResult();
-        final SubmitResult submitted  = new SubmitResult();
+        final InspectResult inspected = new InspectResult(RoomObjectId.BOOKS, "test", null);
+        final SubmitResult submitted  = new SubmitResult(SubmitResult.Verdict.WRONG, "test", view);
         final List<ClearRecord> saved = new ArrayList<>();
         CountDownLatch loadGate       = new CountDownLatch(0);
         CountDownLatch saveGate       = new CountDownLatch(0);

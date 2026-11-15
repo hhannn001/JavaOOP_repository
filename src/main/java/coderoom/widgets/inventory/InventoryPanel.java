@@ -18,8 +18,7 @@ import javax.swing.JPanel;
  * 담당: F
  * 역할: 게임 화면 하단 인벤토리 UI
  *
- * 현재는 UI 프로토타입만 구현
- * GameView 및 GameFacade 연동은 추후 진행
+ * 게임 스냅샷의 아이템과 선택 상태를 표시하고 선택 콜백을 전달한다.
  */
 public class InventoryPanel extends JPanel {
 
@@ -136,6 +135,20 @@ public class InventoryPanel extends JPanel {
             return;
         }
 
+        setSelectedItem(itemIds[index]);
+
+        if (onItemSelected != null) {
+            onItemSelected.accept(itemIds[index]);
+        }
+    }
+
+    public void setSelectedItem(ItemId id) {
+        int index = -1;
+        for (int i = 0; i < SLOT_COUNT; i++) {
+            if (id != null && itemIds[i] == id) {
+                index = i;
+            }
+        }
         selectedIndex = index;
 
         for (int i = 0; i < SLOT_COUNT; i++) {
@@ -149,10 +162,6 @@ public class InventoryPanel extends JPanel {
                             selected ? 3 : 1
                     )
             );
-        }
-
-        if (onItemSelected != null) {
-            onItemSelected.accept(itemIds[index]);
         }
     }
 

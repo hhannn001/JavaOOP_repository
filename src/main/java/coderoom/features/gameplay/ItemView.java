@@ -19,9 +19,15 @@ public final class ItemView {
     private final ItemId id;
     private final String title;
     private final String content;
+    private final String hint;
 
     /** 단서 패널에 필요한 공개 정보만 보관한다. */
     public ItemView(ItemId id, String title, String content) {
+        this(id, title, content, "");
+    }
+
+    public ItemView(ItemId id, String title, String content, String hint) {
+        this.hint    = Objects.requireNonNull(hint);
         this.id      = Objects.requireNonNull(id, "아이템 ID가 필요합니다.");
         this.title   = Objects.requireNonNull(title, "제목이 필요합니다.");
         this.content = Objects.requireNonNull(content, "내용이 필요합니다.");
@@ -29,5 +35,6 @@ public final class ItemView {
 
     public ItemId id() { return id; }
     public String title() { return title; }
+    public String hint() { return hint; }
     public String content() { return content; }
 }

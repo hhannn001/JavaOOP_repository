@@ -259,10 +259,12 @@ public class CluePanel extends JPanel {
     titleLabel.setText(item.title());
     codeArea.setText(item.content());
 
-    // ItemView에 없는 데이터는 표시하지 않음
+    // 코드와 힌트만 표시하며 정답은 받지 않는다.
     descriptionArea.setVisible(false);
     answerLabel.setVisible(false);
-    hintButton.setVisible(false);
+    hintArea.setText(item.hint());
+    hintButton.setVisible(!item.hint().isBlank());
+    hintButton.setText("♧  작은 힌트   +");
     hintContent.setVisible(false);
 
     codeArea.setCaretPosition(0);

@@ -1,10 +1,9 @@
 -- 담당: G
--- 구현 예정: users, maps, puzzles, clear_records 테이블을 생성한다.
+-- 테이블: users, maps, puzzles, clear_records 테이블을 생성한다.
 -- 모든 속성 NOT NULL. users.login_id UNIQUE. puzzles(map_id, step_no) UNIQUE.
 -- clear_records는 (user_id, map_id) 복합 PK와 두 FK를 가진다.
 -- puzzles.map_id는 maps.map_id를 참조한다.
 -- playable은 0/1, best_seconds는 0 이상을 검증한다.
--- 구체 DDL은 구현 단계에서 작성한다.
 
 CREATE TABLE IF NOT EXISTS users (
     user_id INTEGER PRIMARY KEY,
