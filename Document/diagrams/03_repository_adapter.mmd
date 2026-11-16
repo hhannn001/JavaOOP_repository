@@ -28,6 +28,11 @@ classDiagram
     class LoginService
     class MapCatalogService
     class GameFacade
+    class DashboardRecords {
+        +rooms()
+        +ranking(roomId, loginId)
+        +progress(loginId)
+    }
 
     JdbcUserRepository ..|> UserRepository
     JdbcMapRepository ..|> MapRepository
@@ -43,3 +48,4 @@ classDiagram
     GameFacade --> MapRepository
     GameFacade --> PuzzleRepository
     GameFacade --> ClearRecordRepository
+    DashboardRecords --> Database : read-only JDBC

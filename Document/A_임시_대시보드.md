@@ -1,4 +1,6 @@
-# A 대시보드 화면 설계
+# A 대시보드 구현 현황
+
+기준: 2026-11-16 현재 작업 트리. 기존 링크 호환을 위해 파일명은 유지한다.
 
 ## 현재 구현과 화면 흐름
 
@@ -21,10 +23,11 @@
 | 커튼·표찰 | `방 선택하기`로 맵 선택 화면을 연다. |
 | 달력 | `진척도`에서 방별 도전 전/탈출 완료 상태와 최고 시간을 표시한다. |
 | 리더보드 | 방을 선택하여 상위 최대 9명과 내 전체 순위·최고 기록을 표시한다. 동률은 공동 순위(1, 1, 3)다. |
+| 고양이·벨·창문 | DashboardCat·DashboardBell·CatReactionFrames·WindowAmbient가 반응 프레임과 애니메이션을 관리한다. |
 | 사물 반응 | SceneObjectButton이 사물별 프레임·윤곽선·포커스·클릭 애니메이션을 관리한다. |
-| 계정·설정 | 실제 로그인 ID와 픽셀 글꼴을 표시하고 설정에서 로그아웃한다. |
+| 계정·설정 | 실제 로그인 ID와 공통 한글 글꼴을 표시하고 설정에서 로그아웃한다. |
 
-현재 로비 에셋은 `src/main/resources/images/dashboard/lobby/`에 있다. 에셋 제작 설명과 시각 검증 기록은 해당 폴더의 `ART-DIRECTION.md`, `QA.md`를 참고한다. 글꼴은 `fonts/NOTICE.md`와 Neo둥근모 라이선스를 함께 관리한다.
+현재 로비 에셋은 `src/main/resources/images/dashboard/lobby/`에 있다. 에셋 제작 설명과 시각 검증 기록은 해당 폴더의 `ART-DIRECTION.md`, `QA.md`를 참고한다. 런타임 공통 글꼴은 `PixelTheme`이 읽는 Pretendard-Regular.otf다. 글꼴 출처·라이선스는 `fonts/NOTICE.md`를 따른다.
 
 ## 연동 경계와 남은 작업
 

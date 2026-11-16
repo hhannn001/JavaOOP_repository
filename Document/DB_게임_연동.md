@@ -21,7 +21,7 @@ SQL 원본: `src/main/resources/db/schema.sql`, `seed.sql`.
 | puzzles | 첫 방의 DIGITS4, GRID3X3 퍼즐 2개 |
 | clear_records | 없음. 실제 탈출 시 계정·맵별 최고 기록 저장 |
 
-시연 계정 비밀번호는 README에 명시한다. 시드 재실행은 기존 행을 변경하지 않으며, 사용자·맵을 참조하지 않는 기록은 외래키로 차단한다. 로컬 DB 파일은 커밋하지 않는다.
+시연 계정 비밀번호는 README에 명시한다. 시드 재실행은 계정·퍼즐·기록을 유지하며, 사용자·맵을 참조하지 않는 기록은 외래키로 차단한다. 로컬 DB 파일은 커밋하지 않는다.
 
 ## 게임 규칙
 
@@ -46,3 +46,7 @@ DB 파일 경로는 `-Dcoderoom.db=...`로 바꿀 수 있다. 기본 파일은 �
 - `GameOverlayLayout`으로 방 위에 단서·입력·인벤토리를 배치하고 `PixelTheme`·`ItemSprite`로 종이·잠금장치·아이템을 표현한다. 정답 판정은 기존 GameFacade 경계를 유지한다.
 
 관련 자동 테스트: `DashboardRecordsTest`(순위·진척도), `SceneObjectButtonTest`(사물 입력), `ObjectUiTest`(게임 위젯), `HintSettingsTest`(설정·기존 DB 마이그레이션), `AIntegrationTest`(화면 연동). 실제 창의 레이아웃·애니메이션은 별도 수동 QA 대상이다.
+
+## 기본 테마 갱신
+
+`seed.sql`은 이전 영문 기본 이름 또는 현재 기본 한글 이름과 일치하는 맵의 제목·설명·주제·난이도·포스터를 갱신한다. 사용자 정의 이름의 맵과 플레이 가능 여부·힌트 제한·계정·퍼즐·기록은 유지한다. 현재 기본 테마는 서재의 마지막 암호, 사라진 기록, 자정의 기계실이다.

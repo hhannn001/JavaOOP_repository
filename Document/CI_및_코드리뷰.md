@@ -19,9 +19,9 @@
 
 JDK 17 이상에서 `./mvnw clean verify`를 실행한다. Windows에서는 `mvnw.cmd clean verify`를 사용한다. Wrapper가 Maven 3.9.11을 내려받으므로 Maven 별도 설치는 필요 없으며 최초 실행에는 인터넷이 필요하다.
 
-현재 Java는 클래스 초안이다. 테스트와 main 실행 진입점이 아직 없으므로 빌드 성공은 게임 동작 검증을 의미하지 않는다. 테스트는 src/test/java에 추가한다. SQLite JDBC는 저장소 구현 때 추가한다.
+실행 진입점은 `coderoom.app.Main`, 테스트는 `src/test/java`, SQLite JDBC 의존성은 `pom.xml`에 있다. `verify`는 실제 구현 테스트와 스텁 테스트를 실행한다. 자동 테스트 통과와 실제 창의 시각·수동 QA 완료는 구분한다.
 
-Checkstyle은 와일드카드/미사용 import, 파일명, equals/hashCode, 문자열 비교를 검사한다. 세로 정렬을 변경하는 포매터는 적용하지 않는다. 현재 Swing/예외 초안의 serial 경고는 제외한다.
+Checkstyle은 와일드카드/미사용 import, 파일명, equals/hashCode, 문자열 비교를 검사한다. 세로 정렬을 변경하는 포매터는 적용하지 않는다. Swing 컴포넌트·예외의 serial 경고는 제외한다.
 
 ## 권한 및 저장소 설정
 
