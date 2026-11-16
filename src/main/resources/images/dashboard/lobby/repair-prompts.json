@@ -1,0 +1,32 @@
+[
+  {
+    "name": "background-v2",
+    "ref": "background.png",
+    "alpha": false,
+    "prompt": "Make two precise changes only to this approved pixel-art cafe background. 1: Inside the existing brass hanging sign above the doorway, paint exact Korean text '방 선택하기' as modest flat warm-ivory pixel lettering, engraved/painted into the dark sign surface. Keep comfortable padding all around, letters occupy about 60% of inner sign width and 45% height. NO 3D extrusion, NO glow, NO floating UI text. 2: Remove the RIGHTMOST gear poster and its little picture light above the reception desk; fill that rectangle with continuous same warm-gray plaster wall. It will hold a separate wall calendar later. Preserve EVERY other pixel composition, scale, camera, frame rail and doorway, furniture and lighting. Same 1586x992 full image."
+  },
+  {
+    "name": "leaderboard-main",
+    "ref": "leaderboard.png",
+    "alpha": true,
+    "prompt": "Edit this single pixel-art physical leaderboard sign. Preserve its precise silhouette, walnut, brass and matte charcoal materials. Add exact Korean heading '리더보드' as small flat hand-painted ivory lettering INSIDE the top of the large dark inner panel, below the upper brass border with generous padding. It must look painted onto the sign, not a floating game UI label. Add nine subtle ruled lines under it and a tiny laurel motif, no fake names or scores. Keep the small bottom panel plain. No dimensional/extruded letters, no bright glow. Actual transparent RGBA background outside exact sign silhouette, including between feet. Keep full object and original proportions."
+  },
+  {
+    "name": "plaque-bookshelf",
+    "ref": "bookshelf.png",
+    "alpha": true,
+    "prompt": "Create ONLY a small horizontal walnut label plate with two tiny aged-brass screw heads, designed to be physically attached to the narrow horizontal wooden shelf rail in this reference. Exact Korean lettering '풀이한 문제', flat muted ivory pixel letters painted INTO the wood, understated, NO extrusion NO glow. Detailed fine pixel-art woodgrain and brass matching reference. Width-to-height ratio about 6:1. Tight canvas, genuinely transparent background outside rectangular wood silhouette. No bookcase or other objects."
+  },
+  {
+    "name": "calendar",
+    "ref": "concept.png",
+    "alpha": true,
+    "prompt": "Create a pixel-art WALL CALENDAR animation atlas matching this mature walnut warm-grey escape cafe lobby. Exactly six cells arranged 3 columns by 2 rows, each 512x512, total1536x1024. Each cell identical fixed-size wall-mounted walnut backing with two small brass binder clips at top and parchment calendar sheet. Header on wooden top backing has modest flat engraved Korean text '진척도' (never floating or extruded). Below it a fine printed 7-column calendar grid, small date marks, a few muted olive stamps. Fine real pixel detail like reference, dimensional paper edges, restrained light from upper left. Frame 1 rest. Frames2-5 ONLY bottom-right corner of ONE sheet curls upward and over, passing left across page. Frame6 new calendar page rests flat. Backing, binder, title, upper sheet edge, position and scale EXACTLY fixed across all cells. Actual transparent background outside object. No shadow halos, no wall or scene. No frame numbers, no grid dividers. Fully opaque object interiors. Do not make a UI icon: a believable physical pinned calendar with natural paper texture."
+  },
+  {
+    "name": "background-v2-final",
+    "ref": "background-v2.png",
+    "alpha": false,
+    "prompt": "One precise removal only: remove the remaining framed maze poster and its small brass picture light on the right wall above the reception counter, filling with the same continuous warm plaster wall and lighting. This space will hold a separate physical calendar. Keep ALL OTHER elements and text '방 선택하기', pixel coordinates, image dimensions, doorway, brass curtain rod, hanging sign, desk, bell, monitor, flowers, sconces, floor, shadows EXACTLY unchanged. No new object. Keep 1586x992 canvas."
+  }
+]

@@ -56,13 +56,20 @@ final class AppScreens implements AppController.Screens {
 
     private final LoginService loginService;
     private final MapCatalogService mapCatalog;
+    private final coderoom.features.dashboard.DashboardRecords dashboardRecords;
     private final Supplier<GameFacade> newGame;
     private boolean introSeen;
 
     AppScreens(LoginService loginService, MapCatalogService mapCatalog, Supplier<GameFacade> newGame) {
-        this.loginService = Objects.requireNonNull(loginService);
-        this.mapCatalog   = Objects.requireNonNull(mapCatalog);
-        this.newGame      = Objects.requireNonNull(newGame);
+        this(loginService, mapCatalog, newGame, null);
+    }
+
+    AppScreens(LoginService loginService, MapCatalogService mapCatalog, Supplier<GameFacade> newGame,
+            coderoom.features.dashboard.DashboardRecords records) {
+        this.dashboardRecords = records;
+        this.loginService     = Objects.requireNonNull(loginService, "로그인 서비스가 필요합니다.");
+        this.mapCatalog       = Objects.requireNonNull(mapCatalog);
+        this.newGame          = Objects.requireNonNull(newGame);
     }
 
     @Override
@@ -75,8 +82,8 @@ final class AppScreens implements AppController.Screens {
 
     @Override
     public JComponent dashboard(LoginUser user, Runnable openMaps, Runnable logout) {
-        // A의 대시보드는 현재 사용자 세션만 받고 기록 데이터는 연동 전으로 표시한다.
-        return new DashboardPage(user, openMaps, logout, !introSeen, () -> introSeen = true);
+        // 대시보드의 읽기 전용 기록 조회를 현재 로그인 세션과 연결한다.
+        return new DashboardPage(user, openMaps, logout, !introSeen, () -> introSeen = true, dashboardRecords);
     }
 
     @Override

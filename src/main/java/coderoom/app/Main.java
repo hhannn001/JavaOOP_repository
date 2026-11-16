@@ -70,11 +70,19 @@ public class Main {
         JdbcPuzzleRepository puzzles      = new JdbcPuzzleRepository(database);
         JdbcClearRecordRepository records = new JdbcClearRecordRepository(database);
         return new AppScreens(new LoginService(users, new PasswordVerifier()),
-                new MapCatalogService(maps, records), () -> new GameFacade(maps, puzzles, records));
+                new MapCatalogService(maps, records), () -> new GameFacade(maps, puzzles, records),
+                new coderoom.features.dashboard.DashboardRecords(database));
     }
 
     /** DB 준비를 EDT 밖에서 완료한 경우에만 화면을 만든다. 실패 시 정상 흐름을 시작하지 않는다. */
     public static SwingWorker<Void, Void> launch(Bootstrap bootstrap, Consumer<Throwable> onFailure) {
+        for (Object key : java.util.Collections.list(javax.swing.UIManager.getDefaults().keys())) {
+            Object value = javax.swing.UIManager.get(key);
+            if (value instanceof java.awt.Font font) {
+                javax.swing.UIManager.put(key, new javax.swing.plaf.FontUIResource(
+                        coderoom.shared.ui.PixelTheme.font(font.getSize2D()).deriveFont(font.getStyle())));
+            }
+        }
         Objects.requireNonNull(bootstrap);
         Objects.requireNonNull(onFailure);
         SwingWorker<Void, Void> startup = new SwingWorker<>() {
