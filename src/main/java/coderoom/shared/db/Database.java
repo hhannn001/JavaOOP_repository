@@ -42,6 +42,7 @@ public final class Database {
             connection.setAutoCommit(false);
             try {
                 runScript(connection, "/db/schema.sql");
+                migrateHintLimit(connection);
                 runScript(connection, "/db/seed.sql");
                 connection.commit();
             } catch (SQLException | IOException exception) {
@@ -54,6 +55,19 @@ public final class Database {
             }
         } catch (SQLException | IOException exception) {
             throw new StorageException("데이터베이스 초기화에 실패했습니다.", exception);
+        }
+    }
+
+    /** 기존 DB의 맵·계정·기록을 유지하며 후속 힌트 제한 설정만 추가한다. */
+    private void migrateHintLimit(Connection connection) throws SQLException {
+        try (Statement statement = connection.createStatement();
+                java.sql.ResultSet columns = statement.executeQuery("PRAGMA table_info(maps)")) {
+            while (columns.next()) {
+                if ("hint_limit".equals(columns.getString("name"))) { return; }
+            }
+        }
+        try (Statement statement = connection.createStatement()) {
+            statement.execute("ALTER TABLE maps ADD COLUMN hint_limit INTEGER NOT NULL DEFAULT 2 CHECK (hint_limit >= 0)");
         }
     }
 

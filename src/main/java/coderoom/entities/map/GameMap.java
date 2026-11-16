@@ -36,20 +36,31 @@ public class GameMap {
 
     // 플레이 가능 여부
     private boolean playable;
+    private final int hintLimit;
 
     // 생성자
     public GameMap(int mapId, String title, String description,
                    String topic, String difficulty,
                    String posterPath, boolean playable) {
 
-        this.mapId = mapId;
-        this.title = title;
-        this.description = description;
-        this.topic = topic;
-        this.difficulty = difficulty;
-        this.posterPath = posterPath;
-        this.playable = playable;
+        this(mapId, title, description, topic, difficulty, posterPath, playable, 2);
     }
+
+    public GameMap(int mapId, String title, String description, String topic,
+            String difficulty, String posterPath, boolean playable, int hintLimit) {
+        if (hintLimit < 0) { throw new IllegalArgumentException("힌트 허용 횟수는 0 이상이어야 합니다."); }
+        this.hintLimit   = hintLimit;
+        this.mapId       = mapId;
+        this.title       = title;
+        this.description = description;
+        this.topic       = topic;
+        this.difficulty  = difficulty;
+        this.posterPath  = posterPath;
+        this.playable    = playable;
+    }
+
+    /** 게임당 허용할 힌트 수. 현재 공개 UI에서는 아직 차감하지 않는다. */
+    public int getHintLimit() { return hintLimit; }
 
     // 맵 번호 반환
     public int getMapId() {

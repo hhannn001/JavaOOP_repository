@@ -44,7 +44,7 @@ public class JdbcMapRepository implements MapRepository {
 
         String sql = """
                 SELECT map_id, title, description, topic,
-                       difficulty, poster_path, playable
+                       difficulty, poster_path, playable, hint_limit
                 FROM maps
                 ORDER BY map_id
                 """;
@@ -72,7 +72,7 @@ public class JdbcMapRepository implements MapRepository {
 
         String sql = """
                 SELECT map_id, title, description, topic,
-                       difficulty, poster_path, playable
+                       difficulty, poster_path, playable, hint_limit
                 FROM maps
                 WHERE map_id = ?
                 """;
@@ -106,7 +106,8 @@ public class JdbcMapRepository implements MapRepository {
                 rs.getString("topic"),
                 rs.getString("difficulty"),
                 rs.getString("poster_path"),
-                rs.getInt("playable") == 1
+                rs.getInt("playable") == 1,
+                rs.getInt("hint_limit")
         );
     }
 }

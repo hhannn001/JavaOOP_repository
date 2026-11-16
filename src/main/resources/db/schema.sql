@@ -18,7 +18,8 @@ CREATE TABLE IF NOT EXISTS maps (
     topic TEXT NOT NULL,
     difficulty TEXT NOT NULL,
     poster_path TEXT NOT NULL,
-    playable INTEGER NOT NULL CHECK (playable IN (0, 1))
+    playable INTEGER NOT NULL CHECK (playable IN (0, 1)),
+    hint_limit INTEGER NOT NULL DEFAULT 2 CHECK (hint_limit >= 0)
 );
 
 CREATE TABLE IF NOT EXISTS puzzles (
