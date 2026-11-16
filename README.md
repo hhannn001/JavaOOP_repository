@@ -5,7 +5,7 @@ Java Swing과 SQLite 기반 코딩 방탈출 게임입니다.
 - [기획서](Document/기획서.md)
 - [클래스 설계 및 7인 역할 분담](Document/클래스설계_및_7인_역할분담.md)
 - [소스 구조와 작성 원칙](Document/소스구조.md)
-- [A 임시 대시보드](Document/A_임시_대시보드.md)
+- [A 대시보드 구현 현황](Document/A_임시_대시보드.md)
 - [PR 및 커밋 규칙](Document/PR_및_커밋_규칙.md)
 
 Java 소스는 `src/main/java/coderoom`, 리소스는 `src/main/resources`에 있습니다.
@@ -59,3 +59,9 @@ java -cp "target/classes:target/dependency/*" coderoom.app.Main --init-db
 - [담당별 QA 시나리오와 완료 기준](Document/QA_체크리스트.md)
 
 화면 수명·저장 실패 재시도는 스텁 테스트로, 계정·퍼즐·기록 저장은 임시 SQLite 파일을 사용하는 통합 테스트로 검증합니다. 디스플레이가 없는 환경에서는 `./mvnw -Djava.awt.headless=true verify`를 사용하며 실제 창 테스트 2개는 제외됩니다.
+
+## 진행 중인 변경
+
+현재 작업 트리에는 픽셀 카페 로비·사물 애니메이션, DB 기반 리더보드·방별 기록 조회, 단서·암호 입력·인벤토리 픽셀 UI가 포함되어 있습니다. 개별 문제 풀이 이력은 아직 저장하지 않으며, 맵별 힌트 허용 횟수는 DB 저장·조회만 연결되어 UI 차감은 미구현입니다.
+
+상세 구현 범위와 남은 작업은 [대시보드](Document/A_임시_대시보드.md), [DB·게임 연동](Document/DB_게임_연동.md), [소스 구조](Document/소스구조.md)를 확인하세요.
