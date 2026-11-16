@@ -1,6 +1,7 @@
 package coderoom.app;
 
 import coderoom.entities.game.ItemId;
+import coderoom.shared.ui.GameOverlayLayout;
 import coderoom.entities.game.GameStage;
 import coderoom.entities.puzzle.AnswerType;
 import coderoom.features.gameplay.GameFacade;
@@ -101,7 +102,7 @@ final class AppScreens implements AppController.Screens {
 
     private static JButton button(String title) {
         JButton button = new JButton(title);
-        button.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 17));
+        button.setFont(coderoom.shared.ui.PixelTheme.font(17).deriveFont(Font.BOLD));
         button.setUI(new BasicButtonUI());
         button.setFocusPainted(false);
         button.setOpaque(true);
@@ -163,7 +164,7 @@ final class AppScreens implements AppController.Screens {
 
         private GameWidgets(Runnable back, Runnable restart) {
             // 투명한 상단 컨테이너가 설정 버튼만 우상단에 겹쳐 표시한다.
-            room.setLayout(new BorderLayout());
+            room.setLayout(new GameOverlayLayout());
             JPanel overlay = new JPanel(new FlowLayout(FlowLayout.RIGHT, 20, 16));
             overlay.setOpaque(false);
             message.setForeground(GOLD);
@@ -171,21 +172,22 @@ final class AppScreens implements AppController.Screens {
             overlay.add(message);
             overlay.add(elapsed);
             overlay.add(settingsButton(() -> openSettings(back)));
-            room.add(overlay, BorderLayout.NORTH);
+            room.add(overlay, "header");
             inventory.setName("gameInventory");
             clue.setName("gameClue");
-            JPanel bottom = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 16));
+            JPanel bottom = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
             bottom.setOpaque(false);
             bottom.add(inventory);
-            room.add(bottom, BorderLayout.SOUTH);
-            room.add(clue, BorderLayout.WEST);
+            room.add(bottom, "inventory");
+            room.add(clue, "clue");
             answer.setVisible(false);
-            answer.setOnClose(() -> activeObject = null);
-            room.add(answer, BorderLayout.EAST);
+            answer.setOnClose(() -> { activeObject = null; room.setInvestigationOpen(clue.isVisible()); });
+            clue.setOnClose(() -> room.setInvestigationOpen(answer.isVisible()));
+            room.add(answer, "input");
             resultHolder.setOpaque(false);
             resultHolder.setVisible(false);
             resultHolder.add(resultPanel);
-            room.add(resultHolder, BorderLayout.CENTER);
+            room.add(resultHolder, "result");
             resultPanel.setOnBackToMaps(back);
             resultPanel.setOnRestart(restart);
             // GamePage의 SOUTH 슬롯은 높이를 차지하지 않게 해 사진이 창 아래까지 닿게 한다.
@@ -234,7 +236,9 @@ final class AppScreens implements AppController.Screens {
             this.actions = actions;
             inventory.setOnItemSelected(item -> {
                 actions.selectItem(item);
-                clue.openClue();
+                if (item == ItemId.KEY) { clue.closeClue(); }
+                else { clue.openClue(); }
+                room.setInvestigationOpen(answer.isVisible() || clue.isVisible());
             });
             answer.setOnSubmit(value -> actions.submit(activeObject, value));
             resultPanel.setOnRetrySave(actions::retrySave);
@@ -249,10 +253,15 @@ final class AppScreens implements AppController.Screens {
                     view.elapsedSeconds() / 60, view.elapsedSeconds() % 60));
             if (view.selectedItem() != displayedItem) {
                 displayedItem = view.selectedItem();
-                view.items().stream().filter(item -> item.id() == displayedItem).findFirst().ifPresent(item -> {
-                    clue.setClueData(item);
-                    clue.openClue();
-                });
+                if (displayedItem == ItemId.KEY) {
+                    clue.closeClue();
+                } else {
+                    view.items().stream().filter(item -> item.id() == displayedItem).findFirst().ifPresent(item -> {
+                        clue.setClueData(item);
+                        clue.openClue();
+                    });
+                }
+                room.setInvestigationOpen(answer.isVisible() || clue.isVisible());
             }
             if (view.stage() == GameStage.ESCAPED) {
                 clue.closeClue();
@@ -261,7 +270,8 @@ final class AppScreens implements AppController.Screens {
         }
         @Override
         public void inspected(InspectResult result) {
-            status(result.message());
+            if (result.answerType() == null) { status(result.message()); }
+            else { status(""); }
             if (result.answerType() != null) {
                 activeObject = result.object();
                 if (result.answerType() == AnswerType.DIGITS4) {
@@ -270,6 +280,7 @@ final class AppScreens implements AppController.Screens {
                     answer.showGrid3x3();
                 }
                 answer.setVisible(true);
+                room.setInvestigationOpen(true);
                 room.revalidate();
             }
         }

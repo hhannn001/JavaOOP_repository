@@ -476,8 +476,10 @@ class AIntegrationTest {
         edt(() -> {
             assertEquals("dashboard", host.visible);
             DashboardPage dashboard = (DashboardPage) host.pages.get("dashboard");
-            assertEquals(new Color(8, 19, 19), dashboard.getBackground());
-            assertEquals(4, countButtons(dashboard));
+            assertEquals(new Color(27, 23, 20), dashboard.getBackground());
+            assertEquals(7, countButtons(dashboard));
+            assertFalse(findButton(dashboard, "고양이 부르기").isVisible());
+            assertTrue(findButton(dashboard, "고양이 쓰다듬기").isVisible());
             assertFalse(findButton(dashboard, "방 선택하기").isVisible());
             dashboard.getActionMap().get("dismissIntro").actionPerformed(null);
             assertFalse(findButton(dashboard, "방 선택하기").isVisible());
@@ -488,16 +490,18 @@ class AIntegrationTest {
         await(() -> findButton(host.pages.get("dashboard"), "방 선택하기").isVisible());
         edt(() -> {
             DashboardPage dashboard = (DashboardPage) host.pages.get("dashboard");
+            assertTrue(findButton(dashboard, "고양이 부르기").isVisible());
+            assertTrue(findButton(dashboard, "고양이 쓰다듬기").isVisible());
             findButton(dashboard, "방 선택하기").doClick();
-            assertEquals("maps", host.visible);
-            assertEquals(0, countMessage(host.pages.get("maps")));
+            assertEquals("dashboard", host.visible);
             return null;
         });
-        await(() -> hasButton(host.pages.get("maps"), "입장하기"));
+        await(() -> "maps".equals(host.visible));
+        await(() -> hasButton(host.pages.get("maps"), "서재의 마지막 암호"));
         edt(() -> {
-            assertTrue(findButton(host.pages.get("maps"), "입장하기").isEnabled());
-            assertFalse(findButton(host.pages.get("maps"), "준비 중").isEnabled());
-            findButton(host.pages.get("maps"), "입장하기").doClick();
+            findButton(host.pages.get("maps"), "서재의 마지막 암호").doClick();
+            assertTrue(findButton(host.pages.get("maps"), "이 방 시작하기").isEnabled());
+            findButton(host.pages.get("maps"), "이 방 시작하기").doClick();
             assertEquals("game", host.visible);
             cleanup.add((GamePage) host.pages.get("game"));
             return null;
@@ -526,11 +530,14 @@ class AIntegrationTest {
         edt(() -> {
             controller.backToMaps();
             assertEquals("maps", host.visible);
-            findButton(host.pages.get("maps"), "대시보드로 돌아가기").doClick();
+            findButton(host.pages.get("maps"), "로비로 돌아가기").doClick();
             assertEquals("dashboard", host.visible);
             findButton(host.pages.get("dashboard"), "방 선택하기").doClick();
-            assertEquals("maps", host.visible);
-            findButton(host.pages.get("maps"), "대시보드로 돌아가기").doClick();
+            return null;
+        });
+        await(() -> "maps".equals(host.visible));
+        edt(() -> {
+            findButton(host.pages.get("maps"), "로비로 돌아가기").doClick();
             controller.logout();
             assertEquals("login", host.visible);
             return null;
@@ -738,9 +745,10 @@ class AIntegrationTest {
             dashboardMaps.doClick();
             return null;
         });
-        await(() -> hasButton(frame, "입장하기"));
+        await(() -> hasButton(frame, "서재의 마지막 암호"));
         edt(() -> {
-            JButton enter = findButton(frame, "입장하기");
+            findButton(frame, "서재의 마지막 암호").doClick();
+            JButton enter = findButton(frame, "이 방 시작하기");
             assertTrue(enter.isShowing(), "맵 화면의 이동 버튼이 실제 창에 표시되어야 합니다.");
             enter.doClick();
             return null;
@@ -768,9 +776,9 @@ class AIntegrationTest {
             settings.doClick();
             return null;
         });
-        await(() -> hasButton(frame, "입장하기"));
+        await(() -> hasButton(frame, "서재의 마지막 암호"));
         edt(() -> {
-            assertTrue(findButton(frame, "입장하기").isShowing());
+            assertTrue(findButton(frame, "서재의 마지막 암호").isShowing());
             frame.dispatchEvent(new WindowEvent(frame, WindowEvent.WINDOW_CLOSING));
             assertFalse(frame.isDisplayable());
             return null;

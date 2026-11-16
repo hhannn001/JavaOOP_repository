@@ -44,7 +44,7 @@ public final class ResultPanel extends JPanel {
         setBorder(BorderFactory.createEmptyBorder(24, 24, 24, 24));
         JPanel messages = new JPanel(new GridLayout(3, 1, 0, 10));
         messages.setOpaque(false);
-        title.setFont(new Font("Dialog", Font.BOLD, 24));
+        title.setFont(coderoom.shared.ui.PixelTheme.font(24).deriveFont(Font.BOLD));
         for (JLabel label : new JLabel[] {title, time, status}) {
             label.setForeground(new Color(223, 200, 145));
             messages.add(label);

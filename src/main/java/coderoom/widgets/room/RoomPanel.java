@@ -72,6 +72,7 @@ public class RoomPanel extends JPanel {
     private final Consumer<RoomObjectId> onObjectClick;
     private final boolean fillScreen;
     private GameStage stage = GameStage.START;
+    private boolean investigationOpen;
     private Hotspot hovered;
     private Hotspot pressed;
     private boolean showHotspots = false;
@@ -126,6 +127,10 @@ public class RoomPanel extends JPanel {
         repaint();
     }
 
+    public void setInvestigationOpen(boolean open) {
+        if (investigationOpen != open) { investigationOpen = open; repaint(); }
+    }
+
     public void setStage(GameStage stage) {
         if (this.stage != stage) {
             this.stage = Objects.requireNonNull(stage);
@@ -156,10 +161,10 @@ public class RoomPanel extends JPanel {
             drawHighlights(g);
             g.setColor(GOLD);
             g.setFont(new java.awt.Font(java.awt.Font.SANS_SERIF, java.awt.Font.BOLD, 24));
-            if (stage.ordinal() >= GameStage.DRAWER_OPEN.ordinal()) {
+            if (!investigationOpen && stage.ordinal() >= GameStage.DRAWER_OPEN.ordinal()) {
                 g.drawString("서랍 열림", 565, 780);
             }
-            if (stage.ordinal() >= GameStage.SAFE_OPEN.ordinal()) {
+            if (!investigationOpen && stage.ordinal() >= GameStage.SAFE_OPEN.ordinal()) {
                 g.drawString("금고 열림", 960, 510);
             }
             if (stage == GameStage.ESCAPED) {

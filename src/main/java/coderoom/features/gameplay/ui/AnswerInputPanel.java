@@ -1,27 +1,22 @@
 package coderoom.features.gameplay.ui;
 
+import coderoom.shared.ui.PixelTheme;
 import java.awt.BorderLayout;
 import java.awt.Color;
-import java.awt.Component;
-import java.awt.Cursor;
 import java.awt.Dimension;
-import java.awt.Font;
-import java.awt.FontMetrics;
 import java.awt.Graphics;
-import java.awt.GridLayout;
-import java.awt.event.KeyAdapter;
-import java.awt.event.KeyEvent;
+import java.awt.Graphics2D;
+import java.awt.Rectangle;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.util.function.Consumer;
-
 import javax.swing.BorderFactory;
-import javax.swing.Box;
-import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
+import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
-import javax.swing.border.EmptyBorder;
 import javax.swing.text.AbstractDocument;
 import javax.swing.text.AttributeSet;
 import javax.swing.text.BadLocationException;
@@ -29,512 +24,209 @@ import javax.swing.text.DocumentFilter;
 
 /**
  * 담당: F
- * 역할: 서랍 4자리 암호 / 벽 3x3 다이얼 입력 UI
- *
- * 현재는 UI만 구현한다.
- * 실제 정답 판정 및 데이터 연동은 추후 구현한다.
+ * 역할: 서랍 4자리 암호와 벽 3×3 다이얼의 확대 입력 UI를 표시한다.
+ * 제출 콜백은 A의 화면 연결을 통해 E의 정답 판정으로 전달하고 결과 메시지를 표시한다.
  */
 public class AnswerInputPanel extends JPanel {
+    public enum InputMode { DIGITS4, GRID3X3 }
 
-    public enum InputMode {
-        DIGITS4,
-        GRID3X3
-    }
-
-    // 프로토타입 색상
-    private static final Color BG = new Color(40, 59, 45);
-    private static final Color INPUT_BG = new Color(24, 39, 29);
-    private static final Color GOLD = new Color(220, 196, 142);
-    private static final Color TEXT = new Color(235, 231, 207);
-    private static final Color LINE = new Color(123, 139, 105);
-
-    private final JLabel titleLabel = new JLabel();
-    private final JLabel descriptionLabel = new JLabel();
-    private final JLabel guideLabel = new JLabel();
-    private final JLabel messageLabel = new JLabel(" ");
-
-    private final JPanel inputContainer =
-            new JPanel(new BorderLayout());
-
-    private final JButton submitButton = new JButton();
-    private final JButton closeButton = new JButton("×");
-
+    private final JLabel title   = new JLabel();
+    private final JLabel message = new JLabel(" ", SwingConstants.CENTER);
+    private final JLabel guide   = new JLabel(" ", SwingConstants.CENTER);
+    private final JButton submit = PixelTheme.button("서랍 열기  →");
+    private final ObjectCanvas object = new ObjectCanvas();
+    private InputMode mode = InputMode.DIGITS4;
     private JTextField fourDigitField;
     private JTextField[] gridFields;
-
-    private InputMode mode = InputMode.DIGITS4;
-
     private Runnable onClose;
     private Consumer<String> onSubmit;
 
     public AnswerInputPanel() {
-
-        setLayout(new BorderLayout(0, 15));
-        setBackground(BG);
-
-        setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(LINE, 4),
-                BorderFactory.createCompoundBorder(
-                        BorderFactory.createEmptyBorder(7, 7, 7, 7),
-                        BorderFactory.createCompoundBorder(
-                                BorderFactory.createLineBorder(LINE, 1),
-                                new EmptyBorder(25, 28, 25, 28)
-                        )
-                )
-        ));
-
-        setPreferredSize(new Dimension(440, 540));
-
-        // 상단: 제목 + 닫기
+        setOpaque(false);
+        setLayout(new BorderLayout(0, 12));
+        setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
         JPanel header = new JPanel(new BorderLayout());
         header.setOpaque(false);
-
-        titleLabel.setFont(
-                new Font("Dialog", Font.BOLD, 23)
-        );
-        titleLabel.setForeground(TEXT);
-
-        closeButton.setFont(
-                new Font("Dialog", Font.PLAIN, 28)
-        );
-        closeButton.setForeground(TEXT);
-        closeButton.setContentAreaFilled(false);
-        closeButton.setBorderPainted(false);
-        closeButton.setFocusPainted(false);
-        closeButton.setCursor(
-                Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
-        );
-
-        closeButton.addActionListener(e -> {
+        title.setFont(PixelTheme.font(24));
+        title.setForeground(PixelTheme.LIGHT);
+        JButton close = PixelTheme.button("닫기 X");
+        close.addActionListener(event -> {
             setVisible(false);
-
-            if (onClose != null) {
-                onClose.run();
-            }
+            if (onClose != null) { onClose.run(); }
         });
-
-        header.add(titleLabel, BorderLayout.CENTER);
-        header.add(closeButton, BorderLayout.EAST);
+        title.setVisible(false);
+        header.add(close, BorderLayout.EAST);
         add(header, BorderLayout.NORTH);
-
-        // 중앙: 설명 + 입력칸
-        JPanel center = new JPanel();
-        center.setOpaque(false);
-        center.setLayout(new BoxLayout(center, BoxLayout.Y_AXIS));
-        center.setBorder(new EmptyBorder(15, 0, 0, 0));
-
-        descriptionLabel.setFont(
-                new Font("Dialog", Font.PLAIN, 13)
-        );
-        descriptionLabel.setForeground(TEXT);
-        descriptionLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-        guideLabel.setFont(
-                new Font("Dialog", Font.PLAIN, 13)
-        );
-        guideLabel.setForeground(TEXT);
-        guideLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-        inputContainer.setOpaque(false);
-        inputContainer.setAlignmentX(Component.LEFT_ALIGNMENT);
-        inputContainer.setMaximumSize(
-                new Dimension(Integer.MAX_VALUE, 235)
-        );
-
-        messageLabel.setFont(
-                new Font("Dialog", Font.PLAIN, 12)
-        );
-        messageLabel.setForeground(GOLD);
-        messageLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-        center.add(descriptionLabel);
-        center.add(Box.createVerticalStrut(30));
-        center.add(guideLabel);
-        center.add(Box.createVerticalStrut(25));
-        center.add(inputContainer);
-        center.add(Box.createVerticalStrut(10));
-        center.add(messageLabel);
-
-        add(center, BorderLayout.CENTER);
-
-        // 하단: 제출 버튼
-        submitButton.setBackground(GOLD);
-        submitButton.setForeground(BG);
-        submitButton.setFont(
-                new Font("Dialog", Font.BOLD, 16)
-        );
-        submitButton.setFocusPainted(false);
-        submitButton.setOpaque(true);
-        submitButton.setBorderPainted(false);
-        submitButton.setPreferredSize(
-                new Dimension(340, 55)
-        );
-        submitButton.setCursor(
-                Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
-        );
-
-        submitButton.addActionListener(e -> submitAnswer());
-
-        add(submitButton, BorderLayout.SOUTH);
-
-        // 초기 화면
+        add(object, BorderLayout.CENTER);
+        JPanel footer = new JPanel(new BorderLayout(0, 8));
+        footer.setOpaque(false);
+        guide.setFont(PixelTheme.font(13));
+        guide.setForeground(PixelTheme.LIGHT);
+        message.setFont(PixelTheme.font(13));
+        message.setForeground(PixelTheme.LIGHT);
+        guide.setVisible(false);
+        message.setPreferredSize(new Dimension(1, 24));
+        footer.add(message, BorderLayout.CENTER);
+        footer.add(submit, BorderLayout.SOUTH);
+        add(footer, BorderLayout.SOUTH);
+        submit.addActionListener(event -> submitAnswer());
         showFourDigits();
-
-        // [추후 연동 - A/E 담당]
-        // GamePage가 AnswerType을 전달
-        // GameFacade에서 정답을 판정
-        // SubmitResult의 결과 메시지만 UI에 반영
     }
 
-    /**
-     * 4자리 암호 화면
-     */
     public void showFourDigits() {
-
         mode = InputMode.DIGITS4;
-        inputContainer.removeAll();
-
-        titleLabel.setText("잠긴 서랍");
-        descriptionLabel.setText(
-                "네 자리 숫자 잠금 장치가 있다."
-        );
-        guideLabel.setText("네 자리 암호");
-        submitButton.setText("서랍 열기  →");
-        messageLabel.setText(" ");
-
-        // 빈 입력칸에 네 자리 안내용 점을 표시
-        fourDigitField = createInputField(". . . .");
-
-        fourDigitField.setHorizontalAlignment(
-                JTextField.CENTER
-        );
-        fourDigitField.setFont(
-                new Font(Font.MONOSPACED, Font.BOLD, 33)
-        );
-        fourDigitField.setForeground(GOLD);
-        fourDigitField.setBackground(INPUT_BG);
-        fourDigitField.setCaretColor(GOLD);
-        fourDigitField.setBorder(
-                BorderFactory.createCompoundBorder(
-                        BorderFactory.createLineBorder(GOLD, 2),
-                        new EmptyBorder(10, 12, 10, 12)
-                )
-        );
-
-        // 숫자만 입력 가능, 최대 4자리
-        setDigitLimit(fourDigitField, 4);
-
-        fourDigitField.addActionListener(e -> submitAnswer());
-
-        JPanel inputBox = new JPanel(new BorderLayout());
-        inputBox.setOpaque(false);
-        inputBox.setMaximumSize(
-                new Dimension(Integer.MAX_VALUE, 90)
-        );
-        inputBox.setPreferredSize(new Dimension(350, 90));
-        inputBox.add(fourDigitField, BorderLayout.CENTER);
-
-        inputContainer.add(inputBox, BorderLayout.NORTH);
-
-        // 긴 입력창을 표시하는 4자리 모드
-        inputContainer.setPreferredSize(
-                new Dimension(350, 100)
-        );
-
-        refreshLayout();
-
-        SwingUtilities.invokeLater(
-                fourDigitField::requestFocusInWindow
-        );
-    }
-
-    /**
-     * 3x3 다이얼 화면
-     */
-    public void showGrid3x3() {
-
-        mode = InputMode.GRID3X3;
-        inputContainer.removeAll();
-
-        titleLabel.setText("벽의 3 × 3 다이얼");
-        descriptionLabel.setText(
-                "세 줄의 숫자가 작은 금고의 암호인 것 같다."
-        );
-        guideLabel.setText(
-                "메모의 출력값을 행 순서대로 입력하세요."
-        );
-        submitButton.setText("다이얼 확인  →");
-        messageLabel.setText(" ");
-
-        JPanel grid = new JPanel(
-                new GridLayout(3, 3, 9, 9)
-        );
-        grid.setOpaque(false);
-
-        gridFields = new JTextField[9];
-
-        for (int i = 0; i < 9; i++) {
-
-            final int index = i;
-
-            // 빈칸에 점(.) 표시
-            JTextField field = createInputField(".");
-
-            field.setHorizontalAlignment(
-                    JTextField.CENTER
-            );
-            field.setFont(
-                    new Font(Font.MONOSPACED, Font.BOLD, 27)
-            );
-            field.setForeground(GOLD);
-            field.setBackground(INPUT_BG);
-            field.setCaretColor(GOLD);
-
-            field.setBorder(
-                    BorderFactory.createLineBorder(LINE, 2)
-            );
-
-            // 각 칸에는 숫자 1개만 허용
-            setDigitLimit(field, 1);
-
-            gridFields[i] = field;
-            grid.add(field);
-
-            // 숫자를 입력하면 다음 칸으로 이동
-            field.getDocument().addDocumentListener(
-                    new javax.swing.event.DocumentListener() {
-
-                        @Override
-                        public void insertUpdate(
-                                javax.swing.event.DocumentEvent e) {
-                            moveNext();
-                        }
-
-                        @Override
-                        public void removeUpdate(
-                                javax.swing.event.DocumentEvent e) {
-                        }
-
-                        @Override
-                        public void changedUpdate(
-                                javax.swing.event.DocumentEvent e) {
-                        }
-
-                        private void moveNext() {
-                            if (index < 8) {
-                                SwingUtilities.invokeLater(() -> {
-                                    if (field.getText().length() == 1) {
-                                        gridFields[index + 1]
-                                                .requestFocusInWindow();
-                                    }
-                                });
-                            }
-                        }
-                    }
-            );
-
-            // Backspace를 누르면 이전 칸으로 이동
-            field.addKeyListener(new KeyAdapter() {
-                @Override
-                public void keyPressed(KeyEvent e) {
-
-                    if (e.getKeyCode() == KeyEvent.VK_BACK_SPACE
-                            && field.getText().isEmpty()
-                            && index > 0) {
-
-                        gridFields[index - 1]
-                                .requestFocusInWindow();
-                    }
+        object.removeAll();
+        title.setText("서랍의 잠금장치");
+        guide.setText("숫자를 입력하거나 각 자리의 바퀴를 누르세요.");
+        submit.setText("서랍 열기  →");
+        fourDigitField = new JTextField() {
+            @Override protected void paintComponent(Graphics graphics) {
+                Graphics2D g = (Graphics2D) graphics.create();
+                PixelTheme.pixels(g);
+                int cell = getWidth() / 4;
+                g.setFont(PixelTheme.font(Math.max(16, getHeight() * .58f)));
+                g.setColor(PixelTheme.LIGHT);
+                for (int i = 0; i < 4; i++) {
+                    String digit = getText().length() > i ? getText().substring(i, i + 1) : "0";
+                    g.drawString(digit, i * cell + (cell - g.getFontMetrics().stringWidth(digit)) / 2,
+                            (getHeight() + g.getFontMetrics().getAscent()) / 2 - 3);
                 }
-            });
-
-            // Enter로 제출
-            field.addActionListener(e -> submitAnswer());
-        }
-
-        inputContainer.add(grid, BorderLayout.CENTER);
-        inputContainer.setPreferredSize(
-                new Dimension(350, 235)
-        );
-
-        refreshLayout();
-
-        SwingUtilities.invokeLater(
-                () -> gridFields[0].requestFocusInWindow()
-        );
-    }
-
-    /**
-     * 실제 입력 데이터 수집
-     * 정답 판정은 하지 않음.
-     */
-    private void submitAnswer() {
-
-        String answer;
-
-        if (mode == InputMode.DIGITS4) {
-
-            answer = fourDigitField.getText();
-
-            if (answer.length() != 4) {
-                showMessage("숫자 4자리를 입력해 주세요.");
-                return;
-            }
-
-        } else {
-
-            StringBuilder builder = new StringBuilder();
-
-            for (JTextField field : gridFields) {
-
-                if (field.getText().length() != 1) {
-                    showMessage("9개 칸을 모두 입력해 주세요.");
-                    return;
-                }
-
-                builder.append(field.getText());
-            }
-
-            // 왼쪽 위부터 행 순서로 이어 붙임
-            answer = builder.toString();
-        }
-
-        if (onSubmit != null) {
-            // 이전 안내를 지우고 입력값을 외부로 전달한다.
-            // A 담당자가 GamePage.submit에 연결하고 판정 결과를 showMessage로 표시한다.
-            showMessage(" ");
-            onSubmit.accept(answer);
-        } else {
-            // 외부 연결 전에는 UI 테스트용 안내 메시지를 표시한다.
-            showMessage("입력 완료: " + answer);
-        }
-    }
-
-    /**
-     * 입력값을 숫자로 제한
-     */
-    private void setDigitLimit(
-            JTextField field, int maxLength) {
-
-        AbstractDocument document =
-                (AbstractDocument) field.getDocument();
-
-        document.setDocumentFilter(new DocumentFilter() {
-
-            @Override
-            public void insertString(
-                    FilterBypass fb,
-                    int offset,
-                    String string,
-                    AttributeSet attr)
-                    throws BadLocationException {
-
-                replace(fb, offset, 0, string, attr);
-            }
-
-            @Override
-            public void replace(
-                    FilterBypass fb,
-                    int offset,
-                    int length,
-                    String text,
-                    AttributeSet attrs)
-                    throws BadLocationException {
-
-                if (text == null) {
-                    return;
-                }
-
-                String current = fb.getDocument().getText(
-                        0, fb.getDocument().getLength()
-                );
-
-                String result =
-                        current.substring(0, offset)
-                        + text
-                        + current.substring(offset + length);
-
-                if (result.matches("[0-9]*")
-                        && result.length() <= maxLength) {
-
-                    super.replace(
-                            fb, offset, length, text, attrs
-                    );
-                }
-            }
-        });
-    }
-
-    /**
-     * 빈 입력칸에 안내용 문자열 표시
-     * 실제 입력값에는 포함되지 않음.
-     */
-    private JTextField createInputField(String placeholderText) {
-
-        return new JTextField() {
-
-            @Override
-            protected void paintComponent(Graphics g) {
-
-                super.paintComponent(g);
-
-                if (!getText().isEmpty()) {
-                    return;
-                }
-
-                Graphics placeholder = g.create();
-
-                try {
-                    placeholder.setFont(getFont());
-                    placeholder.setColor(GOLD);
-
-                    FontMetrics metrics =
-                            placeholder.getFontMetrics();
-
-                    int x =
-                            (getWidth() - metrics.stringWidth(placeholderText)) / 2;
-
-                    int y =
-                            (getHeight() - metrics.getHeight()) / 2
-                            + metrics.getAscent();
-
-                    placeholder.drawString(placeholderText, x, y);
-
-                } finally {
-                    placeholder.dispose();
-                }
+                g.dispose();
             }
         };
+        configure(fourDigitField, 4, "서랍 네 자리 암호");
+        fourDigitField.setText("0000");
+        fourDigitField.addMouseListener(new MouseAdapter() {
+            @Override public void mouseClicked(MouseEvent event) {
+                int index = Math.min(3, event.getX() * 4 / Math.max(1, fourDigitField.getWidth()));
+                String padded = (fourDigitField.getText() + "0000").substring(0, 4);
+                char[] digits = padded.toCharArray();
+                int delta = SwingUtilities.isRightMouseButton(event) ? 9 : 1;
+                digits[index] = (char) ('0' + (digits[index] - '0' + delta) % 10);
+                fourDigitField.setText(new String(digits));
+                fourDigitField.select(index, index + 1);
+            }
+        });
+        object.add(fourDigitField);
+        setPreferredSize(new Dimension(620, 570));
+        refresh();
     }
 
-    /**
-     * 안내 메시지 표시
-     */
-    public void showMessage(String message) {
-        messageLabel.setText(message);
+    public void showGrid3x3() {
+        mode = InputMode.GRID3X3;
+        object.removeAll();
+        title.setText("벽의 아홉 다이얼");
+        guide.setText("눌러서 돌리기 · 오른쪽 클릭은 반대 방향 · 숫자 입력 가능");
+        submit.setText("다이얼 확인  →");
+        gridFields = new JTextField[9];
+        for (int i = 0; i < gridFields.length; i++) {
+            JTextField field = new JTextField() {
+                @Override protected void paintComponent(Graphics graphics) {
+                    Graphics2D g = (Graphics2D) graphics.create();
+                    int size = Math.min(getWidth(), getHeight());
+                    g.setFont(PixelTheme.font(Math.max(16, size * .40f)));
+                    g.setColor(new Color(44, 27, 11));
+                    String digit = getText().isEmpty() ? "0" : getText();
+                    g.drawString(digit, (getWidth() - g.getFontMetrics().stringWidth(digit)) / 2,
+                            (getHeight() + g.getFontMetrics().getAscent() - g.getFontMetrics().getDescent()) / 2);
+                    g.dispose();
+                }
+            };
+            configure(field, 1, "다이얼 " + (i / 3 + 1) + "행 " + (i % 3 + 1) + "열");
+            field.setText("0");
+            field.addMouseListener(new MouseAdapter() {
+                @Override public void mouseClicked(MouseEvent event) {
+                    int value = field.getText().isEmpty() ? 0 : Integer.parseInt(field.getText());
+                    int delta = SwingUtilities.isRightMouseButton(event) ? 9 : 1;
+                    field.setText(Integer.toString((value + delta) % 10));
+                    field.selectAll();
+                }
+            });
+            gridFields[i] = field;
+            object.add(field);
+        }
+        setPreferredSize(new Dimension(620, 570));
+        refresh();
     }
 
-    /**
-     * 닫기 콜백 등록
-     */
-    public void setOnClose(Runnable onClose) {
-        this.onClose = onClose;
+    private void configure(JTextField field, int limit, String name) {
+        field.setOpaque(false);
+        field.setCursor(java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.HAND_CURSOR));
+        field.setBorder(BorderFactory.createEmptyBorder());
+        field.setFont(PixelTheme.font(24));
+        field.getAccessibleContext().setAccessibleName(name);
+        field.setToolTipText(null);
+        ((AbstractDocument) field.getDocument()).setDocumentFilter(new DocumentFilter() {
+            @Override public void insertString(FilterBypass fb, int offset, String text, AttributeSet attributes)
+                    throws BadLocationException { replace(fb, offset, 0, text, attributes); }
+            @Override public void replace(FilterBypass fb, int offset, int length, String text, AttributeSet attributes)
+                    throws BadLocationException {
+                String old   = fb.getDocument().getText(0, fb.getDocument().getLength());
+                String value = old.substring(0, offset) + (text == null ? "" : text) + old.substring(offset + length);
+                if (value.matches("[0-9]{0," + limit + "}")) { super.replace(fb, offset, length, text, attributes); }
+            }
+        });
+        field.addActionListener(event -> submitAnswer());
     }
 
-    /**
-     * 형식 검사를 통과한 암호를 전달할 제출 콜백 등록
-     */
-    public void setOnSubmit(Consumer<String> onSubmit) {
-        this.onSubmit = onSubmit;
+    private void submitAnswer() {
+        StringBuilder value = new StringBuilder();
+        if (mode == InputMode.DIGITS4) { value.append(fourDigitField.getText()); }
+        else { for (JTextField field : gridFields) { value.append(field.getText()); } }
+        if (value.length() != (mode == InputMode.DIGITS4 ? 4 : 9)) {
+            showMessage(mode == InputMode.DIGITS4 ? "숫자 네 자리를 맞춰 주세요." : "아홉 다이얼을 모두 맞춰 주세요.");
+            return;
+        }
+        if (onSubmit != null) { onSubmit.accept(value.toString()); }
     }
 
-    /**
-     * 화면 갱신
-     */
-    private void refreshLayout() {
-        inputContainer.revalidate();
-        inputContainer.repaint();
+    private void refresh() {
+        message.setText(" ");
         revalidate();
         repaint();
+        SwingUtilities.invokeLater(() -> {
+            if (isShowing()) {
+                JTextField first = mode == InputMode.DIGITS4 ? fourDigitField : gridFields[0];
+                first.requestFocusInWindow();
+                first.selectAll();
+            }
+        });
+    }
+
+    public void showMessage(String value) { message.setText(value); }
+    public void setOnClose(Runnable callback) { onClose = callback; }
+    public void setOnSubmit(Consumer<String> callback) { onSubmit = callback; }
+
+    private final class ObjectCanvas extends JPanel {
+        private ObjectCanvas() { setLayout(null); setOpaque(false); }
+        private Rectangle objectBounds() {
+            double ratio = mode == InputMode.DIGITS4 ? 3 : 1;
+            int width    = Math.min(getWidth(), (int) (getHeight() * ratio));
+            int height   = (int) (width / ratio);
+            return new Rectangle((getWidth() - width) / 2, (getHeight() - height) / 2, width, height);
+        }
+        @Override protected void paintComponent(Graphics graphics) {
+            Graphics2D g = (Graphics2D) graphics.create();
+            Rectangle b = objectBounds();
+            if (mode == InputMode.DIGITS4) {
+                PixelTheme.asset(g, "drawer", b.x, b.y, b.width, b.height);
+            } else {
+                PixelTheme.asset(g, "dial", b.x, b.y, b.width, b.height);
+            }
+            g.dispose();
+        }
+        @Override public void doLayout() {
+            Rectangle b = objectBounds();
+            if (mode == InputMode.DIGITS4) {
+                fourDigitField.setBounds(b.x + b.width * 40 / 100, b.y + b.height * 45 / 100,
+                        b.width * 21 / 100, b.height * 14 / 100);
+            } else {
+                for (int i = 0; i < 9; i++) {
+                    gridFields[i].setBounds(b.x + b.width * (16 + i % 3 * 25) / 100,
+                            b.y + b.height * (16 + i / 3 * 25) / 100,
+                            b.width * 18 / 100, b.height * 18 / 100);
+                }
+            }
+        }
     }
 }

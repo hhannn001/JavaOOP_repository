@@ -1,185 +1,131 @@
 package coderoom.widgets.inventory;
 
 import coderoom.entities.game.ItemId;
-import java.util.List;
-import java.util.function.Consumer;
-
+import coderoom.shared.ui.ItemSprite;
+import coderoom.shared.ui.PixelTheme;
 import java.awt.Color;
 import java.awt.Dimension;
-import java.awt.Font;
 import java.awt.Graphics;
+import java.awt.Graphics2D;
 import java.awt.GridLayout;
-
+import java.util.List;
+import java.util.function.Consumer;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JPanel;
+import javax.swing.JComponent;
+import javax.swing.KeyStroke;
+import javax.swing.AbstractAction;
+import javax.swing.text.JTextComponent;
+import java.awt.KeyboardFocusManager;
+import java.awt.event.ActionEvent;
+import java.awt.event.KeyEvent;
 
 /**
  * 담당: F
- * 역할: 게임 화면 하단 인벤토리 UI
- *
+ * 역할: 게임 화면 하단에 메모·열쇠 인벤토리를 표시한다.
  * 게임 스냅샷의 아이템과 선택 상태를 표시하고 선택 콜백을 전달한다.
  */
 public class InventoryPanel extends JPanel {
-
     private static final int SLOT_COUNT = 5;
-
-    //인벤토리 색상
-    private static final Color BG =
-            new Color(30, 45, 36);
-
-    private static final Color SLOT_BG =
-            new Color(39, 56, 45);
-
-    private static final Color BORDER =
-            new Color(119, 133, 105);
-
-    private static final Color GOLD =
-            new Color(223, 200, 145);
-
-    private static final Color SELECTED_BG =
-            new Color(70, 87, 65);
-
-    private final JButton[] slots =
-            new JButton[SLOT_COUNT];
-
-    private int selectedIndex = -1;
+    private final JButton[] slots = new JButton[SLOT_COUNT];
     private final ItemId[] itemIds = new ItemId[SLOT_COUNT];
+    private ItemId selected;
     private Consumer<ItemId> onItemSelected;
 
-    /** 외부 위젯 조립 코드에서 GamePage.selectItem에 연결한다. */
-    public void setOnItemSelected(Consumer<ItemId> listener) {
-        this.onItemSelected = listener;
-    }
-
     public InventoryPanel() {
-
-        setLayout(new GridLayout(1, SLOT_COUNT, 5, 0));
-        setBackground(BG);
-
-        setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(BORDER, 2),
-                BorderFactory.createEmptyBorder(6, 6, 6, 6)
-        ));
-
-        setPreferredSize(new Dimension(390, 70));
-
+        setLayout(new GridLayout(1, SLOT_COUNT, 2, 0));
+        setOpaque(false);
+        setBorder(BorderFactory.createEmptyBorder(4, 4, 4, 4));
+        setPreferredSize(new Dimension(390, 78));
         for (int i = 0; i < SLOT_COUNT; i++) {
-
             final int index = i;
-
-            JButton button = new JButton() {
-                private final String slotNumber = String.format("%02d", index + 1);
-                private final Font numberFont = new Font("Dialog", Font.PLAIN, 9);
-
-                @Override
-                protected void paintComponent(Graphics g) {
-                    super.paintComponent(g);
-
-                    Graphics numberGraphics = g.create();
-                    try {
-                        numberGraphics.setFont(numberFont);
-                        numberGraphics.setColor(GOLD);
-                        numberGraphics.drawString(
-                                slotNumber, 5,
-                                4 + numberGraphics.getFontMetrics().getAscent()
-                        );
-                    } finally {
-                        numberGraphics.dispose();
+            JButton slot = new JButton() {
+                @Override protected void paintComponent(Graphics graphics) {
+                    Graphics2D g = (Graphics2D) graphics.create();
+                    int w = getWidth();
+                    int h = getHeight();
+                    g.setColor(new Color(43, 39, 35));
+                    g.fillRect(0, 0, w, h);
+                    g.setColor(new Color(129, 119, 101));
+                    g.fillRect(0, 0, w, 3);
+                    g.fillRect(0, 0, 3, h);
+                    g.setColor(new Color(22, 20, 18));
+                    g.fillRect(0, h - 3, w, 3);
+                    g.fillRect(w - 3, 0, 3, h);
+                    g.setColor(new Color(68, 61, 51));
+                    g.fillRect(4, 4, w - 8, h - 8);
+                    if (itemIds[index] != null && itemIds[index] == selected) {
+                        g.setColor(new Color(239, 232, 205));
+                        g.drawRect(0, 0, w - 1, h - 1);
+                        g.drawRect(1, 1, w - 3, h - 3);
+                        g.drawRect(3, 3, w - 7, h - 7);
                     }
+                    if (getIcon() != null) {
+                        getIcon().paintIcon(this, g, (w - getIcon().getIconWidth()) / 2,
+                                (h - getIcon().getIconHeight()) / 2 + 3);
+                    }
+                    g.setColor(PixelTheme.LIGHT);
+                    g.setFont(PixelTheme.font(12));
+                    g.drawString(Integer.toString(index + 1), 7, 15);
+                    g.dispose();
+
                 }
             };
+            slot.setFont(PixelTheme.font(13));
+            slot.setForeground(PixelTheme.LIGHT);
+            slot.setContentAreaFilled(false);
+            slot.setBorderPainted(false);
+            slot.setFocusPainted(false);
 
-            button.setFont(
-                    new Font("Dialog", Font.BOLD, 11)
-            );
-
-            button.setForeground(GOLD);
-            button.setBackground(SLOT_BG);
-            button.setFocusPainted(false);
-            button.setOpaque(true);
-            button.setEnabled(false);
-
-            button.setBorder(
-                    BorderFactory.createLineBorder(BORDER, 1)
-            );
-
-            slots[i] = button;
-            add(button);
-
-            button.addActionListener(e -> selectSlot(index));
+            slot.setEnabled(false);
+            slot.addActionListener(event -> selectSlot(index));
+            String action = "inventorySlot" + (i + 1);
+            getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke(KeyEvent.VK_1 + i, 0), action);
+            getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke(KeyEvent.VK_NUMPAD1 + i, 0), action);
+            getActionMap().put(action, new AbstractAction() {
+                @Override public void actionPerformed(ActionEvent event) {
+                    if (!(KeyboardFocusManager.getCurrentKeyboardFocusManager().getFocusOwner() instanceof JTextComponent)) {
+                        selectSlot(index);
+                    }
+                }
+            });
+            slots[i] = slot;
+            add(slot);
         }
-
     }
 
-    /**
-     * 슬롯에 표시할 아이템 설정
-     */
-    public void setItem(int index, ItemId id, String name) {
-
-        if (index < 0 || index >= SLOT_COUNT) {
-            return;
+    private void selectSlot(int index) {
+        if (isVisible() && itemIds[index] != null) {
+            setSelectedItem(itemIds[index]);
+            if (onItemSelected != null) { onItemSelected.accept(itemIds[index]); }
         }
+    }
 
+    public void setOnItemSelected(Consumer<ItemId> callback) { onItemSelected = callback; }
+    public void setSelectedItem(ItemId id) { selected = id; repaint(); }
+    public void setItem(int index, ItemId id, String name) {
+        if (index < 0 || index >= SLOT_COUNT) { return; }
+        if (itemIds[index] != id) { slots[index].setIcon(id == null ? null : new ItemSprite(id)); }
         itemIds[index] = id;
-        slots[index].setText(id != null ? name : "");
+        slots[index].setText(id == null ? "" : name);
+        slots[index].setToolTipText(id == null ? null : name + " 살펴보기");
         slots[index].setEnabled(id != null);
     }
-
-    /**
-     * 아이템 선택 시 테두리 강조
-     */
-    private void selectSlot(int index) {
-
-        if (itemIds[index] == null) {
-            return;
-        }
-
-        setSelectedItem(itemIds[index]);
-
-        if (onItemSelected != null) {
-            onItemSelected.accept(itemIds[index]);
-        }
-    }
-
-    public void setSelectedItem(ItemId id) {
-        int index = -1;
-        for (int i = 0; i < SLOT_COUNT; i++) {
-            if (id != null && itemIds[i] == id) {
-                index = i;
-            }
-        }
-        selectedIndex = index;
-
-        for (int i = 0; i < SLOT_COUNT; i++) {
-            boolean selected = (i == selectedIndex);
-            slots[i].setBackground(
-                    selected ? SELECTED_BG : SLOT_BG
-            );
-            slots[i].setBorder(
-                    BorderFactory.createLineBorder(
-                            selected ? GOLD : BORDER,
-                            selected ? 3 : 1
-                    )
-            );
-        }
-    }
-
     public void setItems(List<ItemId> ids, List<String> names) {
         if (ids.size() != names.size() || ids.size() > SLOT_COUNT) {
             throw new IllegalArgumentException("아이템 ID와 이름 개수를 확인하세요.");
         }
-
-        selectedIndex = -1;
-
         for (int i = 0; i < SLOT_COUNT; i++) {
-            boolean hasItem = i < ids.size();
-            setItem(i, hasItem ? ids.get(i) : null, hasItem ? names.get(i) : "");
-            slots[i].setBackground(SLOT_BG);
-            slots[i].setBorder(
-                    BorderFactory.createLineBorder(BORDER, 1)
-            );
+            setItem(i, i < ids.size() ? ids.get(i) : null, i < names.size() ? names.get(i) : "");
         }
     }
-
+    @Override protected void paintComponent(Graphics graphics) {
+        Graphics2D g = (Graphics2D) graphics.create();
+        g.setColor(new Color(20, 18, 16));
+        g.fillRect(0, 0, getWidth(), getHeight());
+        g.setColor(new Color(148, 137, 114));
+        g.drawRect(1, 1, getWidth() - 3, getHeight() - 3);
+        g.dispose();
+    }
 }
