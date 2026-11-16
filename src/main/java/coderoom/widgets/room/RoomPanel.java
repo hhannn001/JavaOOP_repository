@@ -1,23 +1,21 @@
 package coderoom.widgets.room;
 
+import coderoom.entities.game.GameStage;
 import coderoom.entities.game.RoomObjectId;
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Cursor;
 import java.awt.Dimension;
-import java.awt.FontMetrics;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
-import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.RenderingHints;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.awt.geom.Point2D;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.logging.Logger;
@@ -29,80 +27,62 @@ import javax.swing.JPanel;
  * 역할: 방 그림과 물건 클릭 영역
  * 상위 타입: javax.swing.JPanel
  *
- * 1단계 구현 범위: 방 배경 그리기 + 창 크기에 맞춘 확대·축소 + 서랍·다이얼·문 등의 클릭 처리.
- * 아직 하지 않는 것(다음 단계): 단계별 그림 교체(열린 서랍·해제된 다이얼·열린 문), GameView 연동.
- *
- * 핵심 아이디어: 클릭 영역을 "화면 좌표"가 아니라 "그림 원본 좌표(1586×992)"로 적어 두고,
- * 그리기와 클릭 판정이 항상 같은 변환(layout)을 쓰게 해서 그림과 클릭 영역이 어긋나지 않게 한다.
+ * 하는 일: ① 방 그림을 창 크기에 맞춰 그린다. ② 서랍·다이얼·문 등을 누르면 콜백으로 알린다.
+ * ③ setStage(단계)로 열린 서랍·해제된 다이얼·열린 문 그림을 덧그린다.
+ * 클릭 영역은 "그림 원본 좌표(1586×992)"로 적고, 그리기와 클릭 판정이 같은 배율·여백을 쓴다.
  */
 public class RoomPanel extends JPanel {
     private static final Logger LOG = Logger.getLogger(RoomPanel.class.getName());
+    private static final String DIR = "/images/room/";
+    private static final Color GOLD = new Color(0xE5C286);
 
-    /** 방 배경 그림의 위치. src/main/resources 아래를 기준으로 한 경로다. */
-    private static final String BACKGROUND_PATH = "/images/room/study_locked.png";
+    /** 클릭 영역(x, y, 가로, 세로). 그림 원본 픽셀 기준이며 서로 겹치지 않는다. 어긋나면 이 숫자만 고친다. */
+    private static final Map<RoomObjectId, Rectangle> HOTSPOTS = Map.of(
+            RoomObjectId.DRAWER,    new Rectangle(522, 494, 290, 258),
+            RoomObjectId.WALL_DIAL, new Rectangle(945, 285, 193, 195),
+            RoomObjectId.DOOR,      new Rectangle(1233, 112, 289, 624),
+            RoomObjectId.BOOKS,     new Rectangle(520, 170, 332, 248),
+            RoomObjectId.WINDOW,    new Rectangle(118, 72, 280, 408));
 
-    /** 그림 비율이 창과 다를 때 남는 빈 공간의 색. 프로토타입의 짙은 녹색(--deep)과 같다. */
-    private static final Color LETTERBOX = new Color(0x15271E);
-    private static final Color GOLD      = new Color(0xE5C286);
+    private final Consumer<RoomObjectId> onClick;
+    private final BufferedImage background = load("study_locked.png");
+    private final BufferedImage drawerOpen = load("drawer_open.png");
+    private final BufferedImage dialSolved = load("dial_solved.png");
+    private final BufferedImage doorOpen   = load("door_open.png");
+    private BufferedImage scene;                       // 배경 + 현재 단계의 덧그림을 미리 합쳐 둔 그림
+    private GameStage stage = GameStage.START;
+    private RoomObjectId hovered;
+    private RoomObjectId pressed;
 
-    /**
-     * 클릭할 수 있는 물건 목록. Rectangle(x, y, 가로, 세로)이며 단위는 "그림 원본 픽셀"이다.
-     * 겹치는 곳이 있으면 목록 앞쪽이 우선한다. 위치가 어긋나면 이 숫자만 고치면 된다.
-     */
-    private static final List<Hotspot> HOTSPOTS = List.of(
-            new Hotspot(RoomObjectId.DRAWER,    "서랍장",      new Rectangle(522, 494, 290, 258)),
-            new Hotspot(RoomObjectId.WALL_DIAL, "벽의 다이얼", new Rectangle(945, 285, 193, 195)),
-            new Hotspot(RoomObjectId.DOOR,      "출입문",      new Rectangle(1233, 112, 289, 624)),
-            new Hotspot(RoomObjectId.BOOKS,     "책장",        new Rectangle(520, 170, 332, 248)),
-            new Hotspot(RoomObjectId.WINDOW,    "창문",        new Rectangle(118, 72, 280, 408)));
-
-    /** 클릭 가능한 물건 하나: 무엇인지(id), 마우스를 올렸을 때 보일 이름, 차지하는 영역. */
-    private record Hotspot(RoomObjectId id, String label, Rectangle area) { }
-
-    /** 그림을 화면 어디에 얼마나 크게 그리는지. 그리기와 클릭 판정이 이 값을 함께 쓴다. */
-    private record Layout(double scale, double offsetX, double offsetY) {
-        /** 화면(패널) 좌표를 그림 원본 좌표로 되돌린다. */
-        Point2D.Double toImage(Point screen) {
-            return new Point2D.Double((screen.x - offsetX) / scale, (screen.y - offsetY) / scale);
-        }
-    }
-
-    private final BufferedImage background;
-    private final Consumer<RoomObjectId> onObjectClick;
-    private Hotspot hovered;
-    private Hotspot pressed;
-    private boolean showHotspots = false;
-
-    /** 클릭된 물건을 알려 줄 콜백을 받는다. 실제 게임 규칙은 이 패널이 아니라 콜백 쪽이 처리한다. */
-    public RoomPanel(Consumer<RoomObjectId> onObjectClick) {
-        this.onObjectClick = Objects.requireNonNull(onObjectClick);
-        this.background    = loadBackground();
+    /** 물건을 누르면 onClick이 호출된다. 정답 판정 같은 게임 규칙은 이 패널이 아니라 받는 쪽이 처리한다. */
+    public RoomPanel(Consumer<RoomObjectId> onClick) {
+        this.onClick = Objects.requireNonNull(onClick);
         setPreferredSize(new Dimension(960, 600));
-        setBackground(LETTERBOX);
-        setOpaque(true);
+        setBackground(new Color(0x15271E));            // 그림 비율이 창과 다를 때 남는 여백의 색
+        rebuildScene();
 
         MouseAdapter mouse = new MouseAdapter() {
             @Override
             public void mouseMoved(MouseEvent event) {
-                updateHover(hotspotAt(event.getPoint()));
+                hover(objectAt(event.getX(), event.getY()));
             }
 
             @Override
             public void mouseExited(MouseEvent event) {
-                updateHover(null);
+                hover(null);
             }
 
             @Override
             public void mousePressed(MouseEvent event) {
-                pressed = event.getButton() == MouseEvent.BUTTON1 ? hotspotAt(event.getPoint()) : null;
+                pressed = event.getButton() == MouseEvent.BUTTON1 ? objectAt(event.getX(), event.getY()) : null;
             }
 
             @Override
             public void mouseReleased(MouseEvent event) {
-                // 버튼처럼 동작한다: 누른 곳과 뗀 곳이 같은 물건일 때만 클릭으로 인정한다.
-                Hotspot spot = hotspotAt(event.getPoint());
-                if (event.getButton() == MouseEvent.BUTTON1 && spot != null && spot == pressed) {
-                    RoomPanel.this.onObjectClick.accept(spot.id());
+                // 누른 곳과 뗀 곳이 같은 물건일 때만 클릭으로 인정한다.
+                RoomObjectId released = objectAt(event.getX(), event.getY());
+                if (event.getButton() == MouseEvent.BUTTON1 && released != null && released == pressed) {
+                    RoomPanel.this.onClick.accept(released);
                 }
                 pressed = null;
             }
@@ -111,112 +91,114 @@ public class RoomPanel extends JPanel {
         addMouseMotionListener(mouse);
     }
 
-    /** 클릭 영역을 눈으로 확인하는 개발용 스위치. true면 모든 영역에 빨간 테두리를 그린다. */
-    public void setShowHotspots(boolean show) {
-        this.showHotspots = show;
-        repaint();
+    /** 게임 단계에 맞는 그림으로 바꾼다. GamePage가 새 GameView를 받을 때 room.setStage(view.stage())처럼 부른다. */
+    public void setStage(GameStage stage) {
+        Objects.requireNonNull(stage);
+        if (stage != this.stage) {
+            this.stage = stage;
+            rebuildScene();
+            repaint();
+        }
     }
 
-    @Override
-    protected void paintComponent(Graphics graphics) {
-        super.paintComponent(graphics);
-        Graphics2D g = (Graphics2D) graphics.create();
+    /** 배경 위에 단계별 덧그림을 한 번만 합쳐 둔다. 매번 그릴 때 다시 합치지 않아 빠르다. */
+    private void rebuildScene() {
+        if (background == null) {
+            return;
+        }
+        scene = new BufferedImage(background.getWidth(), background.getHeight(), BufferedImage.TYPE_INT_RGB);
+        Graphics2D g = scene.createGraphics();
         try {
-            g.setColor(LETTERBOX);
-            g.fillRect(0, 0, getWidth(), getHeight());
-            if (background == null) {
-                drawMissingImageNotice(g);
-                return;
-            }
-            g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
-            g.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
-            g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-
-            // 이후의 모든 그리기를 "그림 원본 좌표"로 할 수 있도록 좌표계를 옮기고 늘린다.
-            Layout layout = fitToPanel();
-            g.translate(layout.offsetX(), layout.offsetY());
-            g.scale(layout.scale(), layout.scale());
             g.drawImage(background, 0, 0, null);
-            drawHighlights(g);
+            // 단계는 앞 단계를 이어받으므로 "이 단계 이상"이면 겹친다. GameStage 선언 순서(START→ESCAPED)에 의존한다.
+            addOverlay(g, GameStage.DRAWER_OPEN, drawerOpen);
+            addOverlay(g, GameStage.SAFE_OPEN, dialSolved);
+            addOverlay(g, GameStage.ESCAPED, doorOpen);
         } finally {
             g.dispose();
         }
     }
 
-    /** 그림 전체가 보이도록(잘리지 않게) 가장 크게 맞추고, 남는 공간은 양쪽에 똑같이 나눈다. */
-    private Layout fitToPanel() {
-        double scale = Math.min((double) getWidth() / background.getWidth(),
-                (double) getHeight() / background.getHeight());
-        double offsetX = (getWidth() - background.getWidth() * scale) / 2.0;
-        double offsetY = (getHeight() - background.getHeight() * scale) / 2.0;
-        return new Layout(scale, offsetX, offsetY);
+    private void addOverlay(Graphics2D g, GameStage from, BufferedImage overlay) {
+        if (overlay != null && stage.compareTo(from) >= 0) {
+            g.drawImage(overlay, 0, 0, background.getWidth(), background.getHeight(), null);
+        }
     }
 
-    /** 화면의 한 점 아래에 있는 물건을 찾는다. 없으면 null. */
-    private Hotspot hotspotAt(Point screenPoint) {
+    @Override
+    protected void paintComponent(Graphics graphics) {
+        super.paintComponent(graphics);                // 여백 색으로 먼저 칠한다
+        if (scene == null) {
+            graphics.setColor(Color.WHITE);
+            graphics.drawString("방 그림을 불러오지 못했습니다: src/main/resources" + DIR + "study_locked.png", 20, 30);
+            return;
+        }
+        Graphics2D g = (Graphics2D) graphics.create();
+        try {
+            g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+            g.translate(marginX(), marginY());         // 이후 그리기는 모두 "그림 원본 좌표"
+            g.scale(scale(), scale());
+            g.drawImage(scene, 0, 0, null);
+            if (hovered != null) {
+                Rectangle area = HOTSPOTS.get(hovered);
+                g.setColor(new Color(GOLD.getRed(), GOLD.getGreen(), GOLD.getBlue(), 48));
+                g.fill(area);
+                g.setColor(GOLD);
+                g.setStroke(new BasicStroke(4f));
+                g.draw(area);
+            }
+        } finally {
+            g.dispose();
+        }
+    }
+
+    /** 그림 전체가 잘리지 않고 창에 들어가는 가장 큰 배율. */
+    private double scale() {
+        return Math.min((double) getWidth() / background.getWidth(), (double) getHeight() / background.getHeight());
+    }
+
+    /** 남는 공간을 양쪽에 똑같이 나누는 여백. 그리기와 클릭 판정이 함께 쓴다. */
+    private double marginX() {
+        return (getWidth() - background.getWidth() * scale()) / 2;
+    }
+
+    private double marginY() {
+        return (getHeight() - background.getHeight() * scale()) / 2;
+    }
+
+    /** 화면의 한 점 아래에 있는 물건. 없으면 null. */
+    private RoomObjectId objectAt(int screenX, int screenY) {
         if (background == null || getWidth() <= 0 || getHeight() <= 0) {
             return null;
         }
-        Point2D.Double p = fitToPanel().toImage(screenPoint);
-        for (Hotspot spot : HOTSPOTS) {
-            if (spot.area().contains(p.x, p.y)) {
-                return spot;
+        double x = (screenX - marginX()) / scale();
+        double y = (screenY - marginY()) / scale();
+        for (Map.Entry<RoomObjectId, Rectangle> spot : HOTSPOTS.entrySet()) {
+            if (spot.getValue().contains(x, y)) {
+                return spot.getKey();
             }
         }
         return null;
     }
 
-    private void updateHover(Hotspot spot) {
-        if (spot == hovered) {
-            return;
-        }
-        hovered = spot;
-        setCursor(Cursor.getPredefinedCursor(spot == null ? Cursor.DEFAULT_CURSOR : Cursor.HAND_CURSOR));
-        setToolTipText(spot == null ? null : spot.label());
-        repaint();
-    }
-
-    private void drawHighlights(Graphics2D g) {
-        if (showHotspots) {
-            g.setColor(new Color(0xFF3030));
-            g.setStroke(new BasicStroke(3f));
-            for (Hotspot spot : HOTSPOTS) {
-                Rectangle r = spot.area();
-                g.drawRect(r.x, r.y, r.width, r.height);
-            }
-        }
-        if (hovered != null) {
-            Rectangle r = hovered.area();
-            g.setColor(new Color(GOLD.getRed(), GOLD.getGreen(), GOLD.getBlue(), 48));
-            g.fillRoundRect(r.x, r.y, r.width, r.height, 16, 16);
-            g.setColor(GOLD);
-            g.setStroke(new BasicStroke(4f));
-            g.drawRoundRect(r.x, r.y, r.width, r.height, 16, 16);
+    private void hover(RoomObjectId object) {
+        if (object != hovered) {
+            hovered = object;
+            setCursor(Cursor.getPredefinedCursor(object == null ? Cursor.DEFAULT_CURSOR : Cursor.HAND_CURSOR));
+            repaint();
         }
     }
 
-    /** 그림 파일이 없을 때 앱이 죽지 않고, 무엇이 문제인지 알려 주는 대체 화면. */
-    private void drawMissingImageNotice(Graphics2D g) {
-        g.setColor(new Color(0xE9E7CE));
-        String[] lines = {"방 그림을 불러오지 못했습니다.", "확인할 파일: src/main/resources" + BACKGROUND_PATH};
-        FontMetrics fm = g.getFontMetrics();
-        int y = getHeight() / 2 - fm.getHeight();
-        for (String line : lines) {
-            g.drawString(line, (getWidth() - fm.stringWidth(line)) / 2, y);
-            y += fm.getHeight() + 4;
-        }
-    }
-
-    /** 클래스패스에서 배경 그림을 읽는다. 실패하면 null을 돌려주고 원인을 로그로 남긴다. */
-    private static BufferedImage loadBackground() {
-        try (InputStream in = RoomPanel.class.getResourceAsStream(BACKGROUND_PATH)) {
+    /** 그림 한 장을 읽는다. 없거나 읽지 못하면 null을 돌려주고 로그만 남겨 앱은 계속 실행된다. */
+    private static BufferedImage load(String name) {
+        try (InputStream in = RoomPanel.class.getResourceAsStream(DIR + name)) {
             if (in == null) {
-                LOG.warning("방 배경 그림을 찾을 수 없습니다: " + BACKGROUND_PATH);
+                LOG.warning("방 그림을 찾을 수 없습니다: " + DIR + name);
                 return null;
             }
             return ImageIO.read(in);
         } catch (IOException exception) {
-            LOG.warning("방 배경 그림을 읽지 못했습니다: " + exception.getMessage());
+            LOG.warning("방 그림을 읽지 못했습니다: " + DIR + name + " (" + exception.getMessage() + ")");
             return null;
         }
     }
