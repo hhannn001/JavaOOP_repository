@@ -15,7 +15,6 @@ import coderoom.shared.db.StorageException;
  * 담당: G
  * 역할: JDBC와 도메인 저장소 사이의 Adapter.
  * 구현 계약: coderoom.entities.record.ClearRecordRepository
- * 설계 초안: 필드·생성자·메서드는 아래 주석을 기준으로 구현한다.
  */
 public class JdbcClearRecordRepository implements ClearRecordRepository {
     // [연결]
@@ -29,7 +28,7 @@ public class JdbcClearRecordRepository implements ClearRecordRepository {
         this.database = Objects.requireNonNull(database);
     }
 
-    // [구현 예정]
+    // [동작]
     // clear_records를 사용자별로 조회한다.
     // (user_id, map_id) 충돌 시 더 작은 best_seconds만 유지하는 UPSERT를 구현한다.
     // 반복 저장이 행을 늘리거나 느린 기록으로 덮어쓰지 않도록 한다.
@@ -37,7 +36,7 @@ public class JdbcClearRecordRepository implements ClearRecordRepository {
     // 호출마다 연결을 열고 Connection·Statement·ResultSet을 try-with-resources로 닫는다.
     // SQLException은 원인을 보존해 StorageException으로 변환한다.
 
-    /** G의 JDBC 연결 전에는 조회가 성공한 것처럼 빈 목록을 반환하지 않는다. */
+    /** 사용자별 최고 기록을 조회한다. SQL 오류는 원인을 보존한 StorageException으로 전달한다. */
     @Override
     public List<ClearRecord> findByUserId(long userId) {
         String sql = "SELECT user_id, map_id, best_seconds "

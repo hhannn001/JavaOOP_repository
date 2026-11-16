@@ -20,7 +20,6 @@ import javax.swing.SwingUtilities;
  * 담당: A
  * 역할: 실행 진입점과 객체 조립.
  * 직접 선언한 상속·구현 관계 없음.
- * 설계 초안: 필드·생성자·메서드는 아래 주석을 기준으로 구현한다.
  */
 public class Main {
     // [연결]

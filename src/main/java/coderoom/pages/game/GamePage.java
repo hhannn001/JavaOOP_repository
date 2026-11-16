@@ -23,14 +23,13 @@ import javax.swing.Timer;
  * 담당: A
  * 역할: 방 화면과 게임 조작의 연결
  * 상위 타입: javax.swing.JPanel
- * 설계 초안: 필드·생성자·메서드는 아래 주석을 기준으로 구현한다.
  */
 public class GamePage extends JPanel {
     // [연결]
-    // coderoom.features.gameplay.GameFacade를 생성자로 받는다.
-    // widgets의 RoomPanel·InventoryPanel·CluePanel·ResultPanel과 gameplay.ui.AnswerInputPanel을 조립한다.
+    // GamePort와 Widgets를 생성자로 받으며, 실제 구현은 app.AppScreens에서 조립한다.
+    // GamePage는 개별 위젯 대신 Widgets 계약을 통해 표시와 입력을 연결한다.
 
-    // [구현 예정]
+    // [동작]
     // render(view): 동일한 GameView를 각 위젯에 전달한다.
     // 물건 클릭·암호 제출·아이템 선택·열쇠 사용 콜백을 GameFacade에 연결한다.
     // loadMap은 작업 스레드, start와 게임 상태 변경은 EDT에서 처리한다.
@@ -41,7 +40,7 @@ public class GamePage extends JPanel {
     // [경계]
     // app.AppController나 다른 pages 슬라이스를 직접 import하지 않는다.
 
-    /** B~G API가 구현되기 전 A가 사용하는 연결 계약. 실제 게임 규칙은 구현하지 않는다. */
+    /** 게임 수명 관리와 게임 규칙 사이의 계약. AppScreens의 GameAdapter가 GameFacade에 위임한다. */
     public interface GamePort {
         GameSetup loadMap(long mapId);
         GameView start(LoginUser user, GameSetup setup, long nowNanos);

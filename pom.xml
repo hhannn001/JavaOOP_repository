@@ -44,7 +44,7 @@
         <configuration>
           <failOnWarning>true</failOnWarning>
           <compilerArgs>
-            <!-- Swing/exception skeletons do not use object serialization. -->
+            <!-- Swing components and exceptions do not use object serialization. -->
             <arg>-Xlint:all,-serial</arg>
           </compilerArgs>
         </configuration>
