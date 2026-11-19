@@ -74,6 +74,7 @@ public class AnswerInputPanel extends JPanel {
     }
 
     public void showFourDigits() {
+        String previous = fourDigitField == null ? "0000" : fourDigitField.getText();
         mode = InputMode.DIGITS4;
         object.removeAll();
         title.setText("서랍의 잠금장치");
@@ -95,7 +96,7 @@ public class AnswerInputPanel extends JPanel {
             }
         };
         configure(fourDigitField, 4, "서랍 네 자리 암호");
-        fourDigitField.setText("0000");
+        fourDigitField.setText(previous);
         fourDigitField.addMouseListener(new MouseAdapter() {
             @Override public void mouseClicked(MouseEvent event) {
                 int index = Math.min(3, event.getX() * 4 / Math.max(1, fourDigitField.getWidth()));
@@ -113,6 +114,7 @@ public class AnswerInputPanel extends JPanel {
     }
 
     public void showGrid3x3() {
+        JTextField[] previous = gridFields;
         mode = InputMode.GRID3X3;
         object.removeAll();
         title.setText("벽의 아홉 다이얼");
@@ -133,7 +135,7 @@ public class AnswerInputPanel extends JPanel {
                 }
             };
             configure(field, 1, "다이얼 " + (i / 3 + 1) + "행 " + (i % 3 + 1) + "열");
-            field.setText("0");
+            field.setText(previous == null ? "0" : previous[i].getText());
             field.addMouseListener(new MouseAdapter() {
                 @Override public void mouseClicked(MouseEvent event) {
                     int value = field.getText().isEmpty() ? 0 : Integer.parseInt(field.getText());

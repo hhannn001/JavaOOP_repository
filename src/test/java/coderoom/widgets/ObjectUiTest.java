@@ -22,6 +22,45 @@ import javax.swing.SwingUtilities;
 import org.junit.jupiter.api.Test;
 
 class ObjectUiTest {
+    @Test void puzzleInputsSurviveClosingAndSwitchingButResetForNewSession() throws Exception {
+        SwingUtilities.invokeAndWait(() -> {
+            AnswerInputPanel panel = new AnswerInputPanel();
+            List<JTextField> fields = new ArrayList<>();
+            collect(panel, fields);
+            fields.get(0).setText("12");
+            panel.setVisible(false);
+            panel.showFourDigits();
+            fields.clear();
+            collect(panel, fields);
+            assertEquals("12", fields.get(0).getText());
+            panel.showGrid3x3();
+            fields.clear();
+            collect(panel, fields);
+            for (int i = 0; i < 9; i++) { fields.get(i).setText(Integer.toString(i)); }
+            fields.get(4).setText("");
+            panel.setVisible(false);
+            panel.showGrid3x3();
+            panel.showFourDigits();
+            fields.clear();
+            collect(panel, fields);
+            assertEquals("12", fields.get(0).getText());
+            panel.showGrid3x3();
+            fields.clear();
+            collect(panel, fields);
+            for (int i = 0; i < 9; i++) {
+                assertEquals(i == 4 ? "" : Integer.toString(i), fields.get(i).getText());
+            }
+            AnswerInputPanel fresh = new AnswerInputPanel();
+            fields.clear();
+            collect(fresh, fields);
+            assertEquals("0000", fields.get(0).getText());
+            fresh.showGrid3x3();
+            fields.clear();
+            collect(fresh, fields);
+            assertTrue(fields.stream().allMatch(field -> "0".equals(field.getText())));
+        });
+    }
+
     @Test void hintRemainsRevealedOnlyInThisGameAndForThisNote() throws Exception {
         SwingUtilities.invokeAndWait(() -> {
             ItemView first  = new ItemView(ItemId.NOTE1, "메모 1", "code", "첫 힌트");
