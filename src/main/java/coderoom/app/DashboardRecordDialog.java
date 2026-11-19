@@ -35,9 +35,9 @@ final class DashboardRecordDialog extends JDialog {
     private final DashboardRecords records;
     private final String loginId;
     private final JPanel rows                            = new JPanel(new GridLayout(9, 1, 0, 4));
-    private final JLabel status                          = label("기록을 불러오는 중…", 16);
-    private final JLabel personal                        = label("내 등수 — | 기록 —", 20);
-    private final JComboBox<DashboardRecords.Room> rooms = new JComboBox<>();
+    private final JLabel status                           = label("기록을 불러오는 중…", 16);
+    private final JLabel personal                         = label("내 등수 — | 기록 —", 20);
+    private final JComboBox<DashboardRecords.Room> rooms  = new JComboBox<>();
     private final JButton retry                          = DashboardPage.imageButton("새로고침", "retry");
     private final JPanel body                            = new JPanel(new BorderLayout(0, 12));
     private SwingWorker<?, ?> worker;
@@ -48,11 +48,16 @@ final class DashboardRecordDialog extends JDialog {
         this.records = records;
         this.loginId = loginId;
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
-        boolean ranking = "리더보드".equals(title);
-        JPanel surface  = ranking ? boardSurface() : new JPanel(new BorderLayout(0, 16));
+        boolean ranking  = "리더보드".equals(title);
+        boolean calendar = "진척도".equals(title);
+        JPanel surface   = ranking ? boardSurface() : new DashboardRecordSurface(calendar);
+        if (calendar) {
+            status.setForeground(new Color(54, 47, 37));
+            personal.setForeground(new Color(54, 47, 37));
+        }
         surface.setLayout(new BorderLayout(0, 12));
         surface.setBackground(PAPER);
-        surface.setBorder(BorderFactory.createEmptyBorder(ranking ? 105 : 28, ranking ? 58 : 30, 54, ranking ? 58 : 30));
+        surface.setBorder(BorderFactory.createEmptyBorder(ranking ? 105 : 64, ranking ? 58 : 36, 32, ranking ? 58 : 36));
         JLabel heading = DashboardPage.imageLabel(title, ranking ? "leaderboard"
                 : "진척도".equals(title) ? "journal" : "bookshelf");
         heading.setHorizontalAlignment(SwingConstants.CENTER);
@@ -91,7 +96,19 @@ final class DashboardRecordDialog extends JDialog {
         surface.add(north, BorderLayout.NORTH);
         body.setOpaque(false);
         rows.setOpaque(false);
-        body.add(rows, BorderLayout.CENTER);
+        if (ranking) {
+            body.add(rows, BorderLayout.CENTER);
+        } else {
+            JPanel stack = new JPanel(new BorderLayout());
+            stack.setOpaque(false);
+            stack.add(rows, BorderLayout.NORTH);
+            javax.swing.JScrollPane scroll = new javax.swing.JScrollPane(stack);
+            scroll.setBorder(BorderFactory.createEmptyBorder());
+            scroll.setOpaque(false);
+            scroll.getViewport().setOpaque(false);
+            scroll.getVerticalScrollBar().setUnitIncrement(24);
+            body.add(scroll, BorderLayout.CENTER);
+        }
         personal.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createEmptyBorder(20, 0, 0, 0), BorderFactory.createEmptyBorder(12, 8, 12, 8)));
         body.add(personal, BorderLayout.SOUTH);
@@ -155,8 +172,8 @@ final class DashboardRecordDialog extends JDialog {
                 loadProgress(title);
             }
         });
-        setSize(ranking ? 560 : 620, ranking ? 800 : 520);
-        setMinimumSize(new Dimension(ranking ? 480 : 500, ranking ? 700 : 440));
+        setSize(ranking ? 560 : 620, ranking ? 800 : 780);
+        setMinimumSize(new Dimension(ranking ? 480 : 500, ranking ? 700 : 680));
         setLocationRelativeTo(owner);
         if (ranking) {
             loadRooms();
@@ -236,25 +253,47 @@ final class DashboardRecordDialog extends JDialog {
     }
 
     private void loadProgress(String title) {
+        if ("풀이한 문제".equals(title)) {
+            query(() -> records.solvedProblems(loginId), solved -> {
+                rows.setLayout(new GridLayout(0, 1, 0, 16));
+                for (DashboardRecords.Solved entry : solved) {
+                    rows.add(DashboardRecordSurface.solvedCard(entry));
+                }
+                status.setText("탈출하며 풀었던 문제와 정답을 다시 살펴보세요");
+                status.setFont(SceneObjectButton.PixelFont.at(14));
+                personal.setText("풀이한 문제  " + solved.size() + "개");
+                if (solved.isEmpty()) {
+                    rows.add(label("방을 클리어하면 문제와 정답이 기록됩니다.", 16));
+                }
+                refreshRows();
+            });
+            return;
+        }
         query(() -> records.progress(loginId), progress -> {
-            rows.removeAll();
             rows.setLayout(new GridLayout(0, 1, 0, 8));
             long completed = progress.stream().filter(entry -> entry.seconds() != null).count();
+            int index      = 0;
             for (DashboardRecords.Progress entry : progress) {
-                String value = entry.seconds() == null ? "도전 전" : "탈출 완료  " + DashboardRecords.time(entry.seconds());
-                rows.add(label(entry.room() + "  |  " + value, 18));
+                rows.add(DashboardRecordSurface.card(entry, ++index, true));
             }
-            status.setText("풀이한 문제".equals(title) ? "완료한 방의 기록 · 개별 문제 풀이 이력은 아직 저장되지 않습니다." : "방별 탈출 진척도");
+            status.setText("방별 탈출 체크리스트 · 완료한 방에 도장을 남겨요");
             status.setFont(SceneObjectButton.PixelFont.at(14));
-            personal.setText("완료한 방 " + completed + " / " + progress.size());
+            personal.setText("탈출 달성률  " + (progress.isEmpty() ? 0 : completed * 100 / progress.size())
+                    + "%   ·   " + completed + " / " + progress.size() + "개 방 완료");
             if (progress.isEmpty()) {
-                rows.add(label("등록된 방이 없습니다.", 18));
+                JLabel empty = label("등록된 방이 없습니다.", 17);
+                empty.setForeground(new Color(54, 47, 37));
+                rows.add(empty);
             }
-            rows.revalidate();
-            rows.repaint();
-            body.revalidate();
-            body.repaint();
+            refreshRows();
         });
+    }
+
+    private void refreshRows() {
+        rows.revalidate();
+        rows.repaint();
+        body.revalidate();
+        body.repaint();
     }
 
     private <T> void query(Callable<T> operation, Consumer<T> render) {

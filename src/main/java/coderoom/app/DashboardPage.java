@@ -95,7 +95,7 @@ final class DashboardPage extends JPanel {
         account.setFont(SceneObjectButton.PixelFont.at(20));
         account.setForeground(INK);
         settings    = settingsIconButton(this::showSettings);
-        books       = new SceneObjectButton("풀이한 문제", "bookshelf", 1, this::showUnimplemented);
+        books       = new SceneObjectButton("풀이한 문제", "bookshelf", 1, () -> openRecords(records, user, "풀이한 문제"));
         curtain     = new SceneObjectButton("방 선택하기", "curtain", 6, openMaps);
         calendar    = new SceneObjectButton("진척도", "calendar", 6, () -> openRecords(records, user, "진척도"));
         leaderboard = new SceneObjectButton("리더보드", "leaderboard", 1, () -> openRecords(records, user, "리더보드"));
@@ -199,33 +199,6 @@ final class DashboardPage extends JPanel {
     }
 
     private List<SceneObjectButton> objects() { return List.of(books, curtain, calendar, leaderboard); }
-
-    private void showUnimplemented() {
-        objects().forEach(SceneObjectButton::clearHighlight);
-        JDialog dialog = new JDialog(SwingUtilities.getWindowAncestor(this), "풀이한 문제", JDialog.ModalityType.DOCUMENT_MODAL);
-        JPanel panel   = new JPanel(new java.awt.BorderLayout(0, 24));
-        panel.setBackground(new Color(27, 23, 20));
-        panel.setBorder(javax.swing.BorderFactory.createEmptyBorder(28, 32, 24, 32));
-        panel.add(imageLabel("풀이한 문제", "bookshelf"), java.awt.BorderLayout.NORTH);
-        JLabel message = new JLabel("미구현 · 아직 준비 중인 기능입니다.", javax.swing.SwingConstants.CENTER);
-        message.setFont(SceneObjectButton.PixelFont.at(18));
-        message.setForeground(INK);
-        panel.add(message, java.awt.BorderLayout.CENTER);
-        JButton close = imageButton("닫기", "close");
-        close.setPreferredSize(new java.awt.Dimension(160, 36));
-        close.addActionListener(event -> dialog.dispose());
-        panel.add(close, java.awt.BorderLayout.SOUTH);
-        dialog.setContentPane(panel);
-        dialog.getRootPane().registerKeyboardAction(event -> dialog.dispose(), KeyStroke.getKeyStroke("ESCAPE"),
-                JComponent.WHEN_IN_FOCUSED_WINDOW);
-        dialog.setSize(430, 260);
-        dialog.setLocationRelativeTo(this);
-        try {
-            dialog.setVisible(true);
-        } finally {
-            objects().forEach(SceneObjectButton::clearHighlight);
-        }
-    }
 
     private void openRecords(DashboardRecords records, LoginUser user, String title) {
         objects().forEach(SceneObjectButton::clearHighlight);

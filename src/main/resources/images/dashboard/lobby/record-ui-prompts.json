@@ -1,0 +1,13 @@
+{
+  "tool": "built-in image_gen",
+  "assets": [
+    {
+      "file": "bookshelf-records.png",
+      "prompt": "Use case: stylized-concept. Create a production-ready game UI background asset, single portrait panel aspect ratio 4:5. Match the attached references' intricate warm antique pixel-art rendering, walnut wood, brass, amber light. Reference images are STYLE references only, do NOT create a sprite sheet. Subject: a luxurious library archive cabinet for completed escape-room records, a bookcase transformed into a functional interface. Orthographic straight-on view, fills canvas edge to edge, narrow outer dark brown backdrop. Thick carved wooden frame at x=0-6% and 94-100%, decorative small leather books and brass reading lamp confined to top 0-12%. A large continuous nearly flat very dark walnut recessed interior occupying x=8-92%, y=16-85%, unobstructed so real UI labels and rows can overlay it. Small elegant brass corner details, fine wood grain, substantial lower wooden ledge at y=90-96%. No shelves or objects crossing the central content region. No text, no letters, no numbers, no UI mock data, no buttons, no watermark. The cabinet should feel like the bookshelf reference expanded into an archive UI, with detailed tactile pixel art, not simple geometric blocks."
+    },
+    {
+      "file": "calendar-progress.png",
+      "prompt": "Use case: stylized-concept. Production game UI background, ONE portrait panel aspect ratio 4:5. Input image is style reference only, not an edit target. Match its intricate warm antique pixel-art, carved walnut, brass clips and aged ivory paper. Create a single expanded wall-calendar clipboard for escape-room progress. Straight-on orthographic view, centered fills nearly entire canvas. Narrow brown backdrop. Carved walnut outer frame x=2-8% and 92-98%. Top wooden header and two brass binder clips confined to y=0-16%, small empty inset plaque between clips. One beautiful aged cream parchment page spanning x=10-90%, y=19-91%, with extremely subtle texture and mostly blank clean interior for programmatically rendered UI. Layered paper edges and gently curled bottom-right corner confined to bottom y=92-96%. No calendar date grid: the application overlays progress rows. No lines crossing content area. No text, numbers, letters, symbols, checkmarks, mock data or buttons. Rich tactile detailed pixel-art style identical to the reference, crisp pixel edges, warm amber light, no modern vector-flat style. Keep main paper area light cream, provide generous unobstructed space."
+    }
+  ]
+}
