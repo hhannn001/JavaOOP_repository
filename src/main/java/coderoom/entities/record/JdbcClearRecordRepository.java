@@ -74,32 +74,44 @@ public class JdbcClearRecordRepository implements ClearRecordRepository {
     }
     
 
-    /** G의 JDBC 연결 전에는 저장이 성공한 것처럼 처리하지 않는다. */
+    /** 최고 기록과 문제 스냅샷을 한 트랜잭션으로 저장한다. */
     @Override
     public void saveBest(ClearRecord record) {
-    Objects.requireNonNull(record, "저장할 기록이 필요합니다.");
-
-            String sql = "INSERT INTO clear_records "
-                    + "(user_id, map_id, best_seconds) "
-                    + "VALUES (?, ?, ?) "
-                    + "ON CONFLICT(user_id, map_id) "
-                    + "DO UPDATE SET best_seconds = "
-                    + "MIN(clear_records.best_seconds, "
-                    + "excluded.best_seconds)";
-
-            try (Connection conn = database.open();
-                PreparedStatement pstmt =
-                        conn.prepareStatement(sql)) {
-
-                pstmt.setLong(1, record.getUserId());
-                pstmt.setLong(2, record.getMapId());
-                pstmt.setLong(3, record.getBestSeconds());
-
-                pstmt.executeUpdate();
-
-            } catch (SQLException e) {
-                throw new StorageException(
-                        "클리어 기록 저장 실패", e);
+        Objects.requireNonNull(record, "저장할 기록이 필요합니다.");
+        String sql = "INSERT INTO clear_records (user_id, map_id, best_seconds) VALUES (?, ?, ?) "
+                + "ON CONFLICT(user_id, map_id) DO UPDATE SET best_seconds = "
+                + "MIN(clear_records.best_seconds, excluded.best_seconds)";
+        String solvedSql = "INSERT INTO solved_puzzles (user_id, map_id, puzzle_id, step_no, code, answer) "
+                + "VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(user_id, map_id, puzzle_id) DO NOTHING";
+        try (Connection connection = database.open()) {
+            connection.setAutoCommit(false);
+            try (PreparedStatement best = connection.prepareStatement(sql);
+                    PreparedStatement solved = connection.prepareStatement(solvedSql)) {
+                best.setLong(1, record.getUserId());
+                best.setLong(2, record.getMapId());
+                best.setLong(3, record.getBestSeconds());
+                best.executeUpdate();
+                for (SolvedPuzzle puzzle : record.getSolvedPuzzles()) {
+                    solved.setLong(1, record.getUserId());
+                    solved.setLong(2, record.getMapId());
+                    solved.setLong(3, puzzle.puzzleId());
+                    solved.setInt(4, puzzle.stepNo());
+                    solved.setString(5, puzzle.code());
+                    solved.setString(6, puzzle.answer());
+                    solved.addBatch();
+                }
+                solved.executeBatch();
+                connection.commit();
+            } catch (SQLException exception) {
+                try {
+                    connection.rollback();
+                } catch (SQLException rollbackFailure) {
+                    exception.addSuppressed(rollbackFailure);
+                }
+                throw exception;
             }
+        } catch (SQLException exception) {
+            throw new StorageException("클리어 기록과 문제 풀이 저장 실패", exception);
         }
+    }
 }

@@ -44,3 +44,15 @@ CREATE TABLE IF NOT EXISTS clear_records (
     FOREIGN KEY (user_id) REFERENCES users(user_id),
     FOREIGN KEY (map_id) REFERENCES maps(map_id)
 );
+
+-- 방을 클리어했을 때만 문제와 정답을 보관한다. 재클리어는 중복 행을 만들지 않는다.
+CREATE TABLE IF NOT EXISTS solved_puzzles (
+    user_id INTEGER NOT NULL,
+    map_id INTEGER NOT NULL,
+    puzzle_id INTEGER NOT NULL,
+    step_no INTEGER NOT NULL CHECK (step_no > 0),
+    code TEXT NOT NULL,
+    answer TEXT NOT NULL,
+    PRIMARY KEY (user_id, map_id, puzzle_id),
+    FOREIGN KEY (user_id, map_id) REFERENCES clear_records(user_id, map_id)
+);

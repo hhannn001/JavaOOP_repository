@@ -18,6 +18,7 @@ public final class DashboardRecords {
     public record Entry(long rank, String loginId, long seconds) { }
     public record Ranking(List<Entry> leaders, Optional<Entry> mine) { }
     public record Progress(String room, Long seconds) { }
+    public record Solved(String room, int stepNo, String code, String answer) { }
 
     private final Database database;
 
@@ -88,6 +89,25 @@ public final class DashboardRecords {
             return List.copyOf(result);
         } catch (SQLException exception) {
             throw new StorageException("진척도를 읽을 수 없습니다.", exception);
+        }
+    }
+
+    public List<Solved> solvedProblems(String loginId) {
+        String sql = "SELECT m.title, s.step_no, s.code, s.answer FROM solved_puzzles s "
+                + "JOIN users u ON u.user_id = s.user_id JOIN maps m ON m.map_id = s.map_id "
+                + "WHERE u.login_id = ? ORDER BY s.map_id, s.step_no, s.puzzle_id";
+        List<Solved> result = new ArrayList<>();
+        try (Connection connection = database.open();
+                PreparedStatement query = connection.prepareStatement(sql)) {
+            query.setString(1, loginId);
+            try (ResultSet rows = query.executeQuery()) {
+                while (rows.next()) {
+                    result.add(new Solved(rows.getString(1), rows.getInt(2), rows.getString(3), rows.getString(4)));
+                }
+            }
+            return List.copyOf(result);
+        } catch (SQLException exception) {
+            throw new StorageException("문제 풀이 기록을 읽을 수 없습니다.", exception);
         }
     }
 

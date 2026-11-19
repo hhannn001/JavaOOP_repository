@@ -13,6 +13,8 @@ import coderoom.entities.puzzle.PuzzleRepository;
 import coderoom.entities.record.ClearRecord;
 import coderoom.entities.record.ClearRecordRepository;
 import java.util.List;
+import java.util.ArrayList;
+import coderoom.entities.record.SolvedPuzzle;
 import java.util.Objects;
 
 /** 게임 규칙을 조율한다. DB 조회·저장은 작업 스레드, 세션 조작은 EDT에서 호출한다. */
@@ -20,6 +22,7 @@ public final class GameFacade {
     private final MapRepository maps;
     private final PuzzleRepository puzzles;
     private final ClearRecordRepository records;
+    private final List<SolvedPuzzle> solvedPuzzles = new ArrayList<>();
     private GameSetup setup;
     private GameSession session;
 
@@ -50,6 +53,7 @@ public final class GameFacade {
 
     public GameView start(long userId, GameSetup loaded, long nowNanos) {
         validate(loaded);
+        solvedPuzzles.clear();
         setup   = loaded;
         session = new GameSession(userId, loaded.map().getMapId(), nowNanos);
         return view(nowNanos);
@@ -92,6 +96,8 @@ public final class GameFacade {
         if (check == AnswerCheck.WRONG) {
             return result(SubmitResult.Verdict.WRONG, "암호가 맞지 않습니다. 메모를 다시 확인하세요.");
         }
+        Puzzle puzzle = setup.puzzles().get(drawer ? 0 : 1);
+        solvedPuzzles.add(new SolvedPuzzle(puzzle.puzzleId(), puzzle.stepNo(), puzzle.code(), answer));
         if (drawer) {
             session.unlockDrawer();
         } else {
@@ -117,7 +123,7 @@ public final class GameFacade {
             return new EscapeResult(view(nowNanos), null, "열쇠를 획득하고 선택한 뒤 문을 누르세요.");
         }
         return new EscapeResult(view(nowNanos),
-                new ClearRecord(session.userId(), session.mapId(), session.elapsedSeconds(nowNanos)), "탈출 성공!");
+                new ClearRecord(session.userId(), session.mapId(), session.elapsedSeconds(nowNanos), solvedPuzzles), "탈출 성공!");
     }
 
     public void saveClear(ClearRecord record) {

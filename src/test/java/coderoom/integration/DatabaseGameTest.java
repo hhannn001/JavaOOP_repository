@@ -16,6 +16,8 @@ import coderoom.entities.puzzle.AnswerType;
 import coderoom.entities.puzzle.JdbcPuzzleRepository;
 import coderoom.entities.puzzle.Puzzle;
 import coderoom.entities.record.ClearRecord;
+import coderoom.entities.record.SolvedPuzzle;
+import coderoom.features.dashboard.DashboardRecords;
 import coderoom.entities.record.JdbcClearRecordRepository;
 import coderoom.entities.user.JdbcUserRepository;
 import coderoom.features.auth.LoginService;
@@ -96,6 +98,7 @@ class DatabaseGameTest {
         assertEquals(2, game.view(started).items().size());
         assertEquals(Verdict.SOLVED, game.submit(RoomObjectId.WALL_DIAL, "423312133").verdict());
         assertNull(game.useKey(started).record());
+        assertTrue(new DashboardRecords(database).solvedProblems("test").isEmpty());
         game.selectItem(ItemId.KEY);
         var escaped = game.useKey(started + 42_000_000_000L);
         assertNotNull(escaped.record());
@@ -104,6 +107,9 @@ class DatabaseGameTest {
         assertEquals(42, game.useKey(started + 99_000_000_000L).record().getBestSeconds());
         assertEquals(Verdict.BLOCKED, game.submit(RoomObjectId.DRAWER, "2312").verdict());
         assertThrows(UnsupportedOperationException.class, () -> escaped.view().items().clear());
+        assertEquals(2, escaped.record().getSolvedPuzzles().size());
+        assertThrows(UnsupportedOperationException.class, () -> escaped.record().getSolvedPuzzles().clear());
+        game.start(1, setup, started);
         game.saveClear(escaped.record());
         game.saveClear(escaped.record());
         records.saveBest(new ClearRecord(4, 1, 70));
@@ -114,8 +120,42 @@ class DatabaseGameTest {
         assertEquals(1, persisted.findByUserId(4).size());
         assertEquals(30, persisted.findByUserId(4).get(0).getBestSeconds());
         assertTrue(persisted.findByUserId(1).isEmpty());
+        var solved = new DashboardRecords(reopened).solvedProblems("test");
+        assertEquals(2, solved.size());
+        assertEquals(setup.puzzles().get(0).code(), solved.get(0).code());
+        assertEquals("2312", solved.get(0).answer());
+        assertEquals("423312133", solved.get(1).answer());
+        assertTrue(new DashboardRecords(reopened).solvedProblems("demo1").isEmpty());
         assertEquals(3, new MapCatalogService(maps, persisted).listForUser(4).size());
         assertEquals(GameStage.START, game.start(4, setup, started).stage());
+    }
+
+    @Test
+    void snapshotsSurvivePuzzleChangesAndFailedWritesRollbackEverything() throws Exception {
+        ClearRecord clear = new ClearRecord(4, 1, 42,
+                List.of(new SolvedPuzzle(1, 1, "original code", "0012")));
+        try (var connection = database.open(); var statement = connection.createStatement()) {
+            statement.execute("CREATE TRIGGER fail_snapshot BEFORE INSERT ON solved_puzzles "
+                    + "BEGIN SELECT RAISE(ABORT, 'test failure'); END");
+        }
+        assertThrows(StorageException.class, () -> records.saveBest(clear));
+        assertTrue(records.findByUserId(4).isEmpty());
+        assertTrue(new DashboardRecords(database).solvedProblems("test").isEmpty());
+        try (var connection = database.open(); var statement = connection.createStatement()) {
+            statement.execute("DROP TRIGGER fail_snapshot");
+        }
+        records.saveBest(clear);
+        try (var connection = database.open(); var statement = connection.createStatement()) {
+            statement.executeUpdate("UPDATE puzzles SET code='changed', answer='9999' WHERE puzzle_id=1");
+        }
+        records.saveBest(new ClearRecord(4, 1, 30,
+                List.of(new SolvedPuzzle(1, 1, "changed", "9999"))));
+        database.initialize();
+        var solved = new DashboardRecords(database).solvedProblems("test");
+        assertEquals(1, solved.size());
+        assertEquals("original code", solved.get(0).code());
+        assertEquals("0012", solved.get(0).answer());
+        assertEquals(30, records.findByUserId(4).get(0).getBestSeconds());
     }
 
     @Test
