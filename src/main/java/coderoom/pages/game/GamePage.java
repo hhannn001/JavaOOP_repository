@@ -1,6 +1,8 @@
 package coderoom.pages.game;
 
 import coderoom.entities.game.ItemId;
+import coderoom.entities.game.GameSession;
+import coderoom.entities.game.GameStage;
 import coderoom.entities.game.RoomObjectId;
 import coderoom.entities.record.ClearRecord;
 import coderoom.entities.user.LoginUser;
@@ -138,6 +140,12 @@ public class GamePage extends JPanel {
         requireEdt();
         if (!disposed) {
             widgets.render(view);
+            if (escaped == null && view.stage() != GameStage.ESCAPED
+                    && view.elapsedSeconds() >= GameSession.TIME_LIMIT_SECONDS) {
+                escaped = new Escape(view, null, "제한시간 3분이 지났습니다.");
+                timer.stop();
+                widgets.result(escaped, SaveState.NONE);
+            }
         }
     }
 
@@ -241,7 +249,11 @@ public class GamePage extends JPanel {
 
     private boolean canPlay() {
         requireEdt();
-        return started && !disposed && worker == null && escaped == null;
+        if (!started || disposed || worker != null || escaped != null) {
+            return false;
+        }
+        render(game.view(System.nanoTime()));
+        return escaped == null;
     }
 
     private static void requireEdt() {

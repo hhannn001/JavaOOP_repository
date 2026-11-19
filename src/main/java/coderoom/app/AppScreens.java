@@ -9,6 +9,7 @@ import coderoom.features.gameplay.EscapeResult;
 import coderoom.features.gameplay.ItemView;
 import coderoom.features.gameplay.ui.AnswerInputPanel;
 import coderoom.widgets.result.ResultPanel;
+import coderoom.widgets.result.TimeLimitBar;
 import java.util.function.Supplier;
 import javax.swing.JLabel;
 import coderoom.entities.game.RoomObjectId;
@@ -153,8 +154,8 @@ final class AppScreens implements AppController.Screens {
         private final AnswerInputPanel answer = new AnswerInputPanel();
         private final ResultPanel resultPanel = new ResultPanel();
         private final JLabel message          = new JLabel();
-        private final JLabel elapsed          = new JLabel();
-        private final JPanel resultHolder     = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 80));
+        private final TimeLimitBar elapsed    = new TimeLimitBar();
+        private final JPanel resultHolder     = new JPanel(new java.awt.GridBagLayout());
         private ItemId displayedItem;
         private RoomObjectId activeObject;
         private boolean busy;
@@ -168,7 +169,7 @@ final class AppScreens implements AppController.Screens {
             JPanel overlay = new JPanel(new FlowLayout(FlowLayout.RIGHT, 20, 16));
             overlay.setOpaque(false);
             message.setForeground(GOLD);
-            elapsed.setForeground(GOLD);
+            elapsed.setPreferredSize(new Dimension(360, 48));
             overlay.add(message);
             overlay.add(elapsed);
             overlay.add(settingsButton(() -> openSettings(back)));
@@ -249,8 +250,7 @@ final class AppScreens implements AppController.Screens {
                     view.items().stream().map(ItemView::title).toList());
             inventory.setSelectedItem(view.selectedItem());
             room.setStage(view.stage());
-            elapsed.setText(String.format(java.util.Locale.ROOT, "%02d:%02d",
-                    view.elapsedSeconds() / 60, view.elapsedSeconds() % 60));
+            elapsed.setElapsedSeconds(view.elapsedSeconds());
             if (view.selectedItem() != displayedItem) {
                 displayedItem = view.selectedItem();
                 if (displayedItem == ItemId.KEY) {
@@ -304,7 +304,16 @@ final class AppScreens implements AppController.Screens {
         }
         @Override
         public void result(GamePage.Escape escape, GamePage.SaveState state) {
-            resultPanel.render(escape.record().getBestSeconds(), ResultPanel.SaveState.valueOf(state.name()));
+            clue.closeClue();
+            answer.setVisible(false);
+            inventory.setVisible(false);
+            room.setInvestigationOpen(true);
+            if (escape.record() == null) {
+                resultPanel.renderFailure();
+            } else {
+                resultPanel.render(escape.record().getBestSeconds(), ResultPanel.SaveState.valueOf(state.name()));
+            }
+            room.setComponentZOrder(resultHolder, 0);
             resultHolder.setVisible(true);
             room.revalidate();
             room.repaint();

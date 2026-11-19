@@ -1,0 +1,4 @@
+Mode: built-in image_gen, transparent_background=true
+Style reference: /images/dashboard/lobby/label-settings.png
+
+Use case: ui-mockup. Create a production transparent PNG typography sprite sheet for a Korean escape-room game. Reference image is ONLY style reference: match its chunky pixel-stepped Korean lettering, cream gold faces, amber bevels and dark brown extruded shadows. Canvas wide landscape, exactly two equal horizontal rows. Top row centered text verbatim "탈출 성공", bottom row centered text verbatim "탈출 실패". Each phrase on ONE line, same size, generous transparent margins, fully contained in its own half; no overlap at middle. No icons, panels, extra text, background or watermark. Real transparent background. Crisp readable Korean. This sheet will be split into equal top and bottom halves in game code.

@@ -4,6 +4,7 @@ import java.util.List;
 
 /** 한 번의 플레이 상태. 호출자는 상태 변경을 EDT에서 직렬화한다. */
 public final class GameSession {
+    public static final long TIME_LIMIT_SECONDS = 180;
     private final long userId;
     private final long mapId;
     private final long startedAtNanos;
@@ -53,7 +54,8 @@ public final class GameSession {
         if (stage == GameStage.ESCAPED) {
             return true;
         }
-        if (stage != GameStage.SAFE_OPEN || selectedItem != ItemId.KEY) {
+        if (elapsedSeconds(nowNanos) >= TIME_LIMIT_SECONDS
+                || stage != GameStage.SAFE_OPEN || selectedItem != ItemId.KEY) {
             return false;
         }
         clearedSeconds = elapsedSeconds(nowNanos);
