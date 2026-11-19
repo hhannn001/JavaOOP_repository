@@ -554,19 +554,33 @@ class AIntegrationTest {
         });
         await(page::isTimerRunning);
         edt(() -> {
+            Runnable dismissDialogue = () -> {
+                Component surface = findNamed(page, "dialogueClickSurface");
+                for (int i = 0; i < 10 && surface.isVisible(); i++) {
+                    surface.dispatchEvent(new java.awt.event.MouseEvent(surface,
+                            java.awt.event.MouseEvent.MOUSE_RELEASED, System.currentTimeMillis(),
+                            0, 5, 5, 1, false, java.awt.event.MouseEvent.BUTTON1));
+                }
+                assertFalse(surface.isVisible());
+            };
+            dismissDialogue.run();
             findButton(page, "메모 1").doClick();
             assertTrue(findNamed(page, "gameClue").isVisible());
             page.inspect(coderoom.entities.game.RoomObjectId.DRAWER);
+            dismissDialogue.run();
             java.util.List<JTextField> fields = new ArrayList<>();
             collectFields(page, fields);
             assertEquals(1, fields.size());
             fields.get(0).setText("0000");
             findButton(page, "서랍 열기  →").doClick();
+            dismissDialogue.run();
             assertFalse(hasButton(page, "메모 2"));
             fields.get(0).setText("2312");
             findButton(page, "서랍 열기  →").doClick();
+            dismissDialogue.run();
             findButton(page, "메모 2").doClick();
             page.inspect(coderoom.entities.game.RoomObjectId.WALL_DIAL);
+            dismissDialogue.run();
             fields.clear();
             collectFields(page, fields);
             assertEquals(9, fields.size());
@@ -575,6 +589,7 @@ class AIntegrationTest {
                 fields.get(i).setText(answer.substring(i, i + 1));
             }
             findButton(page, "다이얼 확인  →").doClick();
+            dismissDialogue.run();
             findButton(page, "열쇠").doClick();
             page.useKey();
             assertFalse(page.isTimerRunning());

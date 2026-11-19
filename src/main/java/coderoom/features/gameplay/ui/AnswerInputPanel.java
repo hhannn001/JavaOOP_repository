@@ -196,6 +196,10 @@ public class AnswerInputPanel extends JPanel {
     }
 
     public void showMessage(String value) { message.setText(value); }
+    public void focusInput() {
+        JTextField first = mode == InputMode.DIGITS4 ? fourDigitField : gridFields[0];
+        if (isShowing() && first.isEnabled()) { first.requestFocusInWindow(); }
+    }
     public void setOnClose(Runnable callback) { onClose = callback; }
     public void setOnSubmit(Consumer<String> callback) { onSubmit = callback; }
 

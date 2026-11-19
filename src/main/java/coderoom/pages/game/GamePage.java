@@ -68,6 +68,8 @@ public class GamePage extends JPanel {
         void status(String message);
         void busy(boolean busy);
         void result(Escape escape, SaveState state);
+        default void started() { }
+        default void escapeFailed(String message) { status(message); }
     }
 
     public enum SaveState { NONE, SAVING, SAVED, FAILED }
@@ -121,6 +123,7 @@ public class GamePage extends JPanel {
                     started = true;
                     timer.start();
                     widgets.status("");
+                    widgets.started();
                 } catch (InterruptedException exception) {
                     Thread.currentThread().interrupt();
                     widgets.status("게임 준비가 중단되었습니다.");
@@ -176,7 +179,7 @@ public class GamePage extends JPanel {
         Escape result = game.useKey(System.nanoTime());
         render(result.view());
         if (result.record() == null) {
-            widgets.status(result.message());
+            widgets.escapeFailed(result.message());
             return;
         }
         escaped = result;

@@ -10,6 +10,10 @@ import coderoom.features.gameplay.ItemView;
 import coderoom.features.gameplay.ui.AnswerInputPanel;
 import coderoom.widgets.result.ResultPanel;
 import coderoom.widgets.result.TimeLimitBar;
+import coderoom.widgets.dialogue.DialoguePanel;
+import coderoom.widgets.dialogue.DialoguePanel.Line;
+import coderoom.widgets.dialogue.DialoguePanel.Speaker;
+import coderoom.features.gameplay.RoomStory;
 import java.util.function.Supplier;
 import javax.swing.JLabel;
 import coderoom.entities.game.RoomObjectId;
@@ -153,47 +157,109 @@ final class AppScreens implements AppController.Screens {
         }, true);
         private final AnswerInputPanel answer = new AnswerInputPanel();
         private final ResultPanel resultPanel = new ResultPanel();
-        private final JLabel message          = new JLabel();
+        private final JLabel message         = new JLabel();
         private final TimeLimitBar elapsed    = new TimeLimitBar();
-        private final JPanel resultHolder     = new JPanel(new java.awt.GridBagLayout());
+        private final JPanel resultHolder    = new JPanel(new java.awt.GridBagLayout());
         private ItemId displayedItem;
         private RoomObjectId activeObject;
         private boolean busy;
         private final JPanel spacer            = new JPanel();
         private final InventoryPanel inventory = new InventoryPanel();
         private final CluePanel clue           = new CluePanel();
+        private final DialoguePanel dialogue  = new DialoguePanel();
+        private GameStage stage               = GameStage.START;
+        private final JPanel header           = new JPanel(new FlowLayout(FlowLayout.RIGHT, 20, 16));
+        private final JPanel bottom           = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
+        private final JPanel dialogueClick    = new JPanel();
+        private final JPanel dimmer           = new JPanel() {
+            @Override protected void paintComponent(java.awt.Graphics graphics) {
+                graphics.setColor(new Color(0, 0, 0, 195));
+                graphics.fillRect(0, 0, getWidth(), getHeight());
+            }
+        };
+        private boolean puzzleFocused;
+        private boolean restoreClue;
 
         private GameWidgets(Runnable back, Runnable restart) {
             // 투명한 상단 컨테이너가 설정 버튼만 우상단에 겹쳐 표시한다.
             room.setLayout(new GameOverlayLayout());
-            JPanel overlay = new JPanel(new FlowLayout(FlowLayout.RIGHT, 20, 16));
-            overlay.setOpaque(false);
+            header.setOpaque(false);
             message.setForeground(GOLD);
             elapsed.setPreferredSize(new Dimension(360, 48));
-            overlay.add(message);
-            overlay.add(elapsed);
-            overlay.add(settingsButton(() -> openSettings(back)));
-            room.add(overlay, "header");
+            header.add(message);
+            header.add(elapsed);
+            header.add(settingsButton(() -> openSettings(back)));
+            room.add(header, "header");
             inventory.setName("gameInventory");
             clue.setName("gameClue");
-            JPanel bottom = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
             bottom.setOpaque(false);
             bottom.add(inventory);
             room.add(bottom, "inventory");
             room.add(clue, "clue");
             answer.setVisible(false);
-            answer.setOnClose(() -> { activeObject = null; room.setInvestigationOpen(clue.isVisible()); });
+            answer.setOnClose(() -> { activeObject = null; updateFocus(); });
             clue.setOnClose(() -> room.setInvestigationOpen(answer.isVisible()));
             room.add(answer, "input");
             resultHolder.setOpaque(false);
             resultHolder.setVisible(false);
             resultHolder.add(resultPanel);
             room.add(resultHolder, "result");
+            room.add(dialogue, "dialogue");
+            dimmer.setName("puzzleDimmer");
+            dimmer.setOpaque(false);
+            dimmer.setVisible(false);
+            dimmer.addMouseListener(new java.awt.event.MouseAdapter() { });
+            room.add(dimmer, "dimmer");
+            dialogueClick.setName("dialogueClickSurface");
+            dialogueClick.setOpaque(false);
+            dialogueClick.setVisible(false);
+            dialogueClick.addMouseListener(new java.awt.event.MouseAdapter() {
+                @Override public void mouseReleased(java.awt.event.MouseEvent event) {
+                    if (SwingUtilities.isLeftMouseButton(event)) { dialogue.advance(); }
+                }
+            });
+            room.add(dialogueClick, "dialogueClick");
+            dialogue.setOnChanged(this::updateFocus);
+            room.setComponentZOrder(dimmer, 0);
+            room.setComponentZOrder(answer, 0);
+            room.setComponentZOrder(dialogue, 0);
+            room.setComponentZOrder(dialogueClick, 0);
             resultPanel.setOnBackToMaps(back);
             resultPanel.setOnRestart(restart);
             // GamePage의 SOUTH 슬롯은 높이를 차지하지 않게 해 사진이 창 아래까지 닿게 한다.
             spacer.setPreferredSize(new Dimension(0, 0));
             spacer.setOpaque(false);
+        }
+
+        /** 퍼즐만 밝게 남기고, 대사를 닫는 클릭이 아래 잠금장치에 전달되지 않게 한다. */
+        private void updateFocus() {
+            boolean puzzle   = answer.isVisible();
+            boolean finished = resultHolder.isVisible();
+            boolean speaking = dialogue.isVisible();
+            boolean wasSpeaking = dialogueClick.isVisible();
+            if (puzzle && !puzzleFocused) {
+                restoreClue = clue.isVisible();
+                clue.setVisible(false);
+            } else if (!puzzle && puzzleFocused && restoreClue && !finished) {
+                clue.openClue();
+            }
+            puzzleFocused = puzzle;
+            dimmer.setVisible(puzzle || finished);
+            header.setVisible(!puzzle && !finished);
+            bottom.setVisible(!puzzle && !finished);
+            dialogueClick.setVisible(speaking);
+            setInputEnabled(answer, !speaking);
+            if (puzzle && wasSpeaking && !speaking) { answer.focusInput(); }
+            room.setInvestigationOpen(puzzle || clue.isVisible());
+            room.revalidate();
+            room.repaint();
+        }
+
+        private static void setInputEnabled(java.awt.Container parent, boolean enabled) {
+            for (java.awt.Component child : parent.getComponents()) {
+                child.setEnabled(enabled);
+                if (child instanceof java.awt.Container container) { setInputEnabled(container, enabled); }
+            }
         }
 
         /** 중앙 팝업에는 추후 메뉴 자리를 마련하고 나가기만 동작하게 한다. */
@@ -236,6 +302,7 @@ final class AppScreens implements AppController.Screens {
             // D의 물건 클릭은 A의 게임 조작 경계로 전달한다.
             this.actions = actions;
             inventory.setOnItemSelected(item -> {
+                if (dialogue.isVisible() || answer.isVisible()) { return; }
                 actions.selectItem(item);
                 if (item == ItemId.KEY) { clue.closeClue(); }
                 else { clue.openClue(); }
@@ -246,6 +313,7 @@ final class AppScreens implements AppController.Screens {
         }
         @Override
         public void render(GameView view) {
+            stage = view.stage();
             inventory.setItems(view.items().stream().map(ItemView::id).toList(),
                     view.items().stream().map(ItemView::title).toList());
             inventory.setSelectedItem(view.selectedItem());
@@ -264,14 +332,15 @@ final class AppScreens implements AppController.Screens {
                 room.setInvestigationOpen(answer.isVisible() || clue.isVisible());
             }
             if (view.stage() == GameStage.ESCAPED) {
+                dialogue.close();
                 clue.closeClue();
                 answer.setVisible(false);
             }
         }
         @Override
         public void inspected(InspectResult result) {
-            if (result.answerType() == null) { status(result.message()); }
-            else { status(""); }
+            status("");
+            dialogue.showLines(new Line(Speaker.PLAYER, RoomStory.inspection(result.object(), stage)));
             if (result.answerType() != null) {
                 activeObject = result.object();
                 if (result.answerType() == AnswerType.DIGITS4) {
@@ -280,23 +349,47 @@ final class AppScreens implements AppController.Screens {
                     answer.showGrid3x3();
                 }
                 answer.setVisible(true);
-                room.setInvestigationOpen(true);
-                room.revalidate();
+                updateFocus();
             }
         }
         @Override
         public void submitted(SubmitResult result) {
             answer.showMessage(result.message());
-            status(result.message());
+            message.setText("");
+            if (result.verdict() == SubmitResult.Verdict.WRONG) {
+                dialogue.showLines(new Line(Speaker.PLAYER, "이건 아닌 것 같아. 메모의 코드를 다시 따라가 보자."));
+            } else if (result.verdict() == SubmitResult.Verdict.SOLVED) {
+                dialogue.showLines(new Line(Speaker.SYSTEM, result.message()),
+                        new Line(Speaker.PLAYER, result.view().stage() == GameStage.DRAWER_OPEN
+                                ? "또 다른 메모야. 이번엔 벽의 금고를 열 수 있겠어."
+                                : "드디어 열쇠를 찾았어! 인벤토리에서 선택하고 문을 열자."));
+            } else {
+                dialogue.showLines(new Line(Speaker.SYSTEM, result.message()));
+            }
             if (result.verdict() == SubmitResult.Verdict.SOLVED
                     || result.verdict() == SubmitResult.Verdict.ALREADY_SOLVED) {
                 answer.setVisible(false);
                 activeObject = null;
-                room.revalidate();
+                updateFocus();
             }
         }
         @Override
         public void status(String value) { message.setText(value); }
+        @Override
+        public void escapeFailed(String value) {
+            dialogue.showLines(new Line(Speaker.PLAYER, "잠겨 있어… 열쇠를 찾아서 선택한 뒤 다시 열어 보자."));
+            message.setText("");
+        }
+        @Override
+        public void started() {
+            clue.closeClue();
+            room.setInvestigationOpen(false);
+            dialogue.showLines(
+                    new Line(Speaker.SYSTEM, "오래된 연구자의 서재. 당신은 ‘마지막 코드를 풀어 달라’는 초대장을 따라 이곳에 왔다."),
+                    new Line(Speaker.PLAYER, "들어오자마자 문이 잠겼어. 초대장에는 이런 얘기가 없었는데…"),
+                    new Line(Speaker.SYSTEM, "출입문 위 장치가 켜진다. ‘보안 시험 시작. 제한시간은 3분입니다. 메모의 코드로 서랍과 금고를 열고, 열쇠를 찾아 탈출하십시오.’"),
+                    new Line(Speaker.PLAYER, "우선 손에 든 메모부터 읽어 보자. 이 방의 물건들에 단서가 있을 거야."));
+        }
         @Override
         public void busy(boolean value) {
             busy = value;
@@ -304,8 +397,10 @@ final class AppScreens implements AppController.Screens {
         }
         @Override
         public void result(GamePage.Escape escape, GamePage.SaveState state) {
+            resultHolder.setVisible(true);
             clue.closeClue();
             answer.setVisible(false);
+            dialogue.close();
             inventory.setVisible(false);
             room.setInvestigationOpen(true);
             if (escape.record() == null) {

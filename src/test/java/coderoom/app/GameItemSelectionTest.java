@@ -40,6 +40,7 @@ class GameItemSelectionTest {
             SwingUtilities.invokeAndWait(() -> {
                 page[0].submit(RoomObjectId.DRAWER, "2312");
                 page[0].submit(RoomObjectId.WALL_DIAL, "423312133");
+                ((coderoom.widgets.dialogue.DialoguePanel) find(page[0], "gameDialogue")).close();
                 page[0].selectItem(ItemId.NOTE2);
                 Component clue = find(page[0], "gameClue");
                 assertTrue(clue.isVisible());

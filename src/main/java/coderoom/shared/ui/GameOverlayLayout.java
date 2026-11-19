@@ -35,9 +35,25 @@ public final class GameOverlayLayout implements LayoutManager {
             place("input", left + (available - inputWidth) / 2,
                     top + (usable - inputHeight) / 2, inputWidth, inputHeight);
         }
-        place("inventory", (width - Math.min(410, width - 2 * margin)) / 2,
-                height - bottom, Math.min(410, width - 2 * margin), bottom - 12);
+        int inventoryWidth  = Math.min(410, width - 2 * margin);
+        int inventoryHeight = 78;
+        int inventoryTop    = height - inventoryHeight - 16;
+        place("inventory", (width - inventoryWidth) / 2,
+                inventoryTop, inventoryWidth, inventoryHeight);
         place("result", margin, top, width - 2 * margin, usable);
+        int dialogueWidth  = Math.min(960, width - 2 * margin);
+        int dialogueHeight = 190;
+        int dialogueTop    = inventoryTop + inventoryHeight - dialogueHeight;
+        place("dialogue", (width - dialogueWidth) / 2,
+                dialogueTop, dialogueWidth, dialogueHeight);
+        place("dimmer", 0, 0, width, height);
+        place("dialogueClick", 0, 0, width, height);
+        Component dimmer = slots.get("dimmer");
+        if (dimmer != null && dimmer.isVisible() && input != null && input.isVisible()) {
+            int puzzleHeight = Math.min(570, dialogueTop - 36);
+            int puzzleWidth  = Math.min(620, width - 2 * margin);
+            place("input", (width - puzzleWidth) / 2, 24, puzzleWidth, puzzleHeight);
+        }
     }
 
     private void place(String name, int x, int y, int width, int height) {
