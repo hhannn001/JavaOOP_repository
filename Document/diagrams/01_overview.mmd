@@ -1,61 +1,76 @@
 classDiagram
-    class Main {
-        +main(args)
-    }
-    class MainFrame {
-        -CardLayout layout
+    class Main
+    class MainFrame
+    class AppController
+    class Host {
+        <<interface>>
+        +setPage(name, page)
         +showPage(name)
     }
-    class AppController {
-        -LoginUser currentUser
-        +onLogin(user)
-        +openMap(mapId)
-        +backToMaps()
-        +logout()
+    class Screens {
+        <<interface>>
+        +login(onLogin)
+        +dashboard(user, openMaps, logout)
+        +maps(user, openMap, dashboard)
+        +game(user, mapId, back, restart)
     }
-    class LoginPage {
-        +showError(message)
-    }
-    class LoginService {
-        +login(loginId, password) LoginResult
-    }
-    class MapSelectionPage {
-        +render(cards)
-    }
-    class MapCatalogService {
-        +listForUser(userId) List~MapCard~
-    }
+    class AppScreens
+    class DashboardPage
+    class DashboardRecordDialog
+    class DashboardRecords
+    class LoginPage
+    class LoginService
+    class MapSelectionPage
+    class MapCatalogService
     class GamePage {
-        +render(view)
+        +load(user, mapId)
+        +inspect(object)
+        +submit(object, answer)
+        +selectItem(item)
+        +useKey()
+        +retrySave()
         +disposeGame()
     }
-    class GameFacade {
-        +loadMap(mapId) GameSetup
-        +start(userId, setup, nowNanos) GameView
-        +inspect(objectId) InspectResult
-        +submit(objectId, answer) SubmitResult
-        +selectItem(itemId) GameView
-        +useKey(nowNanos) EscapeResult
-        +saveClear(record)
-        +view(nowNanos) GameView
+    class GamePort {
+        <<interface>>
     }
+    class Widgets {
+        <<interface>>
+    }
+    class GameAdapter
+    class GameWidgets
+    class GameFacade
     class RoomPanel
     class InventoryPanel
     class CluePanel
     class AnswerInputPanel
     class ResultPanel
 
-    Main ..> AppController : constructor wiring
-    Main ..> MainFrame
-    AppController --> MainFrame
-    AppController --> LoginPage
-    AppController --> MapSelectionPage
-    AppController --> GamePage
+    Main ..> MainFrame : creates
+    Main ..> AppController : creates
+    Main ..> AppScreens : wires services
+    MainFrame ..|> Host
+    AppScreens ..|> Screens
+    AppController --> Host
+    AppController --> Screens
+    AppController --> GamePage : lifecycle
+    AppScreens ..> DashboardPage : creates
+    AppScreens ..> LoginPage : creates
+    AppScreens ..> MapSelectionPage : creates
+    AppScreens ..> GamePage : creates
+    AppScreens ..> GameAdapter : nested adapter
+    AppScreens ..> GameWidgets : nested adapter
+    DashboardPage ..> DashboardRecordDialog : opens
+    DashboardRecordDialog --> DashboardRecords
     LoginPage --> LoginService
     MapSelectionPage --> MapCatalogService
-    GamePage --> GameFacade
-    GamePage *-- RoomPanel
-    GamePage *-- InventoryPanel
-    GamePage *-- CluePanel
-    GamePage *-- AnswerInputPanel
-    GamePage *-- ResultPanel
+    GamePage --> GamePort
+    GamePage --> Widgets
+    GameAdapter ..|> GamePort
+    GameAdapter --> GameFacade
+    GameWidgets ..|> Widgets
+    GameWidgets *-- RoomPanel
+    GameWidgets *-- InventoryPanel
+    GameWidgets *-- CluePanel
+    GameWidgets *-- AnswerInputPanel
+    GameWidgets *-- ResultPanel

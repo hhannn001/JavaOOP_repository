@@ -4,17 +4,16 @@ package coderoom.entities.map;
  * 담당: C
  * 역할: 도메인 데이터.
  * 직접 선언한 상속·구현 관계 없음.
- * 설계 초안: 필드·생성자·메서드는 아래 주석을 기준으로 구현한다.
  */
 
 public class GameMap {
 	
-	// [필드 예정]
-    // mapId, title, description, topic, difficulty, posterPath, playable.
+	// [표시 데이터]
+    // 맵 식별자, 포스터 메타데이터와 플레이 가능 여부를 제공한다.
     // Java 컬렉션 Map과 이름을 구분한다.
 
-    // [구현 예정]
-    // 필수값 검증과 읽기 전용 접근자를 작성한다. Swing·SQL 코드는 넣지 않는다.
+    // [동작]
+    // 힌트 제한의 음수를 거절하고 맵 정보를 읽기 전용 접근자로 제공한다.
 	
     // 맵의 고유 번호
     private int mapId;
@@ -36,20 +35,31 @@ public class GameMap {
 
     // 플레이 가능 여부
     private boolean playable;
+    private final int hintLimit;
 
     // 생성자
     public GameMap(int mapId, String title, String description,
                    String topic, String difficulty,
                    String posterPath, boolean playable) {
 
-        this.mapId = mapId;
-        this.title = title;
-        this.description = description;
-        this.topic = topic;
-        this.difficulty = difficulty;
-        this.posterPath = posterPath;
-        this.playable = playable;
+        this(mapId, title, description, topic, difficulty, posterPath, playable, 2);
     }
+
+    public GameMap(int mapId, String title, String description, String topic,
+            String difficulty, String posterPath, boolean playable, int hintLimit) {
+        if (hintLimit < 0) { throw new IllegalArgumentException("힌트 허용 횟수는 0 이상이어야 합니다."); }
+        this.hintLimit   = hintLimit;
+        this.mapId       = mapId;
+        this.title       = title;
+        this.description = description;
+        this.topic       = topic;
+        this.difficulty  = difficulty;
+        this.posterPath  = posterPath;
+        this.playable    = playable;
+    }
+
+    /** 게임당 허용할 힌트 수. 현재 공개 UI에서는 아직 차감하지 않는다. */
+    public int getHintLimit() { return hintLimit; }
 
     // 맵 번호 반환
     public int getMapId() {

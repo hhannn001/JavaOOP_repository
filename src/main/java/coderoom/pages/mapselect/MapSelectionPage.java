@@ -1,242 +1,434 @@
 package coderoom.pages.mapselect;
 
-/**
- * 담당: C
- * 역할: 포스터형 맵 선택 화면
- * 상위 타입: javax.swing.JPanel
- * 설계 초안: 필드·생성자·메서드는 아래 주석을 기준으로 구현한다.
- */
-
-import java.awt.BorderLayout;
-import java.awt.Color;
-import java.awt.Dimension;
-import java.awt.Font;
-import java.awt.GridLayout;
-import java.awt.Image;
-import java.net.URL;
-import java.util.ArrayList;
-import java.util.List;
-
-import javax.swing.BorderFactory;
-import javax.swing.ImageIcon;
-import javax.swing.JButton;
-import javax.swing.JLabel;
-import javax.swing.JOptionPane;
-import javax.swing.JPanel;
-import javax.swing.SwingConstants;
-
 import coderoom.features.mapcatalog.MapCard;
+import coderoom.features.mapcatalog.MapCatalogService;
+import coderoom.shared.ui.PixelTheme;
+import java.awt.Color;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.Rectangle;
+import java.awt.image.BufferedImage;
+import java.io.IOException;
+import java.net.URL;
+import java.util.List;
+import java.util.concurrent.ExecutionException;
+import java.util.function.LongConsumer;
+import javax.imageio.ImageIO;
+import javax.swing.AbstractAction;
+import javax.swing.JButton;
+import javax.swing.JComponent;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTextArea;
+import javax.swing.KeyStroke;
+import javax.swing.SwingConstants;
+import javax.swing.SwingWorker;
 
+/** 실제 카페의 액자와 안내판 위에 방 정보와 입력 영역을 겹친다. */
 public class MapSelectionPage extends JPanel {
+    private static final BufferedImage GALLERY = read("/images/mapselect/gallery.png");
+    private static final BufferedImage DETAIL  = read("/images/mapselect/detail-surface.png");
+    private static final Color TEXT_PRIMARY   = new Color(255, 243, 220);
+    private static final Color TEXT_SECONDARY = new Color(234, 213, 181);
+    private static final Color ACTION         = new Color(232, 193, 126);
+    private static final Color ACTION_INK     = new Color(58, 36, 20);
+    private static final BufferedImage BACK   = read("/images/mapselect/back-button.png");
+    private static final BufferedImage TITLE  = read("/images/mapselect/title-theme.png");
+    private static final int[] COLUMNS         = {305, 567, 827, 1089};
+    private final LongConsumer openMap;
+    private final Runnable dashboard;
+    private SwingWorker<List<MapCard>, Void> loading;
+    private List<MapCard> cards = List.of();
+    private MapCard selected;
+    private int galleryPage;
+    private JPanel popup;
+    private final java.util.Map<JComponent, Boolean> enabledBeforePopup = new java.util.HashMap<>();
 
-	// [연결]
-    // coderoom.features.mapcatalog.MapCatalogService와 현재 사용자 ID를 전달받는다.
-    // 맵 선택은 LongConsumer 콜백으로 상위에 알린다.
+    public MapSelectionPage() { this(null, null); }
 
-    // [구현 예정]
-    // render(cards): 플레이 가능한 포스터 1개와 준비 중 포스터 2개를 표시한다.
-    // 클리어 여부·최고 기록을 표시하고 준비 중 맵의 입장을 막는다.
-    // 목록 조회는 SwingWorker로 처리하고 게임 복귀 시 기록을 다시 읽는다.
-
-    // [경계]
-    // app.AppController나 다른 pages 슬라이스를 직접 import하지 않는다.
-	
-    public MapSelectionPage() {
-        setLayout(new BorderLayout());
-        setBackground(Color.WHITE);
-    }
-
-    // 맵 목록을 화면에 표시
-    public void render(List<MapCard> cards) {
-
-        removeAll();
-
-        // 화면 제목
-        JLabel title = new JLabel(
-            "CODE ROOM - MAP SELECT",
-            SwingConstants.CENTER
-        );
-
-        title.setFont(new Font("맑은 고딕", Font.BOLD, 28));
-        title.setBorder(BorderFactory.createEmptyBorder(25, 10, 25, 10));
-
-        add(title, BorderLayout.NORTH);
-
-        // 맵 목록이 없거나 비어 있는 경우
-        if (cards == null || cards.isEmpty()) {
-            showEmptyMessage("표시할 맵이 없습니다.");
-            return;
-        }
-
-        // null인 맵 데이터 제외
-        List<MapCard> validCards = new ArrayList<>();
-
-        for (MapCard card : cards) {
-            if (card != null) {
-                validCards.add(card);
+    public MapSelectionPage(LongConsumer openMap, Runnable dashboard) {
+        this.openMap   = openMap;
+        this.dashboard = dashboard;
+        setLayout(null);
+        setBackground(PixelTheme.DARK);
+        getInputMap(WHEN_ANCESTOR_OF_FOCUSED_COMPONENT).put(KeyStroke.getKeyStroke("ESCAPE"), "back");
+        getActionMap().put("back", new AbstractAction() {
+            @Override public void actionPerformed(java.awt.event.ActionEvent event) {
+                if (popup != null) { closePopup(); }
+                else if (selected != null) { showGallery(); }
+                else if (dashboard != null) { dashboard.run(); }
             }
-        }
-
-        if (validCards.isEmpty()) {
-            showEmptyMessage("맵 정보를 불러오지 못했습니다.");
-            return;
-        }
-
-        // 포스터를 가로로 배치
-        JPanel posterPanel = new JPanel(
-            new GridLayout(1, validCards.size(), 20, 10)
-        );
-
-        posterPanel.setBackground(Color.WHITE);
-        posterPanel.setBorder(
-            BorderFactory.createEmptyBorder(20, 30, 30, 30)
-        );
-
-        for (MapCard card : validCards) {
-
-            JPanel cardPanel = new JPanel(new BorderLayout(5, 10));
-            cardPanel.setBackground(Color.WHITE);
-            cardPanel.setBorder(
-                BorderFactory.createLineBorder(Color.GRAY, 1)
-            );
-
-            // 포스터 이미지
-            JLabel posterLabel = new JLabel(
-                "이미지를 불러올 수 없습니다.",
-                SwingConstants.CENTER
-            );
-
-            posterLabel.setPreferredSize(new Dimension(200, 250));
-
-            String posterPath = card.getPosterPath();
-
-            if (posterPath != null && !posterPath.trim().isEmpty()) {
-
-                String resourcePath = posterPath.startsWith("/")
-                    ? posterPath
-                    : "/" + posterPath;
-
+        });
+    }
+    /** 매번 DB에서 최고 기록을 다시 읽고, 실패 시 재시도와 복귀를 제공한다. */
+    public void load(MapCatalogService catalog, long userId) {
+        if (loading != null) { loading.cancel(true); }
+        showLoadStatus("방 목록을 불러오는 중입니다.", null);
+        loading = new SwingWorker<>() {
+            @Override protected List<MapCard> doInBackground() { return catalog.listForUser(userId); }
+            @Override protected void done() {
+                if (loading != this || isCancelled()) { return; }
+                loading = null;
                 try {
-                    URL imageURL = getClass().getResource(resourcePath);
-
-                    if (imageURL != null) {
-
-                        ImageIcon originalIcon = new ImageIcon(imageURL);
-
-                        // 이미지가 정상적으로 읽혔는지 확인
-                        if (originalIcon.getIconWidth() > 0) {
-
-                            Image image = originalIcon.getImage()
-                                .getScaledInstance(
-                                    200, 250, Image.SCALE_SMOOTH
-                                );
-
-                            posterLabel.setText("");
-                            posterLabel.setIcon(new ImageIcon(image));
-                        }
-                    }
-
-                } catch (RuntimeException ex) {
-                    System.out.println(
-                        "포스터 이미지 조회 실패: " + resourcePath
-                    );
+                    render(get());
+                } catch (InterruptedException exception) {
+                    Thread.currentThread().interrupt();
+                    showLoadStatus("조회가 중단되었습니다.", () -> load(catalog, userId));
+                } catch (ExecutionException exception) {
+                    showLoadStatus("방 목록을 불러오지 못했습니다.", () -> load(catalog, userId));
                 }
             }
+        };
+        loading.execute();
+    }
 
-            cardPanel.add(posterLabel, BorderLayout.NORTH);
+    private void showLoadStatus(String message, Runnable retry) {
+        closePopup();
+        selected = null;
+        removeAll();
+        place(label(message, 27), 350, 420, 840, 70);
+        if (retry != null) { place(control("다시 시도", retry), 620, 510, 290, 60); }
+        addBack();
+        refresh();
+    }
 
-            // 맵 정보
-            String titleText = safeText(card.getTitle(), "제목 없음");
-            String description = safeText(
-                card.getDescription(), "설명 없음"
-            );
-            String topic = safeText(card.getTopic(), "정보 없음");
-            String difficulty = safeText(
-                card.getDifficulty(), "정보 없음"
-            );
+    @Override public void removeNotify() {
+        if (loading != null) {
+            loading.cancel(true);
+            loading = null;
+        }
+        super.removeNotify();
+    }
 
-            String status = card.isPlayable()
-                ? "입장 가능"
-                : "준비 중";
+    public void render(List<MapCard> values) {
+        cards       = values == null ? List.of() : values.stream().filter(java.util.Objects::nonNull).toList();
+        galleryPage = 0;
+        showGallery();
+    }
 
-            String record = card.getBestSeconds() == null
-                ? "기록 없음"
-                : card.getBestSeconds() + "초";
+    private void showGallery() {
+        closePopup();
+        selected = null;
+        removeAll();
+        JLabel title = new JLabel("테마고르기") {
+            @Override protected void paintComponent(Graphics graphics) {
+                paintAsset(graphics, TITLE, getWidth(), getHeight());
+            }
+        };
+        title.getAccessibleContext().setAccessibleName("테마고르기");
+        place(title, 628, 91, 280, 82);
+        for (int slot = 0; slot < 8; slot++) {
+            int index    = galleryPage * 8 + slot;
+            MapCard card = index < cards.size() ? cards.get(index) : null;
+            Poster frame = new Poster(card, true);
+            if (card != null) { frame.addActionListener(event -> showDetails(card)); }
+            place(frame, COLUMNS[slot % 4], slot < 4 ? 309 : 591, 151, 204);
+            if (card != null) {
+                JLabel status = label(card.isPlayable() ? "입장 가능" : "준비 중", 15);
+                place(status, COLUMNS[slot % 4], slot < 4 ? 519 : 801, 151, 24);
+            }
+        }
+        addBack();
+        if (cards.size() > 8) {
+            if (galleryPage > 0) {
+                place(control("이전 진열대", () -> { galleryPage--; showGallery(); }), 920, 949, 210, 50);
+            }
+            if ((galleryPage + 1) * 8 < cards.size()) {
+                place(control("다음 진열대", () -> { galleryPage++; showGallery(); }), 1150, 949, 210, 50);
+            }
+        }
+        refresh();
+    }
 
-            JLabel infoLabel = new JLabel(
-                "<html><center>"
-                + "<b>" + escapeHtml(titleText) + "</b><br>"
-                + escapeHtml(description) + "<br>"
-                + "주제: " + escapeHtml(topic) + "<br>"
-                + "난이도: " + escapeHtml(difficulty) + "<br>"
-                + "상태: " + status + "<br>"
-                + "클리어: " + (card.isCleared() ? "완료" : "미완료")
-                + "<br>최고 기록: " + record
-                + "</center></html>",
-                SwingConstants.CENTER
-            );
+    private void showDetails(MapCard card) {
+        if (popup != null) { return; }
+        MapSelectionPage content = new MapSelectionPage(id -> {
+            closePopup();
+            if (openMap != null) { openMap.accept(id); }
+        }, null);
+        content.buildDetails(card, this::closePopup, openMap != null);
+        popup = new JPanel(null) {
+            @Override protected void paintComponent(Graphics graphics) {
+                graphics.setColor(new Color(24, 17, 12, 75));
+                graphics.fillRect(0, 0, getWidth(), getHeight());
+            }
+            @Override public void doLayout() {
+                int width  = (int) Math.min(getWidth() * 0.90, getHeight() * 0.90 * 16 / 9);
+                int height = width * 9 / 16;
+                content.setBounds((getWidth() - width) / 2, (getHeight() - height) / 2, width, height);
+            }
+        };
+        popup.setOpaque(false);
+        popup.setFocusCycleRoot(true);
+        popup.setFocusTraversalPolicy(new javax.swing.LayoutFocusTraversalPolicy());
+        popup.addMouseListener(new java.awt.event.MouseAdapter() { });
+        popup.addMouseMotionListener(new java.awt.event.MouseMotionAdapter() { });
+        popup.add(content);
+        for (java.awt.Component child : getComponents()) {
+            JComponent component = (JComponent) child;
+            enabledBeforePopup.put(component, component.isEnabled());
+            component.setEnabled(false);
+        }
+        content.getActionMap().put("back", new AbstractAction() {
+            @Override public void actionPerformed(java.awt.event.ActionEvent event) { closePopup(); }
+        });
+        add(popup, 0);
+        refresh();
+        javax.swing.SwingUtilities.invokeLater(() -> { if (popup != null) { popup.transferFocusDownCycle(); } });
+    }
 
-            cardPanel.add(infoLabel, BorderLayout.CENTER);
+    private void closePopup() {
+        if (popup == null) { return; }
+        remove(popup);
+        popup = null;
+        enabledBeforePopup.forEach(JComponent::setEnabled);
+        enabledBeforePopup.clear();
+        refresh();
+        for (java.awt.Component child : getComponents()) {
+            if (child instanceof JButton button && button.isEnabled()) {
+                button.requestFocusInWindow();
+                break;
+            }
+        }
+    }
 
-            // 입장 버튼
-            JButton enterButton = new JButton(
-                card.isPlayable() ? "입장하기" : "준비 중"
-            );
+    private void buildDetails(MapCard card, Runnable close, boolean canStart) {
+        selected = card;
+        removeAll();
+        place(new Poster(card, false), 24, 24, 544, 816);
+        detailText(text(card.getTitle(), "이름 없는 방"), 48, true, TEXT_PRIMARY, 636, 100, 790, 72);
+        detailText(text(card.getTopic(), "주제 미정"), 25, false, TEXT_SECONDARY, 636, 181, 600, 40);
+        detailText(card.isPlayable() ? "입장 가능" : "준비 중", 22, true,
+                card.isPlayable() ? new Color(226, 236, 193) : TEXT_SECONDARY, 1270, 181, 194, 40);
+        detailText("난이도", 21, false, TEXT_SECONDARY, 636, 272, 225, 34);
+        detailText(text(card.getDifficulty(), "미정"), 31, true, TEXT_PRIMARY, 636, 310, 225, 46);
+        detailText("클리어", 21, false, TEXT_SECONDARY, 912, 272, 225, 34);
+        detailText(card.isCleared() ? "완료" : "미완료", 31, true, TEXT_PRIMARY, 912, 310, 225, 46);
+        detailText("나의 최고 기록", 21, false, TEXT_SECONDARY, 1188, 272, 276, 34);
+        detailText(card.getBestSeconds() == null ? "기록 없음" : card.getBestSeconds() + "초",
+                31, true, TEXT_PRIMARY, 1188, 310, 276, 46);
+        detailText("방 이야기", 23, true, TEXT_PRIMARY, 636, 423, 828, 36);
+        JTextArea story = writing(text(card.getDescription(), "방 이야기를 준비하고 있습니다."), 24);
+        JScrollPane scroll = new JScrollPane(story);
+        scroll.setBorder(null);
+        scroll.setOpaque(false);
+        scroll.getViewport().setOpaque(false);
+        scroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        place(scroll, 636, 474, 828, 208);
+        JButton start = control(card.isPlayable() ? "이 방 시작하기" : "아직 준비 중이에요", () -> {
+            if (card.isPlayable() && openMap != null) { openMap.accept(card.getMapId()); }
+        });
+        start.putClientProperty("primary", true);
+        start.putClientProperty("bold", true);
+        start.putClientProperty("sceneFont", 28);
+        start.setEnabled(card.isPlayable() && canStart);
+        place(start, 636, 708, 828, 84);
+        JButton closeButton = control("닫기", close);
+        closeButton.putClientProperty("sceneFont", 18);
+        place(closeButton, 1448, 18, 58, 58);
+        refresh();
+        start.requestFocusInWindow();
+    }
 
-            enterButton.setEnabled(card.isPlayable());
+    private void detailText(String text, int size, boolean bold, Color color,
+            int x, int y, int width, int height) {
+        JLabel value = label(text, size);
+        value.setHorizontalAlignment(SwingConstants.LEFT);
+        value.setForeground(color);
+        value.putClientProperty("bold", bold);
+        place(value, x, y, width, height);
+    }
 
-            enterButton.addActionListener(e -> {
-                JOptionPane.showMessageDialog(
-                    this,
-                    titleText + " 맵을 선택했습니다."
-                );
-            });
+    private void addBack() {
+        if (dashboard != null) {
+            JButton back = new JButton("로비로 돌아가기") {
+                @Override protected void paintComponent(Graphics graphics) {
+                    paintAsset(graphics, BACK, getWidth(), getHeight());
+                    if (isEnabled() && (getModel().isRollover() || hasFocus())) {
+                        graphics.setColor(PixelTheme.LIGHT);
+                        graphics.drawRoundRect(5, 5, getWidth() - 11, getHeight() - 11, 8, 8);
+                    }
+                }
+            };
+            back.setContentAreaFilled(false);
+            back.setBorderPainted(false);
+            back.setToolTipText("로비로 돌아가기");
+            back.getAccessibleContext().setAccessibleName("로비로 돌아가기");
+            back.addActionListener(event -> dashboard.run());
+            place(back, 38, 30, 132, 74);
+        }
+    }
 
-            cardPanel.add(enterButton, BorderLayout.SOUTH);
+    private static void paintAsset(Graphics graphics, BufferedImage asset, int width, int height) {
+        if (asset == null) { return; }
+        Graphics2D g = (Graphics2D) graphics.create();
+        g.setRenderingHint(java.awt.RenderingHints.KEY_INTERPOLATION,
+                java.awt.RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+        double scale   = Math.min(width / (double) asset.getWidth(), height / (double) asset.getHeight());
+        int drawWidth  = (int) (asset.getWidth() * scale);
+        int drawHeight = (int) (asset.getHeight() * scale);
+        g.drawImage(asset, (width - drawWidth) / 2, (height - drawHeight) / 2, drawWidth, drawHeight, null);
+        g.dispose();
+    }
 
-            posterPanel.add(cardPanel);
+    private static JTextArea writing(String text, int size) {
+        JTextArea area = new JTextArea(text);
+        area.setFont(PixelTheme.font(size));
+        area.setForeground(TEXT_SECONDARY);
+        area.setOpaque(false);
+        area.setEditable(false);
+        area.setLineWrap(true);
+        area.setWrapStyleWord(true);
+        area.putClientProperty("sceneFont", size);
+        return area;
+    }
+
+    private static JLabel label(String text, int size) {
+        JLabel label = new JLabel(text, SwingConstants.CENTER);
+        label.setForeground(PixelTheme.LIGHT);
+        label.setFont(PixelTheme.font(size));
+        label.putClientProperty("sceneFont", size);
+        return label;
+    }
+
+    private static JButton control(String text, Runnable action) {
+        JButton button = new JButton(text) {
+            @Override protected void paintComponent(Graphics graphics) {
+                Graphics2D g = (Graphics2D) graphics.create();
+                g.setRenderingHint(java.awt.RenderingHints.KEY_TEXT_ANTIALIASING,
+                        java.awt.RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+                boolean primary = Boolean.TRUE.equals(getClientProperty("primary"));
+                if (primary) {
+                    g.setColor(!isEnabled() ? new Color(141, 117, 84)
+                            : getModel().isPressed() ? new Color(207, 164, 98)
+                            : getModel().isRollover() ? new Color(246, 210, 151) : ACTION);
+                    g.fillRoundRect(0, 0, getWidth(), getHeight(), 8, 8);
+                }
+                if (isEnabled() && (getModel().isRollover() || hasFocus())) {
+                    g.setColor(new Color(255, 223, 161, 35));
+                    g.fillRect(0, 0, getWidth(), getHeight());
+                    g.setColor(PixelTheme.LIGHT);
+                    g.drawRect(1, 1, getWidth() - 3, getHeight() - 3);
+                }
+                g.setFont(getFont());
+                int x = (getWidth() - g.getFontMetrics().stringWidth(getText())) / 2;
+                int y = (getHeight() + g.getFontMetrics().getAscent() - g.getFontMetrics().getDescent()) / 2;
+                g.setColor(primary ? ACTION_INK : isEnabled() ? TEXT_PRIMARY : TEXT_SECONDARY);
+                g.drawString(getText(), x, y);
+                g.dispose();
+            }
+        };
+        button.setContentAreaFilled(false);
+        button.setBorderPainted(false);
+        button.setFont(PixelTheme.font(25));
+        button.putClientProperty("sceneFont", 25);
+        button.addActionListener(event -> action.run());
+        return button;
+    }
+
+    private void place(JComponent component, int x, int y, int width, int height) {
+        component.putClientProperty("sceneBounds", new Rectangle(x, y, width, height));
+        add(component);
+    }
+
+    private int sceneHeight() { return selected == null ? 1024 : 864; }
+    private double scale() { return Math.min(getWidth() / 1536.0, getHeight() / (double) sceneHeight()); }
+    private int offsetX() { return (int) ((getWidth() - 1536 * scale()) / 2); }
+    private int offsetY() { return (int) ((getHeight() - sceneHeight() * scale()) / 2); }
+
+    @Override public void doLayout() {
+        for (java.awt.Component child : getComponents()) {
+            JComponent component = (JComponent) child;
+            if (component == popup) {
+                component.setBounds(0, 0, getWidth(), getHeight());
+                continue;
+            }
+            Rectangle bounds = (Rectangle) component.getClientProperty("sceneBounds");
+            component.setBounds(offsetX() + (int) (bounds.x * scale()), offsetY() + (int) (bounds.y * scale()),
+                    (int) (bounds.width * scale()), (int) (bounds.height * scale()));
+            resizeFont(component);
+            if (component instanceof JScrollPane scroll) { resizeFont((JComponent) scroll.getViewport().getView()); }
+        }
+    }
+
+    private void resizeFont(JComponent component) {
+        Object size = component.getClientProperty("sceneFont");
+        if (size instanceof Integer value) { component.setFont(PixelTheme.font((float) Math.max(10, value * scale()))
+                .deriveFont(Boolean.TRUE.equals(component.getClientProperty("bold")) ? java.awt.Font.BOLD : java.awt.Font.PLAIN)); }
+    }
+
+    @Override protected void paintComponent(Graphics graphics) {
+        super.paintComponent(graphics);
+        Graphics2D g = (Graphics2D) graphics.create();
+        PixelTheme.pixels(g);
+        g.drawImage(selected == null ? GALLERY : DETAIL, offsetX(), offsetY(),
+                (int) (1536 * scale()), (int) (sceneHeight() * scale()), null);
+        if (selected != null) {
+            g.translate(offsetX(), offsetY());
+            g.scale(scale(), scale());
+            g.setColor(new Color(226, 195, 146, 90));
+            g.fillRect(636, 244, 828, 1);
+            g.fillRect(636, 390, 828, 1);
+        }
+        g.dispose();
+    }
+
+    private void refresh() { revalidate(); repaint(); }
+    private static String text(String value, String fallback) { return value == null || value.isBlank() ? fallback : value; }
+
+    private static BufferedImage read(String path) {
+        URL resource = MapSelectionPage.class.getResource(path);
+        if (resource == null) { return null; }
+        try { return ImageIO.read(resource); } catch (IOException exception) { return null; }
+    }
+
+    /** 액자 내부에만 그리며, 원래 배경에 그려진 목재와 조명을 유지한다. */
+    private static final class Poster extends JButton {
+        private final MapCard card;
+        private final BufferedImage image;
+        private final boolean caption;
+
+        Poster(MapCard card, boolean caption) {
+            this.card    = card;
+            this.caption = caption;
+            String path  = card == null ? null : card.getPosterPath();
+            this.image   = path == null || path.isBlank() ? null : read(path.startsWith("/") ? path : "/" + path);
+            setText(card == null ? "새로운 방 준비 중" : text(card.getTitle(), "이름 없는 방"));
+            setToolTipText(getText());
+            getAccessibleContext().setAccessibleName(getText());
+            setEnabled(card != null && caption);
+            setContentAreaFilled(false);
+            setBorderPainted(false);
         }
 
-        add(posterPanel, BorderLayout.CENTER);
-
-        revalidate();
-        repaint();
-    }
-
-    // 맵 목록이 없을 때 안내 메시지
-    private void showEmptyMessage(String message) {
-
-        JLabel emptyLabel = new JLabel(
-            message,
-            SwingConstants.CENTER
-        );
-
-        emptyLabel.setFont(new Font("맑은 고딕", Font.PLAIN, 18));
-
-        add(emptyLabel, BorderLayout.CENTER);
-
-        revalidate();
-        repaint();
-    }
-
-    // null 또는 빈 문자열 처리
-    private String safeText(String value, String defaultValue) {
-
-        if (value == null || value.trim().isEmpty()) {
-            return defaultValue;
+        @Override protected void paintComponent(Graphics graphics) {
+            Graphics2D g = (Graphics2D) graphics.create();
+            PixelTheme.pixels(g);
+            if (image != null) {
+                double scale = caption
+                        ? Math.min(getWidth() / (double) image.getWidth(), getHeight() / (double) image.getHeight())
+                        : Math.min(getWidth() / (double) image.getWidth(), getHeight() / (double) image.getHeight());
+                int width    = (int) (image.getWidth() * scale);
+                int height   = (int) (image.getHeight() * scale);
+                g.drawImage(image, (getWidth() - width) / 2, (getHeight() - height) / 2, width, height, null);
+            }
+            g.setFont(PixelTheme.font(Math.max(10, getWidth() / 12f)));
+            if (card == null || image == null) {
+                center(g, card == null ? "준비 중" : "포스터 준비 중", getHeight() / 2);
+                center(g, card == null ? "새로운 이야기" : getText(), getHeight() / 2 + 24);
+            }
+            if (isEnabled() && (getModel().isRollover() || hasFocus())) {
+                g.setColor(PixelTheme.LIGHT);
+                g.drawRect(1, 1, getWidth() - 3, getHeight() - 3);
+                g.drawRect(3, 3, getWidth() - 7, getHeight() - 7);
+            }
+            g.dispose();
         }
 
-        return value;
-    }
-
-    // HTML 태그로 잘못 해석되지 않도록 문자 변환
-    private String escapeHtml(String value) {
-
-        return value
-            .replace("&", "&amp;")
-            .replace("<", "&lt;")
-            .replace(">", "&gt;")
-            .replace("\"", "&quot;")
-            .replace("'", "&#39;");
+        private void center(Graphics2D g, String value, int y) {
+            g.setColor(PixelTheme.LIGHT);
+            g.drawString(value, (getWidth() - g.getFontMetrics().stringWidth(value)) / 2, y);
+        }
     }
 }

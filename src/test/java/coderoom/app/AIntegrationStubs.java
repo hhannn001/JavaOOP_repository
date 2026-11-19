@@ -111,11 +111,11 @@ final class AIntegrationStubs {
     }
 
     static final class Game implements GamePage.GamePort {
-        final GameView view           = new GameView();
-        final GameSetup setup         = new GameSetup();
-        final ClearRecord record      = new ClearRecord();
-        final InspectResult inspected = new InspectResult();
-        final SubmitResult submitted  = new SubmitResult();
+        final GameView view           = new GameView(coderoom.entities.game.GameStage.START, List.of(), null, 0);
+        final GameSetup setup         = new GameSetup(new coderoom.entities.map.GameMap(1, "Test", "", "Java", "보통", "", true), List.of());
+        final ClearRecord record      = new ClearRecord(1L, 1L, 60L);
+        final InspectResult inspected = new InspectResult(RoomObjectId.BOOKS, "test", null);
+        final SubmitResult submitted  = new SubmitResult(SubmitResult.Verdict.WRONG, "test", view);
         final List<ClearRecord> saved = new ArrayList<>();
         CountDownLatch loadGate       = new CountDownLatch(0);
         CountDownLatch saveGate       = new CountDownLatch(0);
@@ -187,6 +187,8 @@ final class AIntegrationStubs {
         Consumer<LoginUser> login;
         LongConsumer open;
         Runnable logout;
+        Runnable openMaps;
+        Runnable dashboard;
         Runnable back;
         Runnable restart;
         LoginUser mapUser;
@@ -201,10 +203,16 @@ final class AIntegrationStubs {
             return new JPanel();
         }
         @Override
-        public JComponent maps(LoginUser user, LongConsumer callback, Runnable exit) {
+        public JComponent dashboard(LoginUser user, Runnable open, Runnable exit) {
+            openMaps = open;
+            logout   = exit;
+            return new JPanel();
+        }
+        @Override
+        public JComponent maps(LoginUser user, LongConsumer callback, Runnable returnToDashboard) {
             mapUser = user;
             open    = callback;
-            logout  = exit;
+            dashboard = returnToDashboard;
             mapLoads++;
             return new JPanel();
         }

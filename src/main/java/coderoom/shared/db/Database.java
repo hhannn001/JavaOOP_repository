@@ -1,18 +1,91 @@
 package coderoom.shared.db;
 
-/**
- * 담당: G
- * 역할: SQLite 연결과 초기화.
- * 직접 선언한 상속·구현 관계 없음.
- * 설계 초안: 필드·생성자·메서드는 아래 주석을 기준으로 구현한다.
- */
-public class Database {
-    // [필드·연결]
-    // 로컬 DB 파일 경로·접속 설정. 업무 엔티티 타입은 참조하지 않는다.
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.Objects;
 
-    // [구현 예정]
-    // open(): 새 java.sql.Connection을 반환하고 매번 외래키 제약을 활성화한다.
-    // initialize(): resources/db/schema.sql과 seed.sql을 이용해 테이블·시연 데이터를 준비한다.
-    // 초기화는 반복 실행해도 기존 기록을 삭제하거나 시연 데이터를 중복 삽입하지 않아야 한다.
-    // 연결을 전역으로 공유하지 않는다. SQLite JDBC 드라이버는 실제 구현 시 추가한다.
+/** SQLite 연결과 반복 가능한 초기화. 연결은 호출자가 닫는다. */
+public final class Database {
+    private final String url;
+
+    public Database() {
+        this("coderoom.db");
+    }
+
+    public Database(String dbFilePath) {
+        url = "jdbc:sqlite:" + Objects.requireNonNull(dbFilePath);
+    }
+
+    public Connection open() {
+        try {
+            Connection connection = DriverManager.getConnection(url);
+            try (Statement statement = connection.createStatement()) {
+                statement.execute("PRAGMA foreign_keys = ON");
+                statement.execute("PRAGMA busy_timeout = 5000");
+            } catch (SQLException exception) {
+                connection.close();
+                throw exception;
+            }
+            return connection;
+        } catch (SQLException exception) {
+            throw new StorageException("데이터베이스에 연결할 수 없습니다.", exception);
+        }
+    }
+
+    public void initialize() {
+        try (Connection connection = open()) {
+            connection.setAutoCommit(false);
+            try {
+                runScript(connection, "/db/schema.sql");
+                migrateHintLimit(connection);
+                runScript(connection, "/db/seed.sql");
+                connection.commit();
+            } catch (SQLException | IOException exception) {
+                try {
+                    connection.rollback();
+                } catch (SQLException rollbackFailure) {
+                    exception.addSuppressed(rollbackFailure);
+                }
+                throw exception;
+            }
+        } catch (SQLException | IOException exception) {
+            throw new StorageException("데이터베이스 초기화에 실패했습니다.", exception);
+        }
+    }
+
+    /** 기존 DB의 맵·계정·기록을 유지하며 후속 힌트 제한 설정만 추가한다. */
+    private void migrateHintLimit(Connection connection) throws SQLException {
+        try (Statement statement = connection.createStatement();
+                java.sql.ResultSet columns = statement.executeQuery("PRAGMA table_info(maps)")) {
+            while (columns.next()) {
+                if ("hint_limit".equals(columns.getString("name"))) { return; }
+            }
+        }
+        try (Statement statement = connection.createStatement()) {
+            statement.execute("ALTER TABLE maps ADD COLUMN hint_limit INTEGER NOT NULL DEFAULT 2 CHECK (hint_limit >= 0)");
+        }
+    }
+
+    // 이 프로젝트의 SQL 리소스는 문자열 내부 세미콜론을 char(59)로 표현한다.
+    private void runScript(Connection connection, String resource) throws SQLException, IOException {
+        String script;
+        try (InputStream input = Database.class.getResourceAsStream(resource)) {
+            if (input == null) {
+                throw new IOException("SQL 파일을 찾을 수 없습니다: " + resource);
+            }
+            script = new String(input.readAllBytes(), StandardCharsets.UTF_8);
+        }
+        try (Statement statement = connection.createStatement()) {
+            for (String sql : script.split(";")) {
+                if (!sql.isBlank()) {
+                    statement.execute(sql);
+                }
+            }
+        }
+    }
 }

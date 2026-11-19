@@ -1,18 +1,45 @@
 package coderoom.entities.puzzle;
 
-/**
- * 담당: E
- * 역할: 코드 퍼즐과 정답 판정.
- * 직접 선언한 상속·구현 관계 없음.
- * 설계 초안: 필드·생성자·메서드는 아래 주석을 기준으로 구현한다.
- */
-public class Puzzle {
-    // [필드 예정]
-    // puzzleId, mapId, stepNo, code, AnswerType answerType, answer, hint.
+import java.util.Objects;
 
-    // [구현 예정]
-    // check(rawAnswer): 형식 오류·오답·정답을 AnswerCheck로 반환한다.
-    // DIGITS4는 숫자 4개, GRID3X3은 행 순서의 숫자 9개로 검증한다.
-    // 정답은 문자열로 비교해 앞자리 0을 보존한다. Java 코드를 실제 실행하지 않는다.
-    // 게임 단계나 보상은 변경하지 않고 정답을 화면 DTO로 내보내지 않는다.
+/** 정답은 도메인 안에 보관하며 화면 DTO에 전달하지 않는다. */
+public final class Puzzle {
+    private final long puzzleId;
+    private final long mapId;
+    private final int stepNo;
+    private final String code;
+    private final AnswerType answerType;
+    private final String answer;
+    private final String hint;
+
+    public Puzzle(long puzzleId, long mapId, int stepNo, String code,
+            AnswerType answerType, String answer, String hint) {
+        if (puzzleId <= 0 || mapId <= 0 || stepNo <= 0) {
+            throw new IllegalArgumentException("퍼즐 ID와 순서는 양수여야 합니다.");
+        }
+        this.puzzleId   = puzzleId;
+        this.mapId      = mapId;
+        this.stepNo     = stepNo;
+        this.code       = Objects.requireNonNull(code);
+        this.answerType = Objects.requireNonNull(answerType);
+        this.answer     = Objects.requireNonNull(answer);
+        this.hint       = Objects.requireNonNull(hint);
+        if (!answerType.accepts(answer)) {
+            throw new IllegalArgumentException("저장된 퍼즐 정답 형식이 잘못되었습니다.");
+        }
+    }
+
+    public AnswerCheck check(String rawAnswer) {
+        if (!answerType.accepts(rawAnswer)) {
+            return AnswerCheck.INVALID;
+        }
+        return answer.equals(rawAnswer) ? AnswerCheck.CORRECT : AnswerCheck.WRONG;
+    }
+
+    public long puzzleId() { return puzzleId; }
+    public long mapId() { return mapId; }
+    public int stepNo() { return stepNo; }
+    public String code() { return code; }
+    public AnswerType answerType() { return answerType; }
+    public String hint() { return hint; }
 }

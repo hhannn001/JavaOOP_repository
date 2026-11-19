@@ -33,3 +33,7 @@
 # Node tooling, if added for the prototype
 node_modules/
 dist/
+
+# Local SQLite state (recreated from committed SQL seeds)
+/coderoom.db
+/coderoom.db-*

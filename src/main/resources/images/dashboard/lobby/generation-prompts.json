@@ -1,0 +1,25 @@
+{
+  "provider": "built-in image_gen",
+  "common": "Use the supplied approved lobby as strict source for palette, detailed pixel rendering, object identity. Fine pixel art, walnut, charcoal, warm muted brass, no vector simplified icons. ",
+  "specs": {
+    "background": "Edit ONLY by removing interactive objects to create clean background plate: remove entire left window including its plants and frame and fill with matching warm-gray wall; remove entire left low bookshelf and every object on its top, fill wall/floor behind; remove ONLY black curtain fabric leaving existing walnut doorway frame and brass rod, reveal dark empty corridor behind; remove standing leaderboard sign entirely; remove open book from right reception counter. Preserve room dimensions framing lighting, desk with bell monitor flowers, posters, floor, ceiling, blank top sign. Exactly same scene crop and perspective.",
+    "window": "Extract ONLY complete left window, wooden frame, exterior view and trailing ivy. Isolated exact cutout matching approved source. No wall, floor or bookshelf. Actual transparent RGBA outside hard object silhouette, no external glow. Centered with very small transparent margins.",
+    "leaderboard": "Create a wider version of the standing leaderboard in approved scene: walnut and charcoal matte panel with restrained brass border, small brass trophy detail, broad blank interior for nine rankings and separate lower personal score panel. Tall freestanding full sign with feet. Width about 65% of height, so real score text fits. Actual transparent background. No text no numbers, no surrounding wall shadow or glow.",
+    "curtain": "ANIMATION SPRITE ATLAS: exactly SIX equally sized cells arranged THREE COLUMNS by TWO ROWS, read left-to-right top-to-bottom. Every cell shows the SAME full black velvet curtain pair with same brass rail and walnut frame, same scale, same fixed camera and fixed rectangle boundaries. Frame 1 fully closed; frame 2 drawn 15% apart; frame 3 35%; frame 4 60%; frame 5 85%; frame 6 fully drawn to the left and right sides with compact gathered folds. Fabric slides horizontally on the rod, tiny secondary fold motion, no change to frame/rail. The revealed gap is transparent. Maintain exact identical canvas and rail position in all 6 cells. Pixel-art fine charcoal folds with warm rim light. Transparent background outside each object AND inside opening. NO labels numbers lines grid or text. Output 1536x1024 with six cells each 512x512, fit tall curtain within each cell with clear transparent margins. Separate sprites never touch cell boundaries.",
+    "bookshelf": "ANIMATION SPRITE ATLAS: exactly SIX equal cells THREE COLUMNS by TWO ROWS in reading order. Every cell shows identical complete low walnut bookshelf FROM APPROVED SCENE with two shelves filled with detailed books, small globe and hourglass, brass lamp and vase atop; fixed perspective scale position and lighting. Animation: a single RED hardcover book from upper shelf center gradually slides forward and out toward viewer across frames 1 to 6, growing slightly with perspective and tilting slightly clockwise; all other books furniture and decorations remain motionless. Frame 1 book fully in shelf. Frame 6 selected book clearly protruding. Actual transparent background outside furniture silhouette; no floor wall glow or shadows outside sprite. NO frame numbers or labels or text. Output 1536x1024 six 512x512 cells; same margins and baseline, sprites never touch cell boundaries.",
+    "journal": "ANIMATION SPRITE ATLAS: exactly SIX equal cells arranged THREE COLUMNS by TWO ROWS in reading order. Only the SAME open ivory logbook with dark burgundy leather cover FROM APPROVED SCENE, three-quarter view from slightly above, small page markings in dark ink, red ribbon. Same camera scale spine position canvas throughout. One right page turns to the left: frame 1 lying open flat, 2 right page corner lifts, 3 page arches upward, 4 page passes vertical over spine, 5 falls toward left, 6 open flat with next page visible. Actual separate handdrawn pixel poses. No stand desk other objects, no floating external shadows/glow. Actual transparent RGBA outside page/book silhouette. NO frame numbers borders or text. Output 1536x1024 six 512x512 cells, object centered with same margin and spine anchor every cell."
+  },
+  "labels": {
+    "curtain": "방 선택하기",
+    "bookshelf": "풀이한 문제",
+    "journal": "진척도",
+    "leaderboard": "리더보드",
+    "enter": "ENTER를 눌러 입장",
+    "settings": "설정",
+    "logout": "로그아웃",
+    "close": "닫기",
+    "retry": "새로고침"
+  },
+  "labelPromptTemplate": "Standalone transparent Korean pixel display lettering for a mature walnut/charcoal escape-cafe lobby. Exact text from labels mapping; warm ivory face, muted gold edge, subtle dark-brown pixel extrusion matching title_logo.png. One line, no signboard, no background, no glow. Tight small transparent margins; do not change syllables.",
+  "bookshelfCleanup": "Remove all white/light-gray background in all six cells. Preserve every object, pose, exact position and 1536x1024 3x2 grid. Empty space has alpha zero. Keep object interiors opaque."
+}

@@ -1,11 +1,11 @@
 digraph PackageDiagram {
-  graph [rankdir=TB, bgcolor="white", pad=0.35, nodesep=0.32, ranksep=0.7, splines=ortho, fontname="Helvetica", fontsize=21, labelloc=t, label="CODE ROOM | Package diagram (planned dependencies)\n"];
+  graph [rankdir=TB, bgcolor="white", pad=0.35, nodesep=0.32, ranksep=0.7, splines=ortho, fontname="Helvetica", fontsize=21, labelloc=t, label="CODE ROOM | Package diagram (current dependencies)\n"];
   node [shape=box, style="rounded,filled", color="#8290a5", fillcolor="white", fontname="Helvetica", fontsize=12, margin="0.18,0.12"];
   edge [color="#627086", arrowsize=0.7, penwidth=1.2];
 
   subgraph cluster_app {
     label="app"; color="#aec3e1"; style="rounded,filled"; fillcolor="#edf3fb";
-    app [label="coderoom.app\nMain · MainFrame · AppController"];
+    app [label="coderoom.app\nMain · MainFrame · AppController\nAppScreens · DashboardPage\nLobby animation · record dialog"];
   }
   subgraph cluster_pages {
     label="pages"; color="#a7d4ca"; style="rounded,filled"; fillcolor="#ebf7f4";
@@ -22,6 +22,7 @@ digraph PackageDiagram {
   }
   subgraph cluster_features {
     label="features"; color="#c4b2e2"; style="rounded,filled"; fillcolor="#f5f0fb";
+    dashboard [label="features.dashboard\nDashboardRecords (read-only JDBC)"];
     auth [label="features.auth\nLoginService"];
     catalog [label="features.mapcatalog\nMapCatalogService"];
     gameplay [label="features.gameplay\nGameFacade · game DTOs"];
@@ -37,19 +38,24 @@ digraph PackageDiagram {
   }
   subgraph cluster_shared {
     label="shared"; color="#c6cbd3"; style="rounded,filled"; fillcolor="#f6f7f9";
+    ui [label="shared.ui\nPixelTheme · ItemSprite\nGameOverlayLayout · PageTransition"];
     db [label="shared.db\nDatabase · StorageException"];
   }
 
   app -> {login mapselect gamepage};
   login -> auth;
   mapselect -> catalog;
-  gamepage -> {room clue inventory result answerui gameplay};
+  app -> {room clue inventory result answerui gameplay dashboard ui};
+  gamepage -> {gameplay session record user};
+  dashboard -> db;
+  {room clue inventory result answerui mapselect} -> ui;
+  ui -> session;
   auth -> user;
   catalog -> {map record};
-  gameplay -> {session puzzle record};
+  gameplay -> {map session puzzle record};
   answerui -> gameplay;
   {user map puzzle record} -> db;
 
-  legend [shape=plaintext, label="Arrow = intended package reference  |  JDBC implementations live in their entity package  |  FSD direction: app → pages → widgets/features → entities → shared", fontsize=10, fontcolor="#536075"];
+  legend [shape=plaintext, label="Arrow = package reference (representative)  |  JDBC implementations live in their entity package  |  GamePage uses ports; AppScreens composes widgets. ItemSprite references ItemId.", fontsize=10, fontcolor="#536075"];
   db -> legend [style=invis];
 }

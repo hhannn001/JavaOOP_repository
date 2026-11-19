@@ -1,0 +1,92 @@
+package coderoom.app;
+
+import coderoom.entities.game.GameSession;
+import coderoom.entities.game.GameStage;
+import coderoom.entities.game.ItemId;
+import coderoom.features.gameplay.GameView;
+import coderoom.pages.game.GamePage;
+import coderoom.widgets.result.ResultPanel;
+import coderoom.widgets.result.TimeLimitBar;
+import java.awt.image.BufferedImage;
+import java.util.List;
+import javax.swing.SwingUtilities;
+import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+class TimeLimitTest {
+    @Test void starsFollowThirdsOfConfiguredLimit() {
+        for (long limit : new long[] {180, 300, 90}) {
+            assertEquals(3, ResultPanel.starCount(0, limit, true));
+            assertEquals(3, ResultPanel.starCount(limit / 3, limit, true));
+            assertEquals(2, ResultPanel.starCount(limit / 3 + 1, limit, true));
+            assertEquals(2, ResultPanel.starCount(limit * 2 / 3, limit, true));
+            assertEquals(1, ResultPanel.starCount(limit * 2 / 3 + 1, limit, true));
+            assertEquals(1, ResultPanel.starCount(limit - 1, limit, true));
+            assertEquals(0, ResultPanel.starCount(limit, limit, true));
+            assertEquals(0, ResultPanel.starCount(0, limit, false));
+        }
+    }
+
+    @Test void escapeMustPrecedeDeadline() {
+        GameSession early = readySession();
+        GameSession late  = readySession();
+        assertTrue(early.escape(179_999_999_999L));
+        assertTrue(early.escape(190_000_000_000L));
+        assertFalse(late.escape(180_000_000_000L));
+    }
+
+    private GameSession readySession() {
+        GameSession session = new GameSession(1, 1, 0);
+        session.unlockDrawer();
+        session.unlockSafe();
+        session.select(ItemId.KEY);
+        return session;
+    }
+
+    @Test void timeoutShowsFailureWithoutSaving() throws Exception {
+        SwingUtilities.invokeAndWait(() -> {
+            AIntegrationStubs.Game game       = new AIntegrationStubs.Game();
+            AIntegrationStubs.Widgets widgets = new AIntegrationStubs.Widgets();
+            GamePage page                    = new GamePage(game, widgets);
+            page.render(new GameView(GameStage.START, List.of(), null, 179));
+            assertNull(widgets.escape);
+            page.render(new GameView(GameStage.START, List.of(), null, 180));
+            assertNotNull(widgets.escape);
+            assertNull(widgets.escape.record());
+            assertFalse(page.isTimerRunning());
+            page.useKey();
+            page.retrySave();
+            assertTrue(game.saved.isEmpty());
+            page.disposeGame();
+        });
+    }
+
+    @Test void resultAndTimerPaintInBothStates() throws Exception {
+        SwingUtilities.invokeAndWait(() -> {
+            ResultPanel result = new ResultPanel();
+            result.setSize(620, 350);
+            result.render(97, ResultPanel.SaveState.SAVED);
+            paint(result);
+            result.renderFailure();
+            paint(result);
+            TimeLimitBar timer = new TimeLimitBar();
+            timer.setSize(360, 48);
+            for (long elapsed : new long[] {0, 90, 180, 200}) {
+                timer.setElapsedSeconds(elapsed);
+                paint(timer);
+            }
+        });
+    }
+
+    private void paint(javax.swing.JComponent component) {
+        component.doLayout();
+        BufferedImage image = new BufferedImage(component.getWidth(), component.getHeight(), BufferedImage.TYPE_INT_ARGB);
+        var graphics = image.createGraphics();
+        component.paint(graphics);
+        graphics.dispose();
+    }
+}

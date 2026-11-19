@@ -30,19 +30,25 @@ classDiagram
         +check(rawAnswer) AnswerCheck
     }
     class GameSetup {
-        +GameMap map
-        +List~Puzzle~ puzzles
+        +map() GameMap
+        +puzzles() List~Puzzle~
+    }
+    class GameMap {
+        +getMapId() int
+        +isPlayable() boolean
+        +getHintLimit() int
     }
     class GameView {
-        +GameStage stage
-        +List~ItemView~ items
-        +ItemId selectedItem
-        +long elapsedSeconds
+        +stage() GameStage
+        +items() List~ItemView~
+        +selectedItem() ItemId
+        +elapsedSeconds() long
     }
     class ItemView {
-        +ItemId id
-        +String title
-        +String content
+        +id() ItemId
+        +title() String
+        +content() String
+        +hint() String
     }
     class GameStage {
         <<enumeration>>
@@ -58,9 +64,9 @@ classDiagram
         KEY
     }
     class ClearRecord {
-        +long userId
-        +long mapId
-        +long bestSeconds
+        +getUserId() long
+        +getMapId() long
+        +getBestSeconds() long
     }
     GameFacade *-- GameSession
     GameFacade --> GameSetup
@@ -71,3 +77,4 @@ classDiagram
     GameFacade ..> GameView : returns snapshot
     GameView o-- ItemView
     GameFacade ..> ClearRecord : creates on escape
+    GameSetup --> GameMap

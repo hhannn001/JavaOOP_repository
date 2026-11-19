@@ -4,17 +4,16 @@ package coderoom.features.mapcatalog;
  * 담당: C
  * 역할: 맵 포스터 표시용 값.
  * 직접 선언한 상속·구현 관계 없음.
- * 설계 초안: 필드·생성자·메서드는 아래 주석을 기준으로 구현한다.
  */
 
 public class MapCard {
 
-	// [필드 예정]
-    // mapId, title, description, topic, difficulty, posterPath, playable.
+	// [표시 데이터]
+    // 맵 식별자, 포스터 메타데이터와 플레이 가능 여부를 제공한다.
     // 클리어 여부, 미클리어 시 값이 없는 최고 기록(초).
 
-    // [구현 예정]
-    // 읽기 전용 값 객체로 구현한다. 별도 DB 테이블은 만들지 않는다.
+    // [동작]
+    // 맵 메타데이터와 사용자별 기록을 결합한 읽기 전용 표시값이다.
 	
     // 맵 기본 정보
     private int mapId;
@@ -27,12 +26,12 @@ public class MapCard {
 
     // 사용자별 클리어 기록
     private boolean cleared;
-    private Integer bestSeconds;
-
+    private Long bestSeconds;
+    
     // 생성자
     public MapCard(int mapId, String title, String description,
                    String topic, String difficulty, String posterPath,
-                   boolean playable, boolean cleared, Integer bestSeconds) {
+                   boolean playable, boolean cleared, Long bestSeconds) {
 
         this.mapId = mapId;
         this.title = title;
@@ -77,7 +76,7 @@ public class MapCard {
         return cleared;
     }
 
-    public Integer getBestSeconds() {
+    public Long getBestSeconds() {
         return bestSeconds;
     }
 }

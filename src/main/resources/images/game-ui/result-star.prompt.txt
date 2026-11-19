@@ -1,0 +1,3 @@
+Mode: built-in image_gen, transparent_background=true
+
+Use case: ui-mockup. Production game UI sprite, a single golden five-point achievement star, centered, transparent background, no text, no other objects. Cheerful chunky beveled gold star with bright cream yellow face, amber orange outline, deep warm brown short extruded shadow, small cream highlight. Pixel-stepped silhouette to match a Korean pixel-art escape room with cream gold beveled title lettering. Symmetric upright star, fully visible, generous small transparent margins. This will be shown at 64 pixels inside a result modal. Actual transparent background.
