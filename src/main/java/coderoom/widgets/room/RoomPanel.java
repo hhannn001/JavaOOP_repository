@@ -30,8 +30,8 @@ import javax.swing.JPanel;
  * 역할: 방 그림과 물건 클릭 영역
  * 상위 타입: javax.swing.JPanel
  *
- * 1단계 구현 범위: 방 배경 그리기 + 창 크기에 맞춘 확대·축소 + 서랍·다이얼·문 등의 클릭 처리.
- * 진행 단계는 열림 상태 문구로 표시한다. 배경 이미지는 공통으로 유지한다.
+ * 구현 범위: 방 배경 그리기 + 창 크기에 맞춘 확대·축소 + 서랍·다이얼·문 등의 클릭 처리
+ * + 진행 단계별 그림 겹치기(서랍 열림, 다이얼 해제, 문 열림). 겹침 그림은 배경과 같은 크기의 투명 PNG다.
  *
  * 핵심 아이디어: 클릭 영역을 "화면 좌표"가 아니라 "그림 원본 좌표(1586×992)"로 적어 두고,
  * 그리기와 클릭 판정이 항상 같은 변환(layout)을 쓰게 해서 그림과 클릭 영역이 어긋나지 않게 한다.
@@ -41,6 +41,12 @@ public class RoomPanel extends JPanel {
 
     /** 방 배경 그림의 위치. src/main/resources 아래를 기준으로 한 경로다. */
     private static final String BACKGROUND_PATH = "/images/room/study_locked.png";
+
+    /** 단계 그림 3장. 해당 단계 "이상"이면 배경 위에 차례로 겹쳐 그린다. */
+    private static final String[] OVERLAY_PATHS = {
+        "/images/room/drawer_open.png", "/images/room/dial_solved.png", "/images/room/door_open.png"};
+    private static final GameStage[] OVERLAY_FROM = {
+        GameStage.DRAWER_OPEN, GameStage.SAFE_OPEN, GameStage.ESCAPED};
 
     /** 그림 비율이 창과 다를 때 남는 빈 공간의 색. 프로토타입의 짙은 녹색(--deep)과 같다. */
     private static final Color LETTERBOX = new Color(0x15271E);
@@ -69,6 +75,8 @@ public class RoomPanel extends JPanel {
     }
 
     private final BufferedImage background;
+    private final BufferedImage[] overlays = new BufferedImage[OVERLAY_PATHS.length];
+    private BufferedImage scene;
     private final Consumer<RoomObjectId> onObjectClick;
     private final boolean fillScreen;
     private GameStage stage = GameStage.START;
@@ -85,7 +93,11 @@ public class RoomPanel extends JPanel {
     /** 전체 화면 배치에서는 원본 비율을 유지하며 빈 공간 없이 채울 수 있다. */
     public RoomPanel(Consumer<RoomObjectId> onObjectClick, boolean fillScreen) {
         this.onObjectClick = Objects.requireNonNull(onObjectClick);
-        this.background    = loadBackground();
+        this.background    = load(BACKGROUND_PATH);
+        for (int i = 0; i < overlays.length; i++) {
+            overlays[i] = load(OVERLAY_PATHS[i]);
+        }
+        rebuildScene();
         this.fillScreen    = fillScreen;
         setPreferredSize(new Dimension(960, 600));
         setBackground(LETTERBOX);
@@ -134,7 +146,28 @@ public class RoomPanel extends JPanel {
     public void setStage(GameStage stage) {
         if (this.stage != stage) {
             this.stage = Objects.requireNonNull(stage);
+            rebuildScene();
             repaint();
+        }
+    }
+
+    /** 현재 단계에 맞는 그림을 한 장으로 미리 합쳐 둔다. 단계가 바뀔 때만 하므로 그릴 때 부담이 없다. */
+    private void rebuildScene() {
+        if (background == null) {
+            scene = null;
+            return;
+        }
+        scene = new BufferedImage(background.getWidth(), background.getHeight(), BufferedImage.TYPE_INT_RGB);
+        Graphics2D g = scene.createGraphics();
+        try {
+            g.drawImage(background, 0, 0, null);
+            for (int i = 0; i < overlays.length; i++) {
+                if (overlays[i] != null && stage.compareTo(OVERLAY_FROM[i]) >= 0) {
+                    g.drawImage(overlays[i], 0, 0, null);
+                }
+            }
+        } finally {
+            g.dispose();
         }
     }
 
@@ -157,19 +190,8 @@ public class RoomPanel extends JPanel {
             Layout layout = fitToPanel();
             g.translate(layout.offsetX(), layout.offsetY());
             g.scale(layout.scale(), layout.scale());
-            g.drawImage(background, 0, 0, null);
+            g.drawImage(scene, 0, 0, null);
             drawHighlights(g);
-            g.setColor(GOLD);
-            g.setFont(new java.awt.Font(java.awt.Font.SANS_SERIF, java.awt.Font.BOLD, 24));
-            if (!investigationOpen && stage.ordinal() >= GameStage.DRAWER_OPEN.ordinal()) {
-                g.drawString("서랍 열림", 565, 780);
-            }
-            if (!investigationOpen && stage.ordinal() >= GameStage.SAFE_OPEN.ordinal()) {
-                g.drawString("금고 열림", 960, 510);
-            }
-            if (stage == GameStage.ESCAPED) {
-                g.drawString("탈출 성공", 1310, 770);
-            }
         } finally {
             g.dispose();
         }
@@ -240,16 +262,16 @@ public class RoomPanel extends JPanel {
         }
     }
 
-    /** 클래스패스에서 배경 그림을 읽는다. 실패하면 null을 돌려주고 원인을 로그로 남긴다. */
-    private static BufferedImage loadBackground() {
-        try (InputStream in = RoomPanel.class.getResourceAsStream(BACKGROUND_PATH)) {
+    /** 클래스패스에서 그림을 읽는다. 실패하면 null을 돌려주고 원인을 로그로 남긴다. */
+    private static BufferedImage load(String path) {
+        try (InputStream in = RoomPanel.class.getResourceAsStream(path)) {
             if (in == null) {
-                LOG.warning("방 배경 그림을 찾을 수 없습니다: " + BACKGROUND_PATH);
+                LOG.warning("방 그림을 찾을 수 없습니다: " + path);
                 return null;
             }
             return ImageIO.read(in);
         } catch (IOException exception) {
-            LOG.warning("방 배경 그림을 읽지 못했습니다: " + exception.getMessage());
+            LOG.warning("방 그림을 읽지 못했습니다: " + path + " - " + exception.getMessage());
             return null;
         }
     }
