@@ -1,0 +1,135 @@
+digraph RoleClasses {
+  graph [rankdir=TB, bgcolor="white", pad=0.45, nodesep=0.28, ranksep=0.65,
+         compound=true, newrank=true, splines=polyline, dpi=140,
+         fontname="Apple SD Gothic Neo", fontsize=26, labelloc=t,
+         label="CODE ROOM · 담당 역할별 통합 클래스 다이어그램\n2026-11-16 구현 기준"];
+  node [shape=box, style="rounded,filled", fillcolor="white", color="#94a3b8",
+        fontname="Apple SD Gothic Neo", fontsize=12, margin="0.14,0.10"];
+  edge [color="#64748b", arrowsize=0.7, fontname="Apple SD Gothic Neo", fontsize=10];
+
+  subgraph cluster_A {
+    label="A · 앱 조립 / 화면 전환 / 게임 수명";
+    style="rounded,filled"; color="#7194cd"; fillcolor="#eff5ff"; fontsize=19;
+    Main [label="Main\nmain() / launch()\nDB·서비스 조립"];
+    AppController [label="AppController\n화면 이동·계정 세션"];
+    MainFrame [label="MainFrame\nCardLayout / showPage()"];
+    AppScreens [label="AppScreens\n화면 생성·콜백 연결"];
+    GamePage [label="GamePage\nload() / submit() / retrySave()\ndisposeGame()"];
+    Host [label="«interface»\nAppController.Host"];
+    Screens [label="«interface»\nAppController.Screens"];
+    GamePort [label="«interface»\nGamePage.GamePort"];
+    Widgets [label="«interface»\nGamePage.Widgets"];
+    GameAdapter [label="AppScreens.GameAdapter\n«implements GamePort»"];
+    GameWidgets [label="AppScreens.GameWidgets\n«implements Widgets»"];
+    DashboardPage [label="DashboardPage\n로비·제목·사물 메뉴"];
+    DashboardRecordDialog [label="DashboardRecordDialog\n비동기 기록 조회·취소"];
+    LobbyClasses [label="로비 보조 클래스\nSceneObjectButton · DashboardCat\nDashboardBell · CatReactionFrames\nWindowAmbient", color="#7194cd"];
+    Main -> AppController [style=dashed, label="조립"];
+    Main -> AppScreens [style=dashed];
+    MainFrame -> Host [style=dashed, arrowhead=empty];
+    AppScreens -> Screens [style=dashed, arrowhead=empty];
+    AppController -> {Host Screens};
+    GamePage -> {GamePort Widgets};
+    AppController -> GamePage [label="수명 관리"];
+    AppScreens -> {GameAdapter GameWidgets DashboardPage} [style=dashed];
+    GameAdapter -> GamePort [style=dashed, arrowhead=empty];
+    GameWidgets -> Widgets [style=dashed, arrowhead=empty];
+    DashboardPage -> DashboardRecordDialog;
+    DashboardPage -> LobbyClasses;
+  }
+
+  subgraph cluster_B {
+    label="B · 로그인 / 비밀번호 / 사용자 저장소";
+    style="rounded,filled"; color="#59a49a"; fillcolor="#ecf8f5"; fontsize=19;
+    LoginPage [label="LoginPage"];
+    LoginService [label="LoginService\nlogin()"];
+    PasswordVerifier [label="PasswordVerifier"];
+    UserRepository [label="«interface»\nUserRepository\nfindByLoginId()"];
+    JdbcUserRepository [label="JdbcUserRepository"];
+    UserValues [label="사용자·결과 값\nUserAccount · LoginUser · LoginResult"];
+    LoginPage -> LoginService;
+    LoginService -> {PasswordVerifier UserRepository UserValues};
+    JdbcUserRepository -> UserRepository [style=dashed, arrowhead=empty];
+  }
+
+  subgraph cluster_C {
+    label="C · 맵 선택 / 카드 / 맵 저장소";
+    style="rounded,filled"; color="#bd9854"; fillcolor="#fff8e9"; fontsize=19;
+    MapSelectionPage [label="MapSelectionPage\nload() / render()"];
+    MapCatalogService [label="MapCatalogService\nlistForUser()"];
+    MapRepository [label="«interface»\nMapRepository\nfindAll() / findById()"];
+    JdbcMapRepository [label="JdbcMapRepository"];
+    MapValues [label="맵·표시 값 / 미리보기\nGameMap · MapCard\nMapSelectionPreview"];
+    MapSelectionPage -> MapCatalogService;
+    MapCatalogService -> {MapRepository MapValues};
+    JdbcMapRepository -> MapRepository [style=dashed, arrowhead=empty];
+  }
+
+  subgraph cluster_D {
+    label="D · 방 그림 / 물체 클릭 / 좌표";
+    style="rounded,filled"; color="#ca9278"; fillcolor="#fff1e9"; fontsize=19;
+    RoomPanel [label="RoomPanel\nsetStage()\nsetInvestigationOpen()\n물체 클릭 콜백"];
+  }
+
+  subgraph cluster_E {
+    label="E · 게임 규칙 / 퍼즐 / 상태 / 공개 DTO";
+    style="rounded,filled"; color="#9a80c9"; fillcolor="#f5f0ff"; fontsize=19;
+    GameFacade [label="GameFacade\nloadMap() / start() / inspect()\nsubmit() / selectItem() / useKey()\nsaveClear() / view()"];
+    GameSession [label="GameSession\n인벤토리·선택·단계·시간\nunlockDrawer() / unlockSafe() / escape()"];
+    Puzzle [label="Puzzle\ncheck(rawAnswer)"];
+    PuzzleRepository [label="«interface»\nPuzzleRepository\nfindByMapId()"];
+    GameEnums [label="«enum»\nGameStage · ItemId · RoomObjectId\nAnswerType · AnswerCheck"];
+    GameValues [label="공개 DTO\nGameSetup · GameView · ItemView\nInspectResult · SubmitResult · EscapeResult"];
+    GameFacade -> GameSession [dir=both, arrowtail=diamond, arrowhead=none];
+    GameFacade -> {Puzzle PuzzleRepository GameValues};
+    GameSession -> GameEnums;
+    Puzzle -> GameEnums;
+  }
+
+  subgraph cluster_F {
+    label="F · 단서 / 인벤토리 / 암호 입력";
+    style="rounded,filled"; color="#c07d9e"; fillcolor="#fff0f6"; fontsize=19;
+    CluePanel [label="CluePanel\n메모·힌트 공개·접기"];
+    InventoryPanel [label="InventoryPanel\n아이템 선택·숫자 단축키"];
+    AnswerInputPanel [label="AnswerInputPanel\n4자리 / 3×3 입력\n제출 콜백"];
+  }
+
+  subgraph cluster_G {
+    label="G · DB 초기화 / 퍼즐 JDBC / 최고 기록 / 결과";
+    style="rounded,filled"; color="#7791a6"; fillcolor="#eef4f8"; fontsize=19;
+    Database [label="Database\nopen() / initialize()\n스키마·마이그레이션·시드"];
+    JdbcPuzzleRepository [label="JdbcPuzzleRepository"];
+    ClearRecordRepository [label="«interface»\nClearRecordRepository\nfindByUserId() / saveBest()"];
+    JdbcClearRecordRepository [label="JdbcClearRecordRepository"];
+    ResultPanel [label="ResultPanel\n탈출 결과·저장 상태·재시도"];
+    StorageValues [label="기록 값 / 저장 오류\nClearRecord · StorageException"];
+    JdbcClearRecordRepository -> ClearRecordRepository [style=dashed, arrowhead=empty];
+    JdbcClearRecordRepository -> {Database StorageValues};
+    JdbcPuzzleRepository -> Database;
+  }
+
+  subgraph cluster_shared {
+    label="공통 · 최종 담당 미정 (기존 A~G 배정 유지)";
+    style="rounded,dashed,filled"; color="#9b9b9b"; fillcolor="#f7f7f7"; fontsize=17;
+    DashboardRecords [label="DashboardRecords\nrooms() / ranking() / progress()\n연결 범위: A 화면 ↔ G DB"];
+    SharedUi [label="공통 UI 클래스\nGameOverlayLayout · ItemSprite\nPixelTheme · PageTransition\n조립·위젯·화면 전환에서 사용"];
+  }
+
+  AppScreens -> {LoginPage MapSelectionPage} [style=dashed, label="생성"];
+  GameAdapter -> GameFacade [label="위임"];
+  GameWidgets -> {RoomPanel CluePanel InventoryPanel AnswerInputPanel ResultPanel}
+    [dir=both, arrowtail=diamond, arrowhead=none];
+  GameFacade -> {MapRepository ClearRecordRepository};
+  MapCatalogService -> ClearRecordRepository [label="계정별 기록"];
+  JdbcPuzzleRepository -> PuzzleRepository [style=dashed, arrowhead=empty];
+  JdbcUserRepository -> Database;
+  JdbcMapRepository -> Database;
+  DashboardRecordDialog -> DashboardRecords;
+  DashboardRecords -> Database [label="읽기 전용 SQL"];
+  GameWidgets -> SharedUi [style=dashed, label="배치·테마 사용"];
+
+  legend [shape=plain, fontsize=12, label="실선 → 참조·호출   |   점선 → 생성·사용   |   빈 삼각형 → 인터페이스 구현   |   ◆ 소유\n여러 이름이 있는 상자는 보조 클래스·DTO·enum의 묶음이며 상속 관계가 아니다.\n주요 연결만 표시한다. 중첩 인터페이스는 바깥 클래스 이름을 함께 표기했다."];
+  { rank=sink; legend; }
+  Database -> legend [style=invis];
+  SharedUi -> legend [style=invis];
+}
