@@ -29,6 +29,8 @@ class ObjectUiKeyboardTest {
             frame[0] = new JFrame("Inventory keyboard test");
             focus[0] = new JButton("Focus");
             input[0] = new JTextField();
+            // 이 테스트는 숫자 키 전달을 검사하며 OS 입력기의 기존 조합 문자는 받지 않는다.
+            input[0].enableInputMethods(false);
             InventoryPanel inventory = new InventoryPanel();
             inventory.setItems(List.of(ItemId.NOTE1, ItemId.NOTE2), List.of("메모 1", "메모 2"));
             inventory.setOnItemSelected(selected::set);
