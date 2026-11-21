@@ -10,13 +10,23 @@ import javax.swing.Icon;
 /** 인벤토리와 다른 화면에서 재사용하는 작은 물체 픽셀 아이콘. */
 public final class ItemSprite implements Icon {
     private final ItemId item;
-    public ItemSprite(ItemId item) { this.item = item; }
-    @Override public int getIconWidth() { return 54; }
-    @Override public int getIconHeight() { return 46; }
+    private final int scale;
+
+    public ItemSprite(ItemId item) {
+        this(item, 2);
+    }
+
+    public ItemSprite(ItemId item, int scale) {
+        this.item = item;
+        this.scale = scale;
+    }
+
+    @Override public int getIconWidth() { return 27 * scale; }
+    @Override public int getIconHeight() { return 23 * scale; }
     @Override public void paintIcon(Component component, Graphics graphics, int x, int y) {
         Graphics2D g = (Graphics2D) graphics.create();
         g.translate(x, y);
-        g.scale(2, 2);
+        g.scale(scale, scale);
         PixelTheme.pixels(g);
         if (item == ItemId.KEY) {
             g.setColor(new Color(66, 38, 15));

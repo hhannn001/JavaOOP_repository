@@ -1,25 +1,29 @@
 package coderoom.widgets.inventory;
 
-import coderoom.entities.game.ItemId;
-import java.util.List;
-import java.util.function.Consumer;
-
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
+import java.awt.GradientPaint;
 import java.awt.Graphics;
+import java.awt.Graphics2D;
 import java.awt.GridLayout;
-
-import javax.swing.BorderFactory;
-import javax.swing.JButton;
-import javax.swing.JPanel;
-import javax.swing.JComponent;
-import javax.swing.KeyStroke;
-import javax.swing.AbstractAction;
-import javax.swing.text.JTextComponent;
 import java.awt.KeyboardFocusManager;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
+import java.util.List;
+import java.util.function.Consumer;
+
+import javax.swing.AbstractAction;
+import javax.swing.BorderFactory;
+import javax.swing.JButton;
+import javax.swing.JComponent;
+import javax.swing.JPanel;
+import javax.swing.KeyStroke;
+import javax.swing.SwingConstants;
+import javax.swing.text.JTextComponent;
+
+import coderoom.entities.game.ItemId;
+import coderoom.shared.ui.ItemSprite;
 
 /**
  * 담당: F
@@ -38,14 +42,18 @@ public class InventoryPanel extends JPanel {
     private static final Color SLOT_BG =
             new Color(39, 56, 45);
 
-    private static final Color BORDER =
-            new Color(119, 133, 105);
-
     private static final Color GOLD =
             new Color(223, 200, 145);
 
     private static final Color SELECTED_BG =
             new Color(70, 87, 65);
+
+    private static final Color WALNUT = new Color(63, 35, 19);
+    private static final Color WOOD_HIGHLIGHT = new Color(106, 62, 37);
+    private static final Color FRAME_SHADOW = new Color(29, 15, 7);
+    private static final Color BRASS = new Color(174, 120, 54);
+    private static final Color FELT = new Color(19, 44, 29);
+    private static final Color FELT_SHADOW = new Color(12, 29, 20);
 
     private final JButton[] slots =
             new JButton[SLOT_COUNT];
@@ -64,10 +72,7 @@ public class InventoryPanel extends JPanel {
         setLayout(new GridLayout(1, SLOT_COUNT, 5, 0));
         setBackground(BG);
 
-        setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(BORDER, 2),
-                BorderFactory.createEmptyBorder(6, 6, 6, 6)
-        ));
+        setBorder(BorderFactory.createEmptyBorder(8, 10, 8, 10));
 
         setPreferredSize(new Dimension(390, 70));
 
@@ -81,6 +86,7 @@ public class InventoryPanel extends JPanel {
 
                 @Override
                 protected void paintComponent(Graphics g) {
+                    paintSlot(g, getWidth(), getHeight(), index == selectedIndex);
                     super.paintComponent(g);
 
                     Graphics numberGraphics = g.create();
@@ -102,14 +108,16 @@ public class InventoryPanel extends JPanel {
             );
 
             button.setForeground(GOLD);
+            button.setHorizontalTextPosition(SwingConstants.CENTER);
+            button.setVerticalTextPosition(SwingConstants.BOTTOM);
+            button.setIconTextGap(2);
             button.setBackground(SLOT_BG);
             button.setFocusPainted(false);
-            button.setOpaque(true);
+            button.setContentAreaFilled(false);
+            button.setOpaque(false);
             button.setEnabled(false);
 
-            button.setBorder(
-                    BorderFactory.createLineBorder(BORDER, 1)
-            );
+            button.setBorder(BorderFactory.createEmptyBorder(3, 3, 3, 3));
 
             slots[i] = button;
             add(button);
@@ -129,6 +137,63 @@ public class InventoryPanel extends JPanel {
 
     }
 
+    @Override
+    protected void paintComponent(Graphics graphics) {
+        super.paintComponent(graphics);
+        int width = getWidth();
+        int height = getHeight();
+        Graphics2D g = (Graphics2D) graphics.create();
+        try {
+            g.setColor(FRAME_SHADOW);
+            g.fillRect(0, 0, width, height);
+            g.setPaint(new GradientPaint(0, 0, WOOD_HIGHLIGHT, 0, height / 2f, WALNUT, true));
+            g.fillRect(2, 2, width - 4, height - 4);
+            g.setColor(WOOD_HIGHLIGHT);
+            g.drawRect(3, 3, width - 7, height - 7);
+            g.setColor(FRAME_SHADOW);
+            g.fillRect(7, 6, width - 14, height - 12);
+
+            paintBrassCorner(g, 2, 2, 1, 1);
+            paintBrassCorner(g, width - 3, 2, -1, 1);
+            paintBrassCorner(g, 2, height - 3, 1, -1);
+            paintBrassCorner(g, width - 3, height - 3, -1, -1);
+        } finally {
+            g.dispose();
+        }
+    }
+
+    private static void paintBrassCorner(Graphics2D graphics, int x, int y, int dx, int dy) {
+        Graphics2D g = (Graphics2D) graphics.create();
+        try {
+            g.translate(x, y);
+            g.scale(dx, dy);
+            g.setColor(BRASS);
+            g.fillRect(0, 0, 9, 3);
+            g.fillRect(0, 0, 3, 9);
+            g.setColor(GOLD);
+            g.drawLine(0, 0, 8, 0);
+            g.drawLine(0, 0, 0, 8);
+            g.setColor(FRAME_SHADOW);
+            g.fillRect(1, 1, 1, 1);
+        } finally {
+            g.dispose();
+        }
+    }
+
+    private static void paintSlot(Graphics graphics, int width, int height, boolean selected) {
+        Graphics2D g = (Graphics2D) graphics.create();
+        try {
+            g.setPaint(new GradientPaint(0, 0, FELT_SHADOW, 0, height, FELT));
+            g.fillRect(0, 0, width, height);
+            g.setColor(BRASS);
+            g.drawRect(0, 0, width - 1, height - 1);
+            g.setColor(selected ? GOLD : WALNUT);
+            g.drawRect(1, 1, width - 3, height - 3);
+        } finally {
+            g.dispose();
+        }
+    }
+
     /**
      * 슬롯에 표시할 아이템 설정
      */
@@ -139,6 +204,7 @@ public class InventoryPanel extends JPanel {
         }
 
         itemIds[index] = id;
+        slots[index].setIcon(id != null ? new ItemSprite(id, 1) : null);
         slots[index].setText(id != null ? name : "");
         slots[index].setEnabled(id != null);
     }
@@ -169,12 +235,7 @@ public class InventoryPanel extends JPanel {
             slots[i].setBackground(
                     selected ? SELECTED_BG : SLOT_BG
             );
-            slots[i].setBorder(
-                    BorderFactory.createLineBorder(
-                            selected ? GOLD : BORDER,
-                            selected ? 3 : 1
-                    )
-            );
+            slots[i].repaint();
         }
 
     }
@@ -184,16 +245,11 @@ public class InventoryPanel extends JPanel {
             throw new IllegalArgumentException("아이템 ID와 이름 개수를 확인하세요.");
         }
 
-        selectedIndex = -1;
-
         for (int i = 0; i < SLOT_COUNT; i++) {
             boolean hasItem = i < ids.size();
             setItem(i, hasItem ? ids.get(i) : null, hasItem ? names.get(i) : "");
-            slots[i].setBackground(SLOT_BG);
-            slots[i].setBorder(
-                    BorderFactory.createLineBorder(BORDER, 1)
-            );
         }
+        setSelectedItem(null);
     }
 
 }
