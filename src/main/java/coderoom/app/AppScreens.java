@@ -246,7 +246,7 @@ final class AppScreens implements AppController.Screens {
             puzzleFocused = puzzle;
             dimmer.setVisible(puzzle || finished);
             header.setVisible(!puzzle && !finished);
-            bottom.setVisible(!puzzle && !finished);
+            bottom.setVisible(!puzzle && !finished && !speaking);
             dialogueClick.setVisible(speaking);
             setInputEnabled(answer, !speaking);
             if (puzzle && wasSpeaking && !speaking) { answer.focusInput(); }
