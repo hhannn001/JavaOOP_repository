@@ -34,4 +34,25 @@ public final class JdbcUserRepository implements UserRepository {
             throw new StorageException("계정 조회에 실패했습니다.", exception);
         }
     }
+
+    @Override
+    public boolean create(String loginId, String passwordHash) {
+        Objects.requireNonNull(loginId, "로그인 ID가 필요합니다.");
+        Objects.requireNonNull(passwordHash, "비밀번호 해시가 필요합니다.");
+        if (loginId.isBlank() || passwordHash.isBlank()) {
+            throw new IllegalArgumentException("로그인 ID와 해시는 비어 있을 수 없습니다.");
+        }
+        // UNIQUE 제약으로 동시 가입도 판정한다. 다른 SQL 장애는 중복 ID로 숨기지 않는다.
+        String sql = "INSERT INTO users (login_id, password_hash) VALUES (?, ?) "
+                + "ON CONFLICT(login_id) DO NOTHING";
+        try (Connection connection = database.open();
+                PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, loginId);
+            statement.setString(2, passwordHash);
+            return statement.executeUpdate() == 1;
+        } catch (SQLException exception) {
+            throw new StorageException("회원가입 정보를 저장할 수 없습니다.", exception);
+        }
+    }
+
 }

@@ -41,6 +41,13 @@ public final class LoginPage extends JPanel {
     private final JTextField loginIdField = new JTextField(24);
     private final JPasswordField passwordField = new JPasswordField(24);
     private final JButton loginButton = new JButton("로그인");
+    private final JButton modeButton = new JButton("회원가입");
+    private final JLabel subtitle = new JLabel("계정으로 로그인하세요.");
+    private final JLabel confirmationLabel = new JLabel("비밀번호 확인");
+    private final JPasswordField confirmationField = new JPasswordField(24);
+    private boolean registrationMode;
+
+    private record Submission(boolean success, String message, LoginUser user) { }
     private final JTextArea statusMessage = new JTextArea(2, 24);
     private boolean busy;
     private boolean authenticated;
@@ -74,13 +81,20 @@ public final class LoginPage extends JPanel {
         JLabel title = new JLabel("CODE ROOM");
         title.setFont(bodyFont.deriveFont(Font.BOLD, 26f));
         title.setForeground(TEXT);
-        JLabel subtitle = new JLabel("계정으로 로그인하세요.");
         subtitle.setFont(bodyFont);
         subtitle.setForeground(MUTED);
 
         loginIdField.setName("loginId");
         passwordField.setName("password");
         loginButton.setName("loginButton");
+        modeButton.setName("modeButton");
+        confirmationField.setName("passwordConfirmation");
+        confirmationField.setFont(bodyFont);
+        confirmationField.getAccessibleContext().setAccessibleName("비밀번호 확인");
+        confirmationLabel.setLabelFor(confirmationField);
+        confirmationLabel.setVisible(false);
+        confirmationField.setVisible(false);
+        modeButton.setFont(bodyFont);
         statusMessage.setName("statusMessage");
         loginIdField.setFont(bodyFont);
         passwordField.setFont(bodyFont);
@@ -127,15 +141,30 @@ public final class LoginPage extends JPanel {
         layout.insets = new Insets(0, 0, 20, 0);
         form.add(passwordField, layout);
         layout.gridy++;
+        layout.insets = new Insets(0, 0, 6, 0);
+        form.add(confirmationLabel, layout);
+        layout.gridy++;
+        layout.insets = new Insets(0, 0, 20, 0);
+        form.add(confirmationField, layout);
+        layout.gridy++;
         layout.insets = new Insets(0, 0, 12, 0);
         form.add(loginButton, layout);
+        layout.gridy++;
+        form.add(modeButton, layout);
         layout.gridy++;
         layout.insets = new Insets(0, 0, 0, 0);
         form.add(statusMessage, layout);
         add(form);
 
         loginButton.addActionListener(event -> submitLogin());
-        passwordField.addActionListener(event -> submitLogin());
+        passwordField.addActionListener(event -> {
+            if (registrationMode) confirmationField.requestFocusInWindow();
+            else submitLogin();
+        });
+        confirmationField.addActionListener(event -> submitLogin());
+        modeButton.addActionListener(event -> {
+            if (service != null && !busy && !authenticated) setRegistrationMode(!registrationMode);
+        });
         loginIdField.addActionListener(event -> passwordField.requestFocusInWindow());
         updateControls();
         if (service == null) {
@@ -157,9 +186,13 @@ public final class LoginPage extends JPanel {
         }
         String loginId = loginIdField.getText();
         char[] password = passwordField.getPassword();
+        char[] confirmation = confirmationField.getPassword();
+        boolean registering = registrationMode;
         passwordField.setText("");
+        confirmationField.setText("");
         if (loginId.isBlank() || password.length == 0) {
             Arrays.fill(password, '\0');
+            Arrays.fill(confirmation, '\0');
             showError("ID와 비밀번호를 입력하세요.");
             if (loginId.isBlank()) loginIdField.requestFocusInWindow();
             else passwordField.requestFocusInWindow();
@@ -168,14 +201,20 @@ public final class LoginPage extends JPanel {
         setBusy(true);
         long token = ++generation;
         statusMessage.setForeground(MUTED);
-        statusMessage.setText("로그인 확인 중입니다...");
-        new SwingWorker<LoginResult, Void>() {
+        statusMessage.setText(registering ? "회원가입 처리 중입니다..." : "로그인 확인 중입니다...");
+        new SwingWorker<Submission, Void>() {
             @Override
-            protected LoginResult doInBackground() {
+            protected Submission doInBackground() {
                 try {
-                    return service.login(loginId, password);
+                    if (registering) {
+                        LoginService.RegistrationResult result = service.register(loginId, password, confirmation);
+                        return new Submission(result.success(), result.message(), null);
+                    }
+                    LoginResult result = service.login(loginId, password);
+                    return new Submission(result.success(), result.message(), result.user());
                 } finally {
                     Arrays.fill(password, '\0');
+                    Arrays.fill(confirmation, '\0');
                 }
             }
 
@@ -183,24 +222,29 @@ public final class LoginPage extends JPanel {
             protected void done() {
                 // 화면이 제거된 후 도착한 결과로 화면을 갱신하거나 성공을 알리지 않는다.
                 if (token != generation) return;
-                LoginResult result = null;
+                Submission result = null;
                 try {
                     result = get();
                 } catch (InterruptedException ex) {
                     Thread.currentThread().interrupt();
-                    showError("로그인이 중단되었습니다. 다시 시도하세요.");
+                    showError("요청이 중단되었습니다. 다시 시도하세요.");
                 } catch (CancellationException ex) {
-                    showError("로그인이 취소되었습니다. 다시 시도하세요.");
+                    showError("요청이 취소되었습니다. 다시 시도하세요.");
                 } catch (ExecutionException ex) {
                     if (ex.getCause() instanceof StorageException) {
-                        showError("사용자 정보를 불러올 수 없습니다. 잠시 후 다시 시도하세요.");
+                        showError("사용자 정보를 처리할 수 없습니다. 잠시 후 다시 시도하세요.");
                     } else {
-                        showError("로그인 처리 중 문제가 발생했습니다. 다시 시도하세요.");
+                        showError("요청 처리 중 문제가 발생했습니다. 다시 시도하세요.");
                     }
                 } finally {
                     setBusy(false);
                 }
-                if (result != null && result.success()) {
+                if (result != null && result.success() && registering) {
+                    setRegistrationMode(false);
+                    statusMessage.setForeground(SUCCESS);
+                    statusMessage.setText(result.message());
+                    passwordField.requestFocusInWindow();
+                } else if (result != null && result.success()) {
                     authenticated = true;
                     updateControls();
                     statusMessage.setForeground(SUCCESS);
@@ -217,7 +261,7 @@ public final class LoginPage extends JPanel {
 
     private void setBusy(boolean value) {
         busy = value;
-        loginButton.setText(value ? "확인 중..." : "로그인");
+        loginButton.setText(value ? "확인 중..." : registrationMode ? "가입하기" : "로그인");
         updateControls();
     }
 
@@ -225,7 +269,24 @@ public final class LoginPage extends JPanel {
         boolean enabled = service != null && !busy && !authenticated;
         loginIdField.setEnabled(enabled);
         passwordField.setEnabled(enabled);
+        confirmationField.setEnabled(enabled);
         loginButton.setEnabled(enabled);
+        modeButton.setEnabled(enabled);
+    }
+
+    private void setRegistrationMode(boolean value) {
+        registrationMode = value;
+        passwordField.setText("");
+        confirmationField.setText("");
+        confirmationLabel.setVisible(value);
+        confirmationField.setVisible(value);
+        subtitle.setText(value ? "새 계정을 만드세요." : "계정으로 로그인하세요.");
+        modeButton.setText(value ? "로그인으로 돌아가기" : "회원가입");
+        statusMessage.setForeground(MUTED);
+        statusMessage.setText(value ? "ID: 영문·숫자·밑줄 3~32자 / 비밀번호: 8~128자" : "");
+        setBusy(false);
+        revalidate();
+        repaint();
     }
 
     @Override
@@ -233,6 +294,7 @@ public final class LoginPage extends JPanel {
         // 진행 중 작업은 finally에서 암호 배열을 지울 때까지 완료시키고, 이전 완료 알림을 무효화한다.
         generation++;
         authenticated = false;
+        confirmationField.setText("");
         passwordField.setText("");
         setBusy(false);
         super.removeNotify();
