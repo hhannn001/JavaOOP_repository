@@ -24,6 +24,7 @@ import java.util.function.Consumer;
 import java.util.logging.Logger;
 import javax.imageio.ImageIO;
 import javax.swing.JPanel;
+import javax.swing.Timer;
 
 /**
  * 담당: D
@@ -47,6 +48,11 @@ public class RoomPanel extends JPanel {
         "/images/room/drawer_open.png", "/images/room/dial_solved.png", "/images/room/door_open.png"};
     private static final GameStage[] OVERLAY_FROM = {
         GameStage.DRAWER_OPEN, GameStage.SAFE_OPEN, GameStage.ESCAPED};
+
+    /** 물건을 클릭하면 화면이 이 시간 동안 걷듯이 출렁이며 물건 쪽으로 다가간 뒤 클릭을 전달한다. */
+    private static final int WALK_MS = 450;
+    private static final double WALK_BOB = 6;    // 위아래로 흔들리는 폭(화면 픽셀)
+    private static final double WALK_ZOOM = 0.30; // 다가가며 커지는 비율
 
     /** 그림 비율이 창과 다를 때 남는 빈 공간의 색. 프로토타입의 짙은 녹색(--deep)과 같다. */
     private static final Color LETTERBOX = new Color(0x15271E);
@@ -83,6 +89,9 @@ public class RoomPanel extends JPanel {
     private boolean investigationOpen;
     private Hotspot hovered;
     private Hotspot pressed;
+    private Hotspot walkingTo;
+    private Timer walkTimer;
+    private long walkStart;
     private boolean showHotspots = false;
 
     /** 클릭된 물건을 알려 줄 콜백을 받는다. 실제 게임 규칙은 이 패널이 아니라 콜백 쪽이 처리한다. */
@@ -116,7 +125,8 @@ public class RoomPanel extends JPanel {
 
             @Override
             public void mousePressed(MouseEvent event) {
-                pressed = event.getButton() == MouseEvent.BUTTON1 ? hotspotAt(event.getPoint()) : null;
+                pressed = walkingTo == null && event.getButton() == MouseEvent.BUTTON1
+                        ? hotspotAt(event.getPoint()) : null;
             }
 
             @Override
@@ -124,13 +134,45 @@ public class RoomPanel extends JPanel {
                 // 버튼처럼 동작한다: 누른 곳과 뗀 곳이 같은 물건일 때만 클릭으로 인정한다.
                 Hotspot spot = hotspotAt(event.getPoint());
                 if (event.getButton() == MouseEvent.BUTTON1 && spot != null && spot == pressed) {
-                    RoomPanel.this.onObjectClick.accept(spot.id());
+                    startWalk(spot);
                 }
                 pressed = null;
             }
         };
         addMouseListener(mouse);
         addMouseMotionListener(mouse);
+    }
+
+    /** 걷는 효과를 시작한다. 끝나면 클릭을 전달한다. 효과 중의 추가 클릭은 무시한다. */
+    private void startWalk(Hotspot spot) {
+        if (walkingTo != null || background == null) {
+            return;
+        }
+        walkingTo = spot;
+        walkStart = System.nanoTime();
+        walkTimer = new Timer(15, event -> {
+            if (elapsedMs() >= WALK_MS) {
+                walkTimer.stop();
+                walkingTo = null;
+                onObjectClick.accept(spot.id());
+            }
+            repaint();
+        });
+        walkTimer.start();
+    }
+
+    private long elapsedMs() {
+        return (System.nanoTime() - walkStart) / 1_000_000;
+    }
+
+    /** 화면이 사라질 때 걷는 효과를 멈춘다. 이때는 클릭을 전달하지 않는다. */
+    @Override
+    public void removeNotify() {
+        if (walkTimer != null) {
+            walkTimer.stop();
+        }
+        walkingTo = null;
+        super.removeNotify();
     }
 
     /** 클릭 영역을 눈으로 확인하는 개발용 스위치. true면 모든 영역에 빨간 테두리를 그린다. */
@@ -188,6 +230,7 @@ public class RoomPanel extends JPanel {
 
             // 이후의 모든 그리기를 "그림 원본 좌표"로 할 수 있도록 좌표계를 옮기고 늘린다.
             Layout layout = fitToPanel();
+            applyWalk(g, layout);
             g.translate(layout.offsetX(), layout.offsetY());
             g.scale(layout.scale(), layout.scale());
             g.drawImage(scene, 0, 0, null);
@@ -195,6 +238,23 @@ public class RoomPanel extends JPanel {
         } finally {
             g.dispose();
         }
+    }
+
+    /** 걷는 중이면 좌표계를 위아래로 흔들고, 눌린 물건의 중심을 향해 조금 확대한다. */
+    private void applyWalk(Graphics2D g, Layout layout) {
+        if (walkingTo == null) {
+            return;
+        }
+        double t = Math.min(1.0, elapsedMs() / (double) WALK_MS);
+        double zoom = 1 + WALK_ZOOM * Math.sin(t * Math.PI / 2);
+        double bob = Math.abs(Math.sin(t * Math.PI * 3)) * WALK_BOB * (1 - t * 0.5);
+        Rectangle r = walkingTo.area();
+        double cx = layout.offsetX() + (r.x + r.width / 2.0) * layout.scale();
+        double cy = layout.offsetY() + (r.y + r.height / 2.0) * layout.scale();
+        g.translate(0, -bob);
+        g.translate(cx, cy);
+        g.scale(zoom, zoom);
+        g.translate(-cx, -cy);
     }
 
     /** 기본은 그림 전체를 보이고, 전체 화면 모드에서는 가장자리만 잘라 빈 공간을 없앤다. */
