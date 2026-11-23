@@ -79,11 +79,9 @@ class WorkshopFlowTest {
                 button(page, "breakerB").doClick();
                 button(page, "breakerTrial").doClick();
                 assertEquals("냉각기에서 시험 중지 · 고장 장비", feedback.getText());
+                assertAttempts(page, 3);
                 button(page, "breakerB").doClick();
-                for (String key : new String[] {"A", "C", "E"}) { button(page, "breaker" + key).doClick(); }
-                button(page, "breakerTrial").doClick();
-                assertPuzzle(page);
-                for (String key : new String[] {"A", "E", "A", "E"}) { button(page, "breaker" + key).doClick(); }
+                for (String key : new String[] {"C", "A", "E"}) { button(page, "breaker" + key).doClick(); }
                 snapshot(page, "engine-distribution-device");
                 button(page, "breakerTrial").doClick();
                 assertEquals("가동 시험 완료 · 남은 전력 0W", feedback.getText());
@@ -111,8 +109,10 @@ class WorkshopFlowTest {
                 button(page, "joint3").doClick();
                 button(page, "workshopStart").doClick();
                 assertPuzzle(page);
+                assertAttempts(page, 2);
                 button(page, "joint2").doClick();
                 submit(page);
+                assertAttempts(page, 2);
                 startDevice(page, RoomObjectId.FOURTH_DEVICE);
                 button(page, "leverA").doClick();
                 button(page, "pressureTrial").doClick();
@@ -124,6 +124,7 @@ class WorkshopFlowTest {
                 button(page, "pressureTrial").doClick();
                 assertEquals("안전 조건 불일치 · 예약 순서를 확인하세요.", pressureFeedback.getText());
                 assertPuzzle(page);
+                assertAttempts(page, 1);
                 for (String key : new String[] {"A", "B", "C", "D", "D", "C", "A", "B"}) {
                     button(page, "lever" + key).doClick();
                 }
@@ -148,8 +149,7 @@ class WorkshopFlowTest {
                 assertEquals("가동 꺼짐 · 안전 꺼짐", interlockFeedback.getText());
                 button(page, "faultTest").doClick();
                 assertEquals("압력 신호 차단 · 가동 꺼짐 · 안전 꺼짐", interlockFeedback.getText());
-                button(page, "workshopStart").doClick();
-                assertPuzzle(page);
+                assertAttempts(page, 1);
                 wireInterlock(page, 2, 0, 3, 1);
                 assertEquals("가동 켜짐 · 안전 켜짐", interlockFeedback.getText());
                 dragControl(page, "port3", "port1");
@@ -209,6 +209,7 @@ class WorkshopFlowTest {
             Thread.sleep(260);
             edt(() -> {
                 assertPuzzle(page);
+                assertAttempts(page, 4);
                 snapshot(page, "greenhouse-gutter-leak");
                 button(page, "gutter0").doClick();
                 button(page, "gutter0").doClick();
@@ -229,6 +230,7 @@ class WorkshopFlowTest {
                 int width  = rail.getWidth();
                 int height = rail.getHeight();
                 snapshot(page, "greenhouse-platform-start");
+                assertRailHit(rail, .62, .47);
                 drag(rail, (int) (width * .62), (int) (height * .47),
                         (int) (width * .86), (int) (height * .47));
                 button(page, "workshopStart").doClick();
@@ -241,9 +243,19 @@ class WorkshopFlowTest {
                         (int) (width * .87), (int) (height * .47));
                 button(page, "workshopStart").doClick();
                 assertPuzzle(page);
-                button(page, "adjustHorizontalRail").doClick();
-                button(page, "adjustVerticalRail").doClick();
-                button(page, "adjustVerticalRail").doClick();
+                assertAttempts(page, 3);
+                AbstractButton horizontal = button(page, "adjustHorizontalRail");
+                AbstractButton vertical   = button(page, "adjustVerticalRail");
+                assertControlHit(horizontal);
+                assertControlHit(vertical);
+                assertControlHit(button(page, "workshopStart"));
+                assertEquals("가로 레일 · 2단", horizontal.getText());
+                assertEquals("세로 레일 · 2단", vertical.getText());
+                horizontal.doClick();
+                vertical.doClick();
+                vertical.doClick();
+                assertEquals("가로 레일 · 3단", horizontal.getText());
+                assertEquals("세로 레일 · 1단", vertical.getText());
                 snapshot(page, "greenhouse-rail-platform");
                 submit(page);
                 startDevice(page, RoomObjectId.DRAWER);
@@ -255,15 +267,7 @@ class WorkshopFlowTest {
                 assertTrue(specimenCard.contains("||"));
                 assertTrue(specimenCard.contains("!reject"));
                 snapshot(page, "greenhouse-symbol-card");
-                for (int wrong : new int[] {0, 3, 4}) {
-                    button(page, "seed" + wrong).doClick();
-                    button(page, "workshopStart").doClick();
-                    assertPuzzle(page);
-                    button(page, "seed" + wrong).doClick();
-                }
                 button(page, "seed1").doClick();
-                button(page, "workshopStart").doClick();
-                assertPuzzle(page);
                 button(page, "seed2").doClick();
                 snapshot(page, "greenhouse-seed-device");
                 submit(page);
@@ -272,8 +276,11 @@ class WorkshopFlowTest {
                 dragWeight(page, "balanceWeight0", "balanceSlot1");
                 button(page, "balanceClasp").doClick();
                 assertPuzzle(page);
-                dragWeight(page, "balanceWeight0", "balanceSlot2");
+                assertAttempts(page, 3);
                 dragWeight(page, "balanceWeight1", "balanceSlot3");
+                button(page, "balanceClasp").doClick();
+                assertAttempts(page, 2);
+                dragWeight(page, "balanceWeight0", "balanceSlot2");
                 return null;
             });
             Thread.sleep(410);
@@ -292,19 +299,11 @@ class WorkshopFlowTest {
             });
             pushAndWait(page);
             edt(() -> {
+                assertAttempts(page, 1);
                 button(page, "firstTurn").doClick();
                 return null;
             });
             pushAndWait(page);
-            edt(() -> {
-                button(page, "secondTurn").doClick();
-                return null;
-            });
-            pushAndWait(page);
-            edt(() -> {
-                button(page, "secondTurn").doClick();
-                return null;
-            });
             pushAndWait(page);
             edt(() -> {
                 button(page, "firstTurn").doClick();
@@ -325,6 +324,22 @@ class WorkshopFlowTest {
                 return null;
             });
         });
+    }
+
+    private static void assertRailHit(Component rail, double x, double y) {
+        var point = SwingUtilities.convertPoint(rail, (int) (rail.getWidth() * x),
+                (int) (rail.getHeight() * y), rail.getParent());
+        assertEquals(rail, SwingUtilities.getDeepestComponentAt(rail.getParent(), point.x, point.y));
+    }
+
+    private static void assertControlHit(AbstractButton button) {
+        var point = SwingUtilities.convertPoint(button, button.getWidth() / 2, button.getHeight() / 2, button.getParent());
+        assertEquals(button, SwingUtilities.getDeepestComponentAt(button.getParent(), point.x, point.y), button.getName());
+    }
+
+    private static void assertAttempts(GamePage page, int remaining) {
+        assertEquals("남은 오답 기회 " + remaining + "/5",
+                ((javax.swing.JComponent) named(page, "wrongAttempts")).getAccessibleContext().getAccessibleName());
     }
 
     private static void pushAndWait(GamePage page) throws Exception {

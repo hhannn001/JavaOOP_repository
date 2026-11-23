@@ -29,6 +29,7 @@ final class WorkshopPanel extends JPanel {
     private final JLabel feedback = new JLabel(" ", JLabel.CENTER);
     private PropBoard.Control finishControl;
     private Runnable activate = () -> { };
+    private java.util.function.Consumer<String> submitFailedRoute = route -> { };
     private Runnable cancel = () -> { };
     private Runnable interactionChanged = () -> { };
     private Supplier<String> response;
@@ -102,8 +103,9 @@ final class WorkshopPanel extends JPanel {
         board.effects(g -> {
             for (int i = 0; i < connected.length; i++) {
                 int x = centers[i];
-                PropBoard.engraving(g, (char) ('A' + i) + " · " + PuzzleVariant.moduleVoltage(i) + "V", x, 442, 26);
-                PropBoard.engraving(g, i == 1 ? "×" : "✓", x, 468, 24);
+                String mark = PuzzleVariant.operational(i) ? "✓" : "×";
+                String plate = (char) ('A' + i) + " " + PuzzleVariant.moduleVoltage(i) + "V " + mark;
+                PropBoard.nameplate(g, plate, x, 443, 19);
                 if (connected[i]) { powerGlow(g, socketCenters[i], 225); }
             }
         });
@@ -163,9 +165,9 @@ final class WorkshopPanel extends JPanel {
         joints[0].lit(true);
         BufferedImage collar   = PropBoard.sprite("sleeve-collar");
         DragPuzzlePanel pieces = new DragPuzzlePanel("ABCD", 1, collar,
-                new String[] {"A · |", "B · ||", "C · |||", "D · ▮"});
+                new String[] {"|", "||", "|||", "▮"});
         pieces.setName("sleeveBoard");
-        pieces.getAccessibleContext().setAccessibleName("슬리브 A 한 줄, B 두 줄, C 세 줄, D 넓은 띠");
+        pieces.getAccessibleContext().setAccessibleName("슬리브 왼쪽부터 한 줄, 두 줄, 세 줄, 넓은 띠");
         board.place(pieces, 88, 369, 824, 265);
         BufferedImage meter = PropBoard.sprite("dial");
         control("probeValve", "검침 밸브 열기 / 닫기", 460, 72, 81, 82, () -> {
@@ -180,10 +182,11 @@ final class WorkshopPanel extends JPanel {
             if (valve[0] == 1) { powerGlow(g, 500, 167); }
             for (int i = 0; i < names.length; i++) {
                 int x = 175 + i * 218;
-                PropBoard.engraving(g, names[i], x, 329, 26);
+                PropBoard.engraving(g, names[i], x, 343, 23);
                 PropBoard.engraving(g, probeReading(readings, measured, 0, i) + " / "
-                        + probeReading(readings, measured, 1, i), x, 356, 28);
+                        + probeReading(readings, measured, 1, i), x, 368, 25);
             }
+            PropBoard.engraving(g, "수리 대상 " + (char) ('A' + probe[0]), 500, 398, 22);
         });
         response = () -> {
             int joint = probe[0];
@@ -238,7 +241,7 @@ final class WorkshopPanel extends JPanel {
         finishControl = control("breakerTrial", "가동 실행", 22, 536, 168, 100, () -> {
             remaining[0] = capacity;
             tripped[0]   = -1;
-            tested[0]    = false;
+            tested[0]    = !sequence.isEmpty();
             for (int i = 0; i < sequence.length(); i++) {
                 int device = sequence.charAt(i) - 'A';
                 if (!PuzzleVariant.operational(device) || PuzzleVariant.deviceWatts(device) > remaining[0]) {
@@ -246,11 +249,11 @@ final class WorkshopPanel extends JPanel {
                     String reason = !PuzzleVariant.operational(device) ? "고장 장비" : "남은 전력 부족";
                     feedback.setText(devices[device] + "에서 시험 중지 · " + reason);
                     board.repaint();
+                    activate.run();
                     return;
                 }
                 remaining[0] -= PuzzleVariant.deviceWatts(device);
             }
-            tested[0] = !sequence.isEmpty();
             feedback.setText(tested[0] ? "가동 시험 완료 · 남은 전력 " + remaining[0] + "W" : "먼저 가동 순서를 입력하세요.");
             board.repaint();
             if (tested[0]) { activate.run(); }
@@ -264,9 +267,9 @@ final class WorkshopPanel extends JPanel {
             PropBoard.readout(g, remaining[0] + " / " + capacity + " W", 500, 335, 36);
             for (int i = 0; i < devices.length; i++) {
                 int x = 250 + i * 125;
-                PropBoard.engraving(g, String.valueOf((char) ('A' + i)), x, 615, 28);
-                PropBoard.engraving(g, PuzzleVariant.deviceWatts(i) + "W"
-                        + (PuzzleVariant.operational(i) ? "" : " ×"), x, 644, 27);
+                String plate = (char) ('A' + i) + " · " + PuzzleVariant.deviceWatts(i) + "W"
+                        + (PuzzleVariant.operational(i) ? "" : " ×");
+                PropBoard.engraving(g, plate, x, 643, 21);
                 if (i == tripped[0]) { faultLamp(g, x, 457); }
             }
         });
@@ -314,6 +317,7 @@ final class WorkshopPanel extends JPanel {
             } else if (!variant.pressureOrder().contentEquals(planned)) {
                 rejected[0] = true;
                 feedback.setText("안전 조건 불일치 · 예약 순서를 확인하세요.");
+                activate.run();
             } else {
                 released[0] = true;
                 feedback.setText("압력 정상");
@@ -326,10 +330,10 @@ final class WorkshopPanel extends JPanel {
             pressureNeedle(g, 503, 164, 86, released[0] ? 0 : 1);
             if (rejected[0]) { faultLamp(g, 571, 617); }
             for (int i = 0; i < planned.length(); i++) {
-                PropBoard.engraving(g, String.valueOf(planned.charAt(i)), 320 + i * 120, 315, 35);
+                PropBoard.engraving(g, String.valueOf(planned.charAt(i)), 320 + i * 120, 369, 30);
             }
         });
-        response = () -> released[0] ? planned.toString() : "";
+        response = () -> planned.length() == levers.length ? planned.toString() : "";
         restore = () -> {
             planned.setLength(0);
             released[0] = false;
@@ -467,8 +471,8 @@ final class WorkshopPanel extends JPanel {
             deviceLight(g, 659, 119, lamps[1]);
             if (verified[0]) { powerGlow(g, 394, 156); }
             if (verified[1]) { powerGlow(g, 709, 156); }
-            PropBoard.engraving(g, "running", 344, 193, 28);
-            PropBoard.engraving(g, "safe", 659, 193, 28);
+            PropBoard.engraving(g, "running", 344, 184, 25);
+            PropBoard.engraving(g, "safe", 659, 184, 25);
             if (prediction[0] >= 0) {
                 int x = prediction[0] == 0 ? 344 : 659;
                 g.setColor(new Color(249, 206, 134));
@@ -494,7 +498,7 @@ final class WorkshopPanel extends JPanel {
                 g.setColor(cable[i]);
                 g.fillOval(terminals[i] - 6, 551, 12, 12);
                 signalMark(g, i, terminals[i], 576);
-                PropBoard.engraving(g, signals[i], terminals[i], 619, 28);
+                PropBoard.engraving(g, signals[i], terminals[i], 611, 25);
                 if (cut[0] == i) { faultLamp(g, terminals[i], 454); }
             }
         });
@@ -620,6 +624,11 @@ final class WorkshopPanel extends JPanel {
     }
 
     private void platforms() {
+        String instructions = "가로 발판을 왼쪽으로, 세로 발판을 아래로, 가로 발판을 오른쪽으로 옮기세요.";
+        feedback.setForeground(PixelTheme.LIGHT);
+        feedback.setFont(PixelTheme.font(13));
+        feedback.setVisible(true);
+        finishControl.describe("발판과 레일 연결 확인");
         RailPlatformPanel rail = new RailPlatformPanel(
                 PropBoard.sprite("cross-platform"), PropBoard.sprite("long-platform"));
         PropBoard.Control horizontal = new PropBoard.Control("adjustHorizontalRail", "가로 레일 조절");
@@ -635,8 +644,17 @@ final class WorkshopPanel extends JPanel {
         board.place(horizontal, 744, 393, 185, 43);
         board.place(vertical, 422, 487, 181, 43);
         board.place(rail, 0, 0, PropBoard.WIDTH, PropBoard.HEIGHT);
-        response = rail::answer;
-        restore  = () -> {
+        response = () -> {
+            String answer = rail.answer();
+            if (!rail.docked()) {
+                feedback.setText(instructions);
+            } else if (answer.length() > 2) {
+                feedback.setText("가로·세로 레일 끝을 고정 레일에 맞춰 주세요.");
+            }
+            return answer;
+        };
+        restore = () -> {
+            feedback.setText(instructions);
             rail.reset();
             rail.describeRail(0, horizontal);
             rail.describeRail(1, vertical);
@@ -722,6 +740,11 @@ final class WorkshopPanel extends JPanel {
             if (!crossingConnected || motion.isMoving() || position[0] == 2) { return; }
             controls.accept(false);
             Runnable resume = () -> controls.accept(true);
+            String route = testRoute[0] + letters(first, second);
+            Runnable reject = () -> {
+                resume.run();
+                submitFailedRoute.accept(route);
+            };
             boolean flooded     = !tested[0] && variant.railFlooded();
             boolean bufferAhead = !tested[0] && variant.railBlocked();
             boolean high        = first.value() == 1;
@@ -731,7 +754,7 @@ final class WorkshopPanel extends JPanel {
             Point endOfTrack    = high ? upperEnd : lowerEnd;
             if (position[0] == 0) {
                 if (high != flooded) {
-                    motion.travel(resume, bridge, fork, high ? new Point(263, 264) : flood, fork, bridge, dock);
+                    motion.travel(reject, bridge, fork, high ? new Point(263, 264) : flood, fork, bridge, dock);
                 } else {
                     motion.travel(() -> { position[0] = 1; resume.run(); }, bridge, fork, bend, approach);
                 }
@@ -739,8 +762,8 @@ final class WorkshopPanel extends JPanel {
             }
 
             if (side != bufferAhead) {
-                if (!side) { motion.travel(resume, endOfTrack, blocked, endOfTrack, approach); }
-                else { motion.travel(resume, endOfTrack, junction, exit, junction, endOfTrack, approach); }
+                if (!side) { motion.travel(reject, endOfTrack, blocked, endOfTrack, approach); }
+                else { motion.travel(reject, endOfTrack, junction, exit, junction, endOfTrack, approach); }
             } else if (!tested[0]) {
                 motion.travel(() -> {
                     testRoute[0] = letters(first, second);
@@ -965,6 +988,8 @@ final class WorkshopPanel extends JPanel {
     void onStart(Runnable action) {
         activate = action;
     }
+
+    void onFailedRoute(java.util.function.Consumer<String> submit) { submitFailedRoute = submit; }
 
     void onInteractionChanged(Runnable action) { interactionChanged = action; }
 

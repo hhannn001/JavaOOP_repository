@@ -31,12 +31,12 @@ class WorkshopVariantTest {
                 key(rails, KeyEvent.VK_RIGHT);
                 assertEquals("", panel.answer());
                 key(rails, KeyEvent.VK_RIGHT);
-                assertEquals("", panel.answer());
+                assertEquals("ABBB", panel.answer());
                 var horizontal = (AbstractButton) find(panel, "adjustHorizontalRail");
                 var vertical   = (AbstractButton) find(panel, "adjustVerticalRail");
                 horizontal.doClick(0);
                 vertical.doClick(0);
-                assertEquals("", panel.answer());
+                assertEquals("ABCC", panel.answer());
                 vertical.doClick(0);
                 assertEquals("AB", panel.answer());
                 panel.reset();

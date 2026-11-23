@@ -84,12 +84,14 @@ final class BalanceControls {
         clasp = new PropBoard.Control("balanceClasp", "고정 걸쇠 잠그기");
         clasp.sprite(PropBoard.read("/images/game-ui/study/latch.png"));
         clasp.addActionListener(event -> {
-            if (!answer().isEmpty()) {
+            if (slots[0] == 0 || slots[1] == 0 || locking) { return; }
+            if (rightTorque() == load) {
                 locking = true;
                 movement.start();
             } else {
                 tilt += .035;
                 movement.start();
+                complete.run();
             }
             board.repaint();
         });
@@ -155,7 +157,7 @@ final class BalanceControls {
             int x = PIVOT + slot * SPACING;
             g.setColor(new Color(227, 178, 103));
             g.fillOval(x - 9, BEAM - 9, 18, 18);
-            PropBoard.label(g, Integer.toString(slot), x, BEAM + 35, 26);
+            PropBoard.label(g, Integer.toString(slot), x, BEAM - 24, 26);
         }
         for (int i = 0; i < slots.length; i++) {
             if (slots[i] > 0 && (looseWeight == null || selected != i)) {
@@ -171,7 +173,7 @@ final class BalanceControls {
         if (looseWeight != null) { paintWeight(g, selected, looseWeight.x, looseWeight.y + 42); }
         if (slots[0] > 0 || slots[1] > 0) {
             String formula = "2 × " + slots[0] + " + 3 × " + slots[1] + " = " + rightTorque();
-            PropBoard.label(g, formula, 485, 628, 25);
+            PropBoard.label(g, formula, 485, 531, 25);
         }
     }
 
@@ -182,7 +184,7 @@ final class BalanceControls {
     }
 
     String answer() {
-        return slots[0] > 0 && slots[1] > 0 && rightTorque() == load
+        return slots[0] > 0 && slots[1] > 0
                 ? new String(new char[] {(char) ('A' + slots[0] - 1), (char) ('A' + slots[1] - 1)}) : "";
     }
 

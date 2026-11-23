@@ -139,6 +139,14 @@ class PropBoard extends JPanel {
         g.drawString(text, left, baseline);
     }
 
+    static void nameplate(Graphics2D g, String text, int x, int y, int size) {
+        Font font = PixelTheme.font(size).deriveFont(Font.BOLD);
+        var label = new java.awt.font.TextLayout(text, font, g.getFontRenderContext());
+        var ink   = label.getBounds();
+        g.setColor(new Color(38, 22, 12));
+        label.draw(g, (float) (x - ink.getCenterX()), (float) (y - ink.getCenterY()));
+    }
+
     static void readout(Graphics2D g, String text, int x, int baseline, int size) {
         g.setFont(new Font(Font.MONOSPACED, Font.BOLD, size));
         int left = x - g.getFontMetrics().stringWidth(text) / 2;

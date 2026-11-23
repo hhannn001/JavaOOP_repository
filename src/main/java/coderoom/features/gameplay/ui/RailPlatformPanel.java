@@ -210,18 +210,25 @@ final class RailPlatformPanel extends JPanel {
     }
 
     void describeRail(int index, PropBoard.Control adjuster) {
-        adjuster.describe(adjuster.getText() + " · " + (railOffsets[index] + 2) + "단");
+        String axis  = index == 0 ? "가로" : "세로";
+        String label = axis + " 레일 · " + (railOffsets[index] + 2) + "단";
+        adjuster.setText(label);
+        adjuster.describe(label);
     }
 
+    boolean docked() { return active < 0 && across == 1 && down == 1; }
+
     String answer() {
-        return active < 0 && across == 1 && down == 1
-                && railOffsets[0] == HORIZONTAL_ALIGNMENT && railOffsets[1] == VERTICAL_ALIGNMENT ? "AB" : "";
+        if (!docked()) { return ""; }
+        if (railOffsets[0] == HORIZONTAL_ALIGNMENT && railOffsets[1] == VERTICAL_ALIGNMENT) { return "AB"; }
+        return "AB" + (char) ('B' + railOffsets[0]) + (char) ('B' + railOffsets[1]);
     }
 
     void reset() {
         across = 0;
         down   = 0;
         active = -1;
+        focused = 0;
         java.util.Arrays.fill(railOffsets, 0);
         repaint();
     }

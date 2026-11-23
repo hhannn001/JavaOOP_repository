@@ -68,10 +68,8 @@ final class GutterControls {
         double end = leak < 0 ? 3.6 : leak + .55;
         if (progress >= end) {
             flow.stop();
-            if (leak < 0) {
-                tested = true;
-                complete.run();
-            }
+            tested = true;
+            complete.run();
         }
         board.repaint();
     }

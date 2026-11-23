@@ -120,6 +120,9 @@ public final class AnswerInputPanel extends JPanel {
             device.onStart(() -> {
                 if (isVisible() && workshop == device) { submitAnswer(); }
             });
+            device.onFailedRoute(route -> {
+                if (isVisible() && workshop == device && onSubmit != null) { onSubmit.accept(route); }
+            });
             return device;
         });
         object.removeAll();
