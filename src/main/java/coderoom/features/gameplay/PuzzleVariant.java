@@ -1,6 +1,7 @@
 package coderoom.features.gameplay;
 
 import coderoom.entities.puzzle.Puzzle;
+import coderoom.shared.ui.SpecimenMark;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
@@ -94,8 +95,27 @@ public enum PuzzleVariant {
     public boolean railFlooded() { return this != COPPER; }
     public boolean railBlocked() { return this != BRASS; }
 
-    public int seedIndex(int slot) {
-        return (slot + ordinal()) % 5;
+    private static final SpecimenMark[][] SPECIMENS = {
+        {SpecimenMark.ROUND, SpecimenMark.DAMAGED, SpecimenMark.TRIANGLE},
+        {SpecimenMark.SERRATED, SpecimenMark.INTACT, SpecimenMark.SQUARE},
+        {SpecimenMark.ROUND, SpecimenMark.INTACT, SpecimenMark.TRIANGLE},
+        {SpecimenMark.SERRATED, SpecimenMark.INTACT, SpecimenMark.WAVE},
+        {SpecimenMark.ROUND, SpecimenMark.INTACT, SpecimenMark.WAVE}
+    };
+
+    public SpecimenRule specimenRule() {
+        return switch (this) {
+            case STANDARD -> new SpecimenRule(SpecimenMark.SERRATED, SpecimenMark.TRIANGLE,
+                    SpecimenMark.SERRATED, SpecimenMark.WAVE);
+            case COPPER -> new SpecimenRule(SpecimenMark.ROUND, SpecimenMark.SQUARE,
+                    SpecimenMark.ROUND, SpecimenMark.TRIANGLE);
+            case BRASS -> new SpecimenRule(SpecimenMark.SERRATED, SpecimenMark.WAVE,
+                    SpecimenMark.ROUND, SpecimenMark.WAVE);
+        };
+    }
+
+    public SpecimenMark[] specimenMarks(int slot) {
+        return SPECIMENS[(slot + ordinal()) % SPECIMENS.length].clone();
     }
 
     Puzzle apply(Puzzle original) {
@@ -180,10 +200,13 @@ public enum PuzzleVariant {
                 } else { return original; }
             }
             case 401 -> {
-                if (!code.contains("validShape") || !code.contains("keep(sample)")) { return original; }
+                String originalConditions = STANDARD.specimenRule().javaConditions();
+                if (!code.contains(originalConditions)) { return original; }
+                SpecimenRule rule = specimenRule();
+                code = code.replace(originalConditions, rule.javaConditions());
                 var selected = new StringBuilder();
-                for (int slot = 0; slot < 5; slot++) {
-                    if (seedIndex(slot) == 1 || seedIndex(slot) == 2) { selected.append((char) ('A' + slot)); }
+                for (int slot = 0; slot < SPECIMENS.length; slot++) {
+                    if (rule.keeps(specimenMarks(slot))) { selected.append((char) ('A' + slot)); }
                 }
                 answer = selected.toString();
             }

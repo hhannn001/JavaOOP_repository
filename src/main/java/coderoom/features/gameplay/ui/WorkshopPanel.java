@@ -17,6 +17,7 @@ import java.awt.geom.Ellipse2D;
 import java.awt.image.BufferedImage;
 import java.util.Arrays;
 import java.util.function.Supplier;
+import java.util.stream.IntStream;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
@@ -186,7 +187,7 @@ final class WorkshopPanel extends JPanel {
                 PropBoard.engraving(g, probeReading(readings, measured, 0, i) + " / "
                         + probeReading(readings, measured, 1, i), x, 368, 25);
             }
-            PropBoard.engraving(g, "수리 대상 " + (char) ('A' + probe[0]), 500, 398, 22);
+            PropBoard.engraving(g, "선택한 이음쇠 " + (char) ('A' + probe[0]), 500, 398, 22);
         });
         response = () -> {
             int joint = probe[0];
@@ -573,13 +574,7 @@ final class WorkshopPanel extends JPanel {
     }
 
     private void seeds() {
-        SpecimenMark[][] labels = {
-            {SpecimenMark.ROUND, SpecimenMark.DAMAGED, SpecimenMark.TRIANGLE},
-            {SpecimenMark.SERRATED, SpecimenMark.INTACT, SpecimenMark.SQUARE},
-            {SpecimenMark.ROUND, SpecimenMark.INTACT, SpecimenMark.TRIANGLE},
-            {SpecimenMark.SERRATED, SpecimenMark.INTACT, SpecimenMark.WAVE},
-            {SpecimenMark.ROUND, SpecimenMark.INTACT, SpecimenMark.WAVE}
-        };
+        SpecimenMark[][] labels = IntStream.range(0, 5).mapToObj(variant::specimenMarks).toArray(SpecimenMark[][]::new);
         var marks = new java.util.EnumMap<SpecimenMark, BufferedImage>(SpecimenMark.class);
         for (SpecimenMark mark : SpecimenMark.values()) { marks.put(mark, PropBoard.read(mark.imagePath())); }
         boolean[] chosen = new boolean[labels.length];
@@ -588,7 +583,7 @@ final class WorkshopPanel extends JPanel {
         PropBoard.Control[] packets = new PropBoard.Control[labels.length];
         for (int i = 0; i < packets.length; i++) {
             int seed = i;
-            String description = String.join(", ", Arrays.stream(labels[variant.seedIndex(i)]).map(SpecimenMark::description).toList());
+            String description = String.join(", ", Arrays.stream(labels[i]).map(SpecimenMark::description).toList());
             packets[i] = control("seed" + i, description, 39 + i * 181, 266, 167, 266, () -> {
                 chosen[seed] = !chosen[seed];
                 packets[seed].sprite(chosen[seed] ? opened : envelope);
@@ -599,7 +594,7 @@ final class WorkshopPanel extends JPanel {
             for (int i = 0; i < packets.length; i++) {
                 int x = 123 + i * 181;
                 for (int mark = 0; mark < labels[i].length; mark++) {
-                    g.drawImage(marks.get(labels[variant.seedIndex(i)][mark]), x - 60 + mark * 43, 533, 32, 32, null);
+                    g.drawImage(marks.get(labels[i][mark]), x - 60 + mark * 43, 533, 32, 32, null);
                 }
             }
         });

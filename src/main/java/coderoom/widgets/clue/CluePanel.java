@@ -29,6 +29,8 @@ public final class CluePanel extends JPanel {
     private final JPanel codePage     = new JPanel(new BorderLayout());
     private final JScrollPane scroll  = new JScrollPane();
     private final BalanceDiagram balance = new BalanceDiagram();
+    private final PuzzleDiagram diagram = new PuzzleDiagram();
+    private ItemView.Diagram diagramType = ItemView.Diagram.NONE;
     private final CardLayout content  = new CardLayout();
     private final JPanel pages        = new JPanel(content);
     private final JButton switchView  = new JButton();
@@ -67,6 +69,7 @@ public final class CluePanel extends JPanel {
         scroll.getVerticalScrollBar().setUnitIncrement(16);
         pages.add(codePage, "code");
         pages.add(balance, "balance");
+        pages.add(diagram, "diagram");
         JPanel reading = new JPanel(new BorderLayout(0, 8));
         reading.setOpaque(false);
         reading.add(pages, BorderLayout.CENTER);
@@ -88,17 +91,19 @@ public final class CluePanel extends JPanel {
         title.setText(value.title());
         measuredWidth = -1;
         code.showNote(value.content());
-        balance.setLoad(value.balanceLoad());
-        switchView.setVisible(value.diagram() == ItemView.Diagram.BALANCE);
-        showReading(value.diagram() == ItemView.Diagram.NONE);
+        diagramType = value.diagram();
+        if (diagramType == ItemView.Diagram.BALANCE) { balance.setLoad(value.variant().balanceLoad()); }
+        else if (diagramType != ItemView.Diagram.NONE) { diagram.setClue(value); }
+        switchView.setVisible(diagramType != ItemView.Diagram.NONE);
+        showReading(diagramType != ItemView.Diagram.BALANCE);
         revalidate();
         repaint();
     }
 
     private void showReading(boolean showCode) {
         codeVisible = showCode;
-        content.show(pages, showCode ? "code" : "balance");
-        switchView.setText(showCode ? "그림 다시 보기" : "Java 규칙 보기");
+        content.show(pages, showCode ? "code" : diagramType == ItemView.Diagram.BALANCE ? "balance" : "diagram");
+        switchView.setText(showCode ? "그림으로 보기" : "Java 규칙 보기");
         if (getParent() != null) { getParent().revalidate(); }
     }
 
@@ -108,10 +113,13 @@ public final class CluePanel extends JPanel {
     }
 
     public int readingHeight(int width, int limit) {
-        if (!codeVisible) { return getPreferredSize().height; }
         var insets  = getInsets();
         int footer  = switchView.isVisible() ? switchView.getPreferredSize().height + 8 : 0;
         int frame   = insets.top + insets.bottom + header.getPreferredSize().height + 12 + footer;
+        if (!codeVisible) {
+            int bodyWidth = Math.max(0, width - insets.left - insets.right);
+            return frame + bodyWidth * 3 / 4;
+        }
         if (width != measuredWidth || limit != measuredLimit) {
             int bodyWidth = width - insets.left - insets.right;
             int bodyLimit = limit - frame;

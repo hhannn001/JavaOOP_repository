@@ -89,8 +89,7 @@ class ObjectUiTest {
         for (int map : new int[] {3, 4}) {
             for (var puzzle : puzzles.findByMapId(map)) {
                 var task = WorkshopRoom.forMap(map).task(puzzle.stepNo() - 1);
-                ItemView.Diagram diagram = map == 4 && puzzle.stepNo() == 4
-                        ? ItemView.Diagram.BALANCE : ItemView.Diagram.NONE;
+                ItemView.Diagram diagram = ItemView.Diagram.forPuzzle(puzzle.puzzleId());
                 notes.add(new ItemView(ItemId.NOTE1, task.title(), puzzle.code(), "숨길 힌트", diagram));
             }
         }
@@ -129,13 +128,22 @@ class ObjectUiTest {
                             WorkshopRoom workshop = index < 7 ? WorkshopRoom.ENGINE : WorkshopRoom.GREENHOUSE;
                             input.showWorkshop(workshop, (index - 2) % 5, PuzzleVariant.STANDARD, 1);
                         }
-                        if (note.diagram() == ItemView.Diagram.BALANCE) {
-                            if (input.isVisible()) {
-                                layoutTree(room);
-                                assertPuzzleEdgesMatch(clue, input, note.title());
-                            }
-                            descendants(clue).stream().filter(child -> "clueViewToggle".equals(child.getName()))
-                                    .map(JButton.class::cast).findFirst().orElseThrow().doClick();
+                        JButton toggle = descendants(clue).stream().filter(child -> "clueViewToggle".equals(child.getName()))
+                                .map(JButton.class::cast).findFirst().orElseThrow();
+                        boolean hasDiagram = note.diagram() != ItemView.Diagram.NONE;
+                        assertEquals(hasDiagram, toggle.isVisible(), note.title());
+                        if (hasDiagram) {
+                            boolean startsWithDiagram = note.diagram() == ItemView.Diagram.BALANCE;
+                            if (!startsWithDiagram) { toggle.doClick(0); }
+                            layoutTree(room);
+                            String diagramName = startsWithDiagram ? "balanceDiagram" : "puzzleDiagram";
+                            var diagram = descendants(clue).stream().filter(child -> diagramName.equals(child.getName()))
+                                    .map(JPanel.class::cast).findFirst().orElseThrow();
+                            assertTrue(diagram.isVisible(), note.title());
+                            assertTrue(firstOpaqueRow(diagram) < diagram.getHeight(), note.title());
+                            if (input.isVisible()) { assertPuzzleEdgesMatch(clue, input, note.title()); }
+                            toggle.doClick(0);
+                            assertFalse(diagram.isVisible());
                         }
                         layoutTree(room);
                         assertFalse(clue.getBounds().intersects(progress.getBounds()));
@@ -150,11 +158,61 @@ class ObjectUiTest {
                         root.setSize(width, height);
                         assertTrue(root.getMinimumSpan(View.X_AXIS) <= width,
                                 () -> note.title() + " width " + root.getMinimumSpan(View.X_AXIS) + " > " + width);
-                        assertTrue(root.getPreferredSpan(View.Y_AXIS) <= height,
+                        boolean scrollable = reader.getParent() instanceof javax.swing.JViewport viewport
+                                && viewport.getParent() instanceof JScrollPane pane && pane.getVerticalScrollBar().isVisible();
+                        assertTrue(root.getPreferredSpan(View.Y_AXIS) <= height || scrollable,
                                 () -> note.title() + " height " + root.getPreferredSpan(View.Y_AXIS) + " > " + height);
                     }
                 }
             }
+        });
+    }
+
+    @Test void variantDiagramsFollowTheCurrentClueData(@TempDir Path temp) throws Exception {
+        Database database = new Database(temp.resolve("variants.db").toString());
+        database.initialize();
+        List<ItemView> clues = new ArrayList<>();
+        String[] drawerCodes = {"2312", "3241", "1425"};
+        for (PuzzleVariant variant : PuzzleVariant.values()) {
+            GameFacade game = new GameFacade(new JdbcMapRepository(database), new JdbcPuzzleRepository(database),
+                    new JdbcClearRecordRepository(database), ignored -> variant);
+            game.start(4, game.loadMap(1), 0);
+            game.submit(RoomObjectId.DRAWER, drawerCodes[variant.ordinal()]);
+            clues.add(game.view(0).items().get(1));
+            game.start(4, game.loadMap(3), 0);
+            game.inspect(RoomObjectId.EVIDENCE_3);
+            clues.add(game.view(0).items().get(0));
+            game.start(4, game.loadMap(4), 0);
+            game.inspect(RoomObjectId.EVIDENCE_1);
+            game.inspect(RoomObjectId.EVIDENCE_4);
+            clues.addAll(game.view(0).items());
+        }
+        SwingUtilities.invokeAndWait(() -> {
+            var drawings = new java.util.EnumMap<ItemView.Diagram, java.util.Set<Integer>>(ItemView.Diagram.class);
+            CluePanel clue = new CluePanel();
+            for (ItemView note : clues) {
+                clue.setClueData(note);
+                boolean balance = note.diagram() == ItemView.Diagram.BALANCE;
+                if (!balance) {
+                    descendants(clue).stream().filter(child -> "clueViewToggle".equals(child.getName()))
+                            .map(JButton.class::cast).findFirst().orElseThrow().doClick(0);
+                }
+                String name       = balance ? "balanceDiagram" : "puzzleDiagram";
+                Component diagram = descendants(clue).stream().filter(child -> name.equals(child.getName()))
+                        .findFirst().orElseThrow();
+                diagram.setSize(320, 240);
+                BufferedImage image = new BufferedImage(320, 240, BufferedImage.TYPE_INT_ARGB);
+                var graphics        = image.createGraphics();
+                diagram.printAll(graphics);
+                graphics.dispose();
+                int hash = java.util.Arrays.hashCode(image.getRGB(0, 0, 320, 240, null, 0, 320));
+                drawings.computeIfAbsent(note.diagram(), ignored -> new java.util.HashSet<>()).add(hash);
+            }
+            assertEquals(4, drawings.size());
+            assertEquals(3, drawings.get(ItemView.Diagram.GRID).size());
+            assertEquals(3, drawings.get(ItemView.Diagram.DISTRIBUTION).size());
+            assertEquals(3, drawings.get(ItemView.Diagram.BALANCE).size());
+            assertEquals(3, drawings.get(ItemView.Diagram.SEEDS).size());
         });
     }
 

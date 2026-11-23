@@ -212,16 +212,15 @@ public final class GameFacade {
         if (item == ItemId.KEY) {
             return new ItemView(item, "열쇠", "문을 열 수 있는 열쇠입니다. 선택한 상태로 문을 누르세요.");
         }
-        int index = ItemId.notes().indexOf(item);
-        Puzzle puzzle = setup.puzzles().get(index);
-        String text = puzzle.code();
+        int index                = ItemId.notes().indexOf(item);
+        Puzzle puzzle            = setup.puzzles().get(index);
+        String text              = puzzle.code();
+        ItemView.Diagram diagram = ItemView.Diagram.forPuzzle(puzzle.puzzleId());
+        PuzzleVariant variant    = deviceVariants.get(index);
         if (workshop != null) {
-            if (workshop == WorkshopRoom.GREENHOUSE && index == 3) {
-                return new ItemView(item, workshop.task(index).evidence(), text, "", ItemView.Diagram.BALANCE,
-                        deviceVariants.get(index).balanceLoad());
-            }
             WorkshopRoom.Task task = workshop.task(index);
-            return new ItemView(item, task.hasEvidence() ? task.evidence() : task.title() + " 작업 안내", text);
+            String title           = task.hasEvidence() ? task.evidence() : task.title() + " 작업 안내";
+            return new ItemView(item, title, text, "", diagram, variant);
         }
         if (session.mapId() == 1) {
             String instructions = switch (index) {
@@ -231,7 +230,7 @@ public final class GameFacade {
             };
             if (!instructions.isEmpty()) { text = instructions + "\n\n" + text; }
         }
-        return new ItemView(item, "메모 " + (index + 1), text);
+        return new ItemView(item, "메모 " + (index + 1), text, "", diagram, variant);
     }
 
     private void requireSession() {

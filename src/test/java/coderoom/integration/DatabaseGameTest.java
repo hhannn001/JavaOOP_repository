@@ -24,6 +24,7 @@ import coderoom.features.auth.LoginService;
 import coderoom.features.auth.PasswordVerifier;
 import coderoom.features.gameplay.GameFacade;
 import coderoom.features.gameplay.GameSetup;
+import coderoom.features.gameplay.ItemView;
 import coderoom.features.gameplay.SubmitResult.Verdict;
 import coderoom.features.mapcatalog.MapCatalogService;
 import coderoom.shared.db.Database;
@@ -200,8 +201,8 @@ class DatabaseGameTest {
         var variants = coderoom.features.gameplay.PuzzleVariant.values();
         String[][][] solutions = {
             {{"2312", "423312133"}, {"ACD", "CB", "CAE", "DCAB", "ACBD"}, {"BC", "ABC", "AB", "BC", "BAAB"}},
-            {{"3241", "241134423"}, {"D", "AA", "EDA", "BDAC", "ABCD"}, {"AB", "BBC", "AB", "CA", "AAAB"}},
-            {{"1425", "324413241"}, {"ACDE", "BC", "AED", "CADB", "ADBC"}, {"AE", "ABB", "AB", "DC", "BBAB"}}
+            {{"3241", "241134423"}, {"D", "AA", "EDA", "BDAC", "ABCD"}, {"AD", "BBC", "AB", "CA", "AAAB"}},
+            {{"1425", "324413241"}, {"ACDE", "BC", "AED", "CADB", "ADBC"}, {"BE", "ABB", "AB", "DC", "BBAB"}}
         };
         long[] mapIds = {1, 3, 4};
         RoomObjectId[] devices = {RoomObjectId.DRAWER, RoomObjectId.WALL_DIAL,
@@ -216,6 +217,13 @@ class DatabaseGameTest {
                 for (int step = 0; step < setup.puzzles().size(); step++) {
                     String expected = solutions[deck][map][step];
                     String standard = solutions[0][map][step];
+                    ItemView clue = mapIds[map] == 1 ? game.view(started).items().get(step)
+                            : game.inspect(devices[step]).instructions();
+                    assertEquals(ItemView.Diagram.forPuzzle(setup.puzzles().get(step).puzzleId()), clue.diagram());
+                    boolean hasDiagram = (map == 0 && step == 1) || (map == 1 && step == 2)
+                            || (map == 2 && (step == 0 || step == 3));
+                    assertEquals(hasDiagram, clue.diagram() != ItemView.Diagram.NONE);
+                    if (!expected.equals(standard)) { assertEquals(variant, clue.variant()); }
                     if (mapIds[map] == 3 && step == 4) {
                         String log      = game.inspect(devices[step]).instructions().content();
                         String[] probes = {"sealed와 loadOk", "loadOk + sealed", "sealed + pressOk"};

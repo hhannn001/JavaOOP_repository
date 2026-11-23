@@ -20,6 +20,8 @@ public enum SpecimenMark {
         this.description = description;
     }
 
+    public char symbol() { return symbol; }
+
     public String description() { return description; }
 
     public String imagePath() {

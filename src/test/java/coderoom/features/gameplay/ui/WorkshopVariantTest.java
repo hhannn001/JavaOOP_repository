@@ -46,6 +46,27 @@ class WorkshopVariantTest {
         });
     }
 
+    @Test void brassSleeveSubmissionUsesTheSelectedJointAndThePlacedSleeve() throws Exception {
+        var panel = edt(() -> new WorkshopPanel(WorkshopRoom.ENGINE, 1, PuzzleVariant.BRASS, 0));
+        click(panel, "joint1");
+        click(panel, "joint0");
+        click(panel, "probeValve");
+        click(panel, "joint1");
+        click(panel, "joint0");
+        edt(() -> {
+            Component sleeves = find(panel, "sleeveBoard");
+            key(sleeves, KeyEvent.VK_RIGHT);
+            key(sleeves, KeyEvent.VK_RIGHT);
+            key(sleeves, KeyEvent.VK_SPACE);
+            key(sleeves, KeyEvent.VK_DOWN);
+            key(sleeves, KeyEvent.VK_SPACE);
+            assertEquals("AC", panel.answer());
+            return null;
+        });
+        click(panel, "joint1");
+        assertEquals("BC", edt(panel::answer));
+    }
+
     @Test void cartCannotLeaveTheDockWithoutTheConnectedCrossing() throws Exception {
         edt(() -> {
             var panel = new WorkshopPanel(WorkshopRoom.GREENHOUSE, 4, PuzzleVariant.STANDARD, 0);
