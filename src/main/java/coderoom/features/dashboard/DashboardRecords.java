@@ -29,7 +29,10 @@ public final class DashboardRecords {
     public List<Room> rooms() {
         List<Room> rooms = new ArrayList<>();
         try (Connection connection = database.open();
-                PreparedStatement query = connection.prepareStatement("SELECT map_id, title FROM maps ORDER BY map_id");
+                PreparedStatement query = connection.prepareStatement("""
+                        SELECT map_id, title FROM maps WHERE archived = 0
+                        ORDER BY CASE WHEN map_id = 4 THEN 2 ELSE map_id END, map_id
+                        """);
                 ResultSet rows = query.executeQuery()) {
             while (rows.next()) {
                 rooms.add(new Room(rows.getLong(1), rows.getString(2)));
@@ -45,7 +48,8 @@ public final class DashboardRecords {
         String sql = "WITH ranked AS (SELECT u.login_id, r.best_seconds, "
                 + "RANK() OVER (ORDER BY r.best_seconds) AS place, "
                 + "ROW_NUMBER() OVER (ORDER BY r.best_seconds, u.login_id, u.user_id) AS row_no "
-                + "FROM clear_records r JOIN users u ON u.user_id = r.user_id WHERE r.map_id = ?) "
+                + "FROM clear_records r JOIN users u ON u.user_id = r.user_id JOIN maps m ON m.map_id = r.map_id "
+                + "WHERE r.map_id = ? AND m.archived = 0) "
                 + "SELECT login_id, best_seconds, place, row_no FROM ranked "
                 + "WHERE row_no <= 9 OR login_id = ? ORDER BY row_no";
         List<Entry> leaders  = new ArrayList<>();
@@ -74,7 +78,7 @@ public final class DashboardRecords {
     public List<Progress> progress(String loginId) {
         String sql = "SELECT m.title, r.best_seconds FROM maps m LEFT JOIN clear_records r "
                 + "ON r.map_id = m.map_id AND r.user_id = (SELECT user_id FROM users WHERE login_id = ?) "
-                + "ORDER BY m.map_id";
+                + "WHERE m.archived = 0 ORDER BY CASE WHEN m.map_id = 4 THEN 2 ELSE m.map_id END, m.map_id";
         List<Progress> result = new ArrayList<>();
         try (Connection connection = database.open();
                 PreparedStatement query = connection.prepareStatement(sql)) {

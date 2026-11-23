@@ -12,4 +12,10 @@ public interface UserRepository {
      * @throws coderoom.shared.db.StorageException DB 연결 또는 조회에 실패한 경우
      */
     Optional<UserAccount> findByLoginId(String loginId);
+
+    default boolean canRegister() { return false; }
+
+    default boolean create(String loginId, String passwordHash) {
+        throw new UnsupportedOperationException("가입을 지원하지 않는 저장소입니다.");
+    }
 }

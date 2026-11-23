@@ -131,6 +131,29 @@ class DatabaseGameTest {
     }
 
     @Test
+    void wrongAnswersShareFiveAttemptsAcrossPuzzlesAndRestartRestoresThem() {
+        GameFacade game = new GameFacade(maps, puzzles, records);
+        GameSetup setup = game.loadMap(1);
+        long started    = System.nanoTime();
+        assertEquals(5, game.start(4, setup, started).attemptsRemaining());
+        assertEquals(5, game.submit(RoomObjectId.WALL_DIAL, "000000000").view().attemptsRemaining());
+        assertEquals(5, game.submit(RoomObjectId.DRAWER, "12a4").view().attemptsRemaining());
+        assertEquals(4, game.submit(RoomObjectId.DRAWER, "0000").view().attemptsRemaining());
+        assertEquals(4, game.submit(RoomObjectId.DRAWER, "2312").view().attemptsRemaining());
+        assertEquals(4, game.submit(RoomObjectId.DRAWER, "0000").view().attemptsRemaining());
+        for (int remaining = 3; remaining >= 0; remaining--) {
+            var result = game.submit(RoomObjectId.WALL_DIAL, "111111111");
+            assertEquals(Verdict.WRONG, result.verdict());
+            assertEquals(remaining, result.view().attemptsRemaining());
+        }
+        assertTrue(game.view(started).attemptsExhausted());
+        assertEquals(Verdict.BLOCKED, game.submit(RoomObjectId.WALL_DIAL, "423312133").verdict());
+        assertNull(game.useKey(started).record());
+        assertTrue(records.findByUserId(4).isEmpty());
+        assertEquals(5, game.start(4, setup, started).attemptsRemaining());
+    }
+
+    @Test
     void snapshotsSurvivePuzzleChangesAndFailedWritesRollbackEverything() throws Exception {
         ClearRecord clear = new ClearRecord(4, 1, 42,
                 List.of(new SolvedPuzzle(1, 1, "original code", "0012")));
@@ -159,9 +182,168 @@ class DatabaseGameTest {
     }
 
     @Test
+    void newAccountCanSignInAndDuplicateRegistrationKeepsItsPassword() {
+        var login = new LoginService(users, new PasswordVerifier());
+        char[] secret  = "archive-password".toCharArray();
+        char[] confirm = secret.clone();
+        assertEquals(LoginService.Registration.CREATED, login.register("reader", secret, confirm));
+        assertEquals('\0', secret[0]);
+        assertEquals('\0', confirm[0]);
+        assertEquals(LoginService.Registration.DUPLICATE,
+                login.register("reader", "replacement".toCharArray(), "replacement".toCharArray()));
+        assertTrue(login.login("reader", "archive-password".toCharArray()).success());
+        assertFalse(login.login("reader", "replacement".toCharArray()).success());
+    }
+
+    @Test
+    void alternateSetsChangeCluesAndAcceptOnlyTheirMatchingAnswers() {
+        var variants = coderoom.features.gameplay.PuzzleVariant.values();
+        String[][][] solutions = {
+            {{"2312", "423312133"}, {"ACD", "CB", "CAE", "DCAB", "ACBD"}, {"BC", "ABC", "AB", "BC", "BAAB"}},
+            {{"3241", "241134423"}, {"D", "AA", "EDA", "BDAC", "ABCD"}, {"AB", "BBC", "AB", "CA", "AAAB"}},
+            {{"1425", "324413241"}, {"ACDE", "BC", "AED", "CADB", "ADBC"}, {"AE", "ABB", "AB", "DC", "BBAB"}}
+        };
+        long[] mapIds = {1, 3, 4};
+        RoomObjectId[] devices = {RoomObjectId.DRAWER, RoomObjectId.WALL_DIAL,
+            RoomObjectId.THIRD_DEVICE, RoomObjectId.FOURTH_DEVICE, RoomObjectId.FIFTH_DEVICE};
+        long started = System.nanoTime();
+        for (int deck = 0; deck < variants.length; deck++) {
+            var variant = variants[deck];
+            var game = new GameFacade(maps, puzzles, records, ignored -> variant);
+            for (int map = 0; map < mapIds.length; map++) {
+                var setup = game.loadMap(mapIds[map], 4);
+                game.start(4, setup, started);
+                for (int step = 0; step < setup.puzzles().size(); step++) {
+                    String expected = solutions[deck][map][step];
+                    String standard = solutions[0][map][step];
+                    if (mapIds[map] == 3 && step == 4) {
+                        String log      = game.inspect(devices[step]).instructions().content();
+                        String[] probes = {"sealed와 loadOk", "loadOk + sealed", "sealed + pressOk"};
+                        assertTrue(log.contains(probes[deck]), variant.toString());
+                    }
+                    if (!expected.equals(standard)) {
+                        assertEquals(variant, game.inspect(devices[step]).variant(), "map " + mapIds[map] + ", step " + step);
+                        var wrong = game.submit(devices[step], standard);
+                        assertEquals(Verdict.WRONG, wrong.verdict());
+                        if (wrong.view().attemptsExhausted()) {
+                            game.start(4, setup, started);
+                            for (int prior = 0; prior < step; prior++) {
+                                assertEquals(Verdict.SOLVED, game.submit(devices[prior], solutions[deck][map][prior]).verdict());
+                            }
+                        }
+                    }
+                    assertEquals(Verdict.SOLVED, game.submit(devices[step], expected).verdict(),
+                            variant + " map " + mapIds[map] + ", step " + step);
+                }
+                if (mapIds[map] == 1) { game.selectItem(coderoom.entities.game.ItemId.KEY); }
+                var result = game.useKey(started + 12_000_000_000L);
+                assertNotNull(result.record());
+            }
+        }
+
+        var deck = coderoom.features.gameplay.PuzzleVariant.rotatingDeck();
+        for (long mapId : mapIds) {
+            var last = deck.apply(mapId);
+            for (int run = 0; run < 12; run++) {
+                var next = deck.apply(mapId);
+                assertTrue(last != next);
+                last = next;
+            }
+        }
+    }
+
+    @Test
+    void newRoomsHaveIndependentProgressAndPersistTheirOwnRecords() {
+        GameFacade game = new GameFacade(maps, puzzles, records);
+        long started    = System.nanoTime();
+        GameSetup engine = game.loadMap(3, 4);
+        var initial = game.start(4, engine, started);
+        assertEquals(5, initial.puzzleCount());
+        assertNull(initial.previousBest());
+        assertTrue(initial.items().isEmpty());
+        assertNull(game.inspect(RoomObjectId.WALL_DIAL).answerType());
+        game.inspect(RoomObjectId.EVIDENCE_3);
+        assertTrue(game.view(started).items().get(0).hint().isBlank());
+        game.inspect(RoomObjectId.EVIDENCE_2);
+        game.inspect(RoomObjectId.EVIDENCE_4);
+        assertEquals(1, game.view(started).items().size());
+        assertEquals(Verdict.SOLVED, game.submit(RoomObjectId.DRAWER, "ACD").verdict());
+        assertEquals(Verdict.SOLVED, game.submit(RoomObjectId.THIRD_DEVICE, "CAE").verdict());
+        assertEquals(java.util.Set.of(0, 2), game.view(started).solvedSteps());
+        assertEquals(Verdict.BLOCKED, game.submit(RoomObjectId.FOURTH_DEVICE, "DCAB").verdict());
+        assertEquals(Verdict.SOLVED, game.submit(RoomObjectId.WALL_DIAL, "CB").verdict());
+        assertEquals(Verdict.SOLVED, game.submit(RoomObjectId.FOURTH_DEVICE, "DCAB").verdict());
+        assertEquals(Verdict.SOLVED, game.submit(RoomObjectId.FIFTH_DEVICE, "ACBD").verdict());
+        game.saveClear(game.useKey(started + 30_000_000_000L).record());
+        assertEquals(30, game.loadMap(3, 4).previousBest());
+        assertNull(game.loadMap(3, 1).previousBest());
+
+        var greenhouse = game.start(4, game.loadMap(4, 4), started);
+        assertEquals(5, greenhouse.puzzleCount());
+        assertTrue(greenhouse.evidence().isEmpty());
+        assertEquals(Verdict.SOLVED, game.submit(RoomObjectId.WALL_DIAL, "ABC").verdict());
+        assertEquals(Verdict.SOLVED, game.submit(RoomObjectId.THIRD_DEVICE, "AB").verdict());
+        assertEquals(Verdict.BLOCKED, game.submit(RoomObjectId.FOURTH_DEVICE, "BC").verdict());
+        assertEquals(Verdict.SOLVED, game.submit(RoomObjectId.DRAWER, "BC").verdict());
+        assertEquals(Verdict.SOLVED, game.submit(RoomObjectId.FOURTH_DEVICE, "BC").verdict());
+        assertEquals(Verdict.SOLVED, game.submit(RoomObjectId.FIFTH_DEVICE, "BAAB").verdict());
+        assertNull(game.useKey(started + 600_000_000_000L).record());
+        game.saveClear(game.useKey(started + 59_000_000_000L).record());
+        assertEquals(59, game.loadMap(4, 4).previousBest());
+
+        assertThrows(IllegalArgumentException.class, () -> game.loadMap(2, 4));
+    }
+
+    @Test
+    void replacesArchiveSlotAndPreservesLegacyRecordsOnRepeatedInitialization() throws Exception {
+        try (var connection = database.open(); var statement = connection.createStatement()) {
+            statement.executeUpdate("ALTER TABLE maps DROP COLUMN archived");
+            statement.executeUpdate("""
+                    INSERT INTO maps (map_id, title, description, topic, difficulty, poster_path, playable)
+                    VALUES (2, '사라진 기록', 'legacy', 'history', 'easy', '/legacy.png', 1)
+                    """);
+            statement.executeUpdate("UPDATE maps SET poster_path='/images/room/workshop/greenhouse/poster.jpg' WHERE map_id=4");
+            statement.executeUpdate("UPDATE puzzles SET answer='AB', code='old balance' WHERE puzzle_id=404");
+            statement.executeUpdate("UPDATE puzzles SET code='낮은 왼쪽 화분으로', answer='BBC' WHERE puzzle_id=402");
+            statement.executeUpdate("UPDATE puzzles SET code='old specimen', answer='C' WHERE puzzle_id=401");
+            statement.executeUpdate("UPDATE puzzles SET code='old rail', answer='BA' WHERE puzzle_id=405");
+            statement.executeUpdate("UPDATE puzzles SET code='System.out.print(digit + 1)' WHERE puzzle_id=1");
+            statement.executeUpdate("UPDATE puzzles SET code='예전 점검표' WHERE puzzle_id=315");
+            statement.executeUpdate("INSERT INTO clear_records VALUES (4, 2, 37)");
+            statement.executeUpdate("INSERT INTO solved_puzzles VALUES (4, 2, 201, 1, 'legacy code', 'old answer')");
+        }
+        database.initialize();
+        database.initialize();
+
+        assertEquals(List.of(1, 4, 3), maps.findAll().stream().map(map -> map.getMapId()).toList());
+        assertTrue(maps.findById(2).isEmpty());
+        var greenhouse = maps.findById(4).orElseThrow();
+        assertEquals("/images/posters/room02_last_seed.png", greenhouse.getPosterPath());
+        var poster = javax.imageio.ImageIO.read(getClass().getResource(greenhouse.getPosterPath()));
+        assertTrue(poster.getHeight() > poster.getWidth());
+        assertEquals(37, records.findByUserId(4).stream().filter(record -> record.getMapId() == 2)
+                .findFirst().orElseThrow().getBestSeconds());
+        DashboardRecords dashboard = new DashboardRecords(database);
+        assertEquals(List.of(1L, 4L, 3L), dashboard.rooms().stream().map(DashboardRecords.Room::id).toList());
+        assertTrue(dashboard.ranking(2, "test").leaders().isEmpty());
+        assertEquals("legacy code", dashboard.solvedProblems("test").get(0).code());
+        assertNull(new GameFacade(maps, puzzles, records).loadMap(4, 4).previousBest());
+        assertEquals(AnswerCheck.CORRECT, puzzles.findByMapId(4).get(3).check("BC"));
+        assertTrue(puzzles.findByMapId(4).get(1).code().contains("낮은 배수구"));
+        assertTrue(puzzles.findByMapId(1).get(0).code().contains("total += step"));
+        assertTrue(puzzles.findByMapId(1).get(1).code().contains("grid[col][row]"));
+        assertEquals(AnswerCheck.CORRECT, puzzles.findByMapId(4).get(0).check("BC"));
+        assertEquals(AnswerCheck.CORRECT, puzzles.findByMapId(4).get(1).check("ABC"));
+        assertEquals(AnswerCheck.CORRECT, puzzles.findByMapId(4).get(4).check("BAAB"));
+        Puzzle interlock = puzzles.findByMapId(3).get(4);
+        assertTrue(interlock.code().contains("int lamps = (running ? 1 : 0)"));
+        assertTrue(interlock.code().contains("sealed와 loadOk 동시 차단 → 0"));
+        assertEquals(AnswerCheck.CORRECT, interlock.check("ACBD"));
+    }
+
+    @Test
     void missingOrInvalidDataFailsExplicitlyAndConstraintsAreEnabled() throws Exception {
         GameFacade game = new GameFacade(maps, puzzles, records);
-        assertThrows(IllegalArgumentException.class, () -> game.loadMap(2));
         assertThrows(IllegalArgumentException.class, () -> game.loadMap(999));
         assertThrows(IllegalArgumentException.class, () -> new ClearRecord(4, 1, -1));
         assertThrows(StorageException.class, () -> records.saveBest(new ClearRecord(999, 1, 10)));

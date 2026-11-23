@@ -31,7 +31,7 @@ class DashboardRecordsTest {
                 record.executeUpdate();
             }
             record.setLong(1, 112);
-            record.setLong(2, 2);
+            record.setLong(2, 4);
             record.setLong(3, 0);
             record.executeUpdate();
         }
@@ -43,8 +43,8 @@ class DashboardRecordsTest {
         assertEquals(3, ranking.leaders().get(2).rank());
         assertEquals(12, ranking.mine().orElseThrow().rank());
         assertEquals(120, ranking.mine().orElseThrow().seconds());
-        assertEquals(1, records.ranking(2, "player12").mine().orElseThrow().rank());
-        assertEquals(0, records.ranking(2, "player12").mine().orElseThrow().seconds());
+        assertEquals(1, records.ranking(4, "player12").mine().orElseThrow().rank());
+        assertEquals(0, records.ranking(4, "player12").mine().orElseThrow().seconds());
         assertTrue(records.ranking(3, "player12").leaders().isEmpty());
         assertTrue(records.ranking(1, "unknown").mine().isEmpty());
         assertEquals(120L, records.progress("player12").get(0).seconds());

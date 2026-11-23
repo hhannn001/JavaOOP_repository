@@ -1,0 +1,8 @@
+seed-chest 82 493
+seed-rack 208 365
+specimen-cards 208 498
+cross-platform 586 617
+long-platform 696 654
+trolley 633 784
+spare-gutter 1389 604
+catchment-float 1185 208

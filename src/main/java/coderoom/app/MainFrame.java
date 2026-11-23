@@ -24,7 +24,7 @@ import javax.swing.SwingUtilities;
  * 역할: 앱에서 사용하는 하나의 최상위 창.
  * 상위 타입: javax.swing.JFrame
  */
-public class MainFrame extends JFrame implements AppController.Host {
+public final class MainFrame extends JFrame implements AppController.Host {
     // [필드·연결]
     // java.awt.CardLayout과 화면 컨테이너를 보유한다.
 

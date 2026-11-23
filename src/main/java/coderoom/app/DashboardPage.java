@@ -340,7 +340,13 @@ final class DashboardPage extends JPanel {
         heading.setBounds(30, 26, 300, 55);
         JButton exit = imageButton("로그아웃", "logout");
         exit.setFont(SceneObjectButton.PixelFont.at(20));
-        exit.setBounds(35, 160, 290, 48);
+        exit.setBounds(35, 185, 290, 48);
+        JButton music   = AppScreens.musicToggle();
+        JButton effects = AppScreens.effectsToggle();
+        music.setBounds(35, 92, 140, 42);
+        effects.setBounds(185, 92, 140, 42);
+        panel.add(music);
+        panel.add(effects);
         exit.addActionListener(event -> {
             dialog.dispose();
             logout.run();

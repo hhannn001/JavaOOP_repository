@@ -1,11 +1,5 @@
 package coderoom.entities.map;
 
-/**
- * 담당: C
- * 역할: JDBC와 도메인 저장소 사이의 Adapter.
- * 구현 계약: coderoom.entities.map.MapRepository
- */
-
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -17,6 +11,7 @@ import java.util.Optional;
 import coderoom.shared.db.Database;
 import coderoom.shared.db.StorageException;
 
+/** JDBC를 통해 맵 저장소 계약을 구현한다. */
 public class JdbcMapRepository implements MapRepository {
 
 	// [연결]
@@ -45,7 +40,8 @@ public class JdbcMapRepository implements MapRepository {
                 SELECT map_id, title, description, topic,
                        difficulty, poster_path, playable, hint_limit
                 FROM maps
-                ORDER BY map_id
+                WHERE archived = 0
+                ORDER BY CASE WHEN map_id = 4 THEN 2 ELSE map_id END, map_id
                 """;
 
         List<GameMap> maps = new ArrayList<>();
@@ -73,7 +69,7 @@ public class JdbcMapRepository implements MapRepository {
                 SELECT map_id, title, description, topic,
                        difficulty, poster_path, playable, hint_limit
                 FROM maps
-                WHERE map_id = ?
+                WHERE map_id = ? AND archived = 0
                 """;
 
         try (Connection connection = database.open();

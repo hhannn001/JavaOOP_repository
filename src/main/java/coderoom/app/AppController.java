@@ -1,5 +1,6 @@
 package coderoom.app;
 
+import coderoom.shared.audio.GameAudio;
 import coderoom.entities.user.LoginUser;
 import coderoom.pages.game.GamePage;
 import java.util.Objects;
@@ -36,6 +37,7 @@ public class AppController {
     /** A 대시보드·B/C 화면과 게임별 새 인스턴스를 제공한다. 계정을 전역 변수로 공유하지 않는다. */
     public interface Screens {
         JComponent login(Consumer<LoginUser> onLogin);
+        default boolean clearRememberedLogin() { return true; }
         JComponent dashboard(LoginUser user, Runnable openMaps, Runnable logout);
         JComponent maps(LoginUser user, LongConsumer openMap, Runnable dashboard);
         GamePage game(LoginUser user, long mapId, Runnable back, Runnable restart);
@@ -55,7 +57,6 @@ public class AppController {
         this.host           = Objects.requireNonNull(host);
         this.screens        = Objects.requireNonNull(screens);
         this.confirmDiscard = Objects.requireNonNull(confirmDiscard);
-        host.setCloseRequest(this::close);
     }
 
     public void start() {
@@ -63,6 +64,7 @@ public class AppController {
         if (currentUser != null || gamePage != null) {
             throw new IllegalStateException("이미 실행 중인 앱입니다.");
         }
+        host.setCloseRequest(this::close);
         showLogin();
     }
 
@@ -84,6 +86,7 @@ public class AppController {
         if (currentUser == null || gamePage != null) {
             return;
         }
+        GameAudio.play(GameAudio.Cue.CLICK);
         host.removePage("dashboard");
         showMaps();
     }
@@ -94,6 +97,7 @@ public class AppController {
         if (currentUser == null || gamePage != null) {
             return;
         }
+        GameAudio.play(GameAudio.Cue.CLICK);
         host.removePage("maps");
         showDashboard();
     }
@@ -103,6 +107,7 @@ public class AppController {
         if (currentUser == null || !leaveGame()) {
             return;
         }
+        GameAudio.play(GameAudio.Cue.CLICK);
         currentMap = mapId;
         Object token = new Object();
         screenToken = token;
@@ -139,7 +144,7 @@ public class AppController {
     /** 로그아웃 시 이전 사용자·화면·타이머 참조를 제거한다. */
     public void logout() {
         requireEdt();
-        if (!leaveGame()) {
+        if (currentUser == null || !leaveGame() || !screens.clearRememberedLogin()) {
             return;
         }
         currentUser = null;
@@ -153,6 +158,7 @@ public class AppController {
         if (!leaveGame()) {
             return false;
         }
+        GameAudio.stopMusic();
         currentUser = null;
         screenToken = null;
         host.removePage("login");

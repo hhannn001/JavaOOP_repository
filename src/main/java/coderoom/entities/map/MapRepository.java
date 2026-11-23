@@ -1,15 +1,10 @@
 package coderoom.entities.map;
 
-/**
- * 담당: C
- * 역할: 도메인 저장소 계약.
- * 직접 선언한 상속·구현 관계 없음.
- */
-
 import java.util.List;
 import java.util.Optional;
 
 //맵 데이터를 조회하기 위한 인터페이스
+/** 맵 데이터 조회를 위한 저장소 계약이다. */
 public interface MapRepository {
 
 	 // [조회 계약]

@@ -1,59 +1,54 @@
 package coderoom.widgets.clue;
 
 import java.awt.BorderLayout;
+import java.awt.CardLayout;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
-import java.awt.Rectangle;
-import java.awt.image.BufferedImage;
-import java.awt.image.ConvolveOp;
-import java.awt.image.Kernel;
-import java.util.Arrays;
-import java.util.EnumSet;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
-import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.JScrollBar;
 import javax.swing.JScrollPane;
-import javax.swing.JTextArea;
-import javax.swing.plaf.basic.BasicScrollBarUI;
 
-import coderoom.entities.game.ItemId;
 import coderoom.features.gameplay.ItemView;
 import coderoom.shared.ui.PixelTheme;
 
 /**
  * 담당: F
- * 역할: 선택한 메모의 코드와 힌트를 펼친 종이 형태로 표시한다.
- * 게임 스냅샷을 표시하며 메모별 힌트 공개 상태를 유지한다. DB 조회와 정답 판정은 하지 않는다.
+ * 역할: 선택한 메모의 설명과 코드를 펼친 종이 형태로 표시한다.
+ * 게임 스냅샷을 표시한다. DB 조회와 정답 판정은 하지 않는다.
  */
 public final class CluePanel extends JPanel {
-    private static final Color CODE_BACKGROUND = new Color(233, 211, 166);
-
-    private final JLabel title     = new JLabel();
-    private final JTextArea code   = new JTextArea();
-    private final HintButton hint  = new HintButton();
-    private final EnumSet<ItemId> revealed = EnumSet.noneOf(ItemId.class);
-    private ItemView item;
+    private final JLabel title       = new JLabel();
+    private final ClueReading code    = new ClueReading();
+    private final JPanel codePage     = new JPanel(new BorderLayout());
+    private final JScrollPane scroll  = new JScrollPane();
+    private final BalanceDiagram balance = new BalanceDiagram();
+    private final CardLayout content  = new CardLayout();
+    private final JPanel pages        = new JPanel(content);
+    private final JButton switchView  = new JButton();
+    private final JPanel header = new JPanel(new BorderLayout(8, 0));
+    private boolean codeVisible;
+    private int measuredWidth = -1;
+    private int measuredLimit;
+    private int measuredBodyHeight;
     private Runnable onClose;
 
     public CluePanel() {
-        super(new BorderLayout(0, 20));
+        super(new BorderLayout(0, 12));
         setOpaque(false);
-        setBorder(BorderFactory.createEmptyBorder(26, 26, 28, 26));
-        setPreferredSize(new Dimension(370, 560));
-        JPanel header = new JPanel(new BorderLayout(8, 0));
+        setBorder(BorderFactory.createEmptyBorder(17, 22, 19, 22));
+        setPreferredSize(new Dimension(500, 650));
         header.setOpaque(false);
         title.setFont(PixelTheme.font(24).deriveFont(Font.BOLD));
-        title.setBorder(BorderFactory.createEmptyBorder(20, 10, 0, 0));
+        title.setBorder(BorderFactory.createEmptyBorder(8, 6, 0, 0));
         title.setForeground(PixelTheme.INK);
-        JButton close = new JButton("접어두기  X");
-        close.setFont(PixelTheme.font(12));
+        JButton close = new JButton("닫기");
+        close.setFont(PixelTheme.font(16));
         close.setForeground(PixelTheme.INK);
         close.setContentAreaFilled(false);
         close.setBorder(BorderFactory.createEmptyBorder(6, 2, 6, 10));
@@ -61,92 +56,87 @@ public final class CluePanel extends JPanel {
         header.add(title, BorderLayout.WEST);
         header.add(close, BorderLayout.EAST);
         add(header, BorderLayout.NORTH);
-        code.setEditable(false);
-        code.setFont(new Font(Font.MONOSPACED, Font.BOLD, 12));
-        code.setForeground(PixelTheme.INK);
-        code.setOpaque(false);
-        code.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
-        code.setTabSize(2);
-        JScrollPane scroll = new JScrollPane(code);
-        scroll.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
+        pages.setOpaque(false);
+        codePage.setOpaque(false);
+        codePage.add(code);
         scroll.setOpaque(false);
-        scroll.getViewport().setBackground(CODE_BACKGROUND);
-        scroll.getViewport().setOpaque(true);
-        styleCodeScrollBar(scroll.getVerticalScrollBar());
-        styleCodeScrollBar(scroll.getHorizontalScrollBar());
+        scroll.getViewport().setOpaque(false);
+        scroll.setBorder(BorderFactory.createEmptyBorder());
         scroll.getVerticalScrollBar().setUnitIncrement(16);
-        add(scroll, BorderLayout.CENTER);
-        hint.setPreferredSize(new Dimension(280, 136));
-        hint.setName("revealHint");
-        hint.addActionListener(event -> {
-            if (item != null && !item.hint().isBlank()) {
-                revealed.add(item.id());
-                hint.setHint(item.hint(), true);
-            }
-        });
-        add(hint, BorderLayout.SOUTH);
+        pages.add(codePage, "code");
+        pages.add(balance, "balance");
+        JPanel reading = new JPanel(new BorderLayout(0, 8));
+        reading.setOpaque(false);
+        reading.add(pages, BorderLayout.CENTER);
+        switchView.setName("clueViewToggle");
+        switchView.setFont(PixelTheme.font(14));
+        switchView.setForeground(PixelTheme.INK);
+        switchView.setContentAreaFilled(false);
+        switchView.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(155, 113, 63)),
+                BorderFactory.createEmptyBorder(5, 8, 5, 8)));
+        switchView.addActionListener(event -> showReading(!codeVisible));
+        reading.add(switchView, BorderLayout.SOUTH);
+        add(reading, BorderLayout.CENTER);
         setVisible(false);
     }
 
-    private static void styleCodeScrollBar(JScrollBar bar) {
-        bar.setBorder(BorderFactory.createEmptyBorder());
-        bar.setUI(new CodeScrollBarUI());
-        bar.setOpaque(false);
-    }
-
-    private static final class CodeScrollBarUI extends BasicScrollBarUI {
-        private static final Color THUMB = new Color(190, 190, 190);
-        private static final Color ACTIVE_THUMB = new Color(166, 166, 166);
-
-        @Override
-        public Dimension getPreferredSize(JComponent component) {
-            return new Dimension(10, 10);
-        }
-
-        @Override
-        protected JButton createDecreaseButton(int orientation) {
-            return hiddenArrow();
-        }
-
-        @Override
-        protected JButton createIncreaseButton(int orientation) {
-            return hiddenArrow();
-        }
-
-        private static JButton hiddenArrow() {
-            JButton button = new JButton();
-            button.setPreferredSize(new Dimension(0, 0));
-            button.setVisible(false);
-            return button;
-        }
-
-        @Override
-        protected void paintTrack(Graphics g, JComponent component, Rectangle bounds) {
-            // Leave the parchment visible behind the thumb.
-        }
-
-        @Override
-        protected void paintThumb(Graphics g, JComponent component, Rectangle bounds) {
-            if (bounds.isEmpty() || !component.isEnabled()) {
-                return;
-            }
-            g.setColor(isDragging || isThumbRollover() ? ACTIVE_THUMB : THUMB);
-            g.fillRoundRect(bounds.x + 2, bounds.y + 2, bounds.width - 4, bounds.height - 4, 6, 6);
-        }
-    }
-
     public void setClueData(ItemView value) {
-        item = value;
         title.setText(value.title());
-        code.setText(value.content());
-        code.setCaretPosition(0);
-        hint.setVisible(!value.hint().isBlank());
-        hint.setHint(value.hint(), revealed.contains(value.id()));
+        measuredWidth = -1;
+        code.showNote(value.content());
+        balance.setLoad(value.balanceLoad());
+        switchView.setVisible(value.diagram() == ItemView.Diagram.BALANCE);
+        showReading(value.diagram() == ItemView.Diagram.NONE);
         revalidate();
         repaint();
     }
 
-    public boolean isHintRevealed(ItemId id) { return revealed.contains(id); }
+    private void showReading(boolean showCode) {
+        codeVisible = showCode;
+        content.show(pages, showCode ? "code" : "balance");
+        switchView.setText(showCode ? "그림 다시 보기" : "Java 규칙 보기");
+        if (getParent() != null) { getParent().revalidate(); }
+    }
+
+    public int paperTopInset(int height) {
+        // paper.png 높이 1536px 중 약 34px가 위쪽 투명 여백이다.
+        return Math.round(height * (34f / 1536));
+    }
+
+    public int readingHeight(int width, int limit) {
+        if (!codeVisible) { return getPreferredSize().height; }
+        var insets  = getInsets();
+        int footer  = switchView.isVisible() ? switchView.getPreferredSize().height + 8 : 0;
+        int frame   = insets.top + insets.bottom + header.getPreferredSize().height + 12 + footer;
+        if (width != measuredWidth || limit != measuredLimit) {
+            int bodyWidth = width - insets.left - insets.right;
+            int bodyLimit = limit - frame;
+            int bodyHeight = code.fit(bodyWidth, bodyLimit);
+            boolean overflow = bodyHeight > bodyLimit;
+            if (overflow) {
+                bodyHeight = code.fit(bodyWidth - scroll.getVerticalScrollBar().getPreferredSize().width, bodyLimit);
+            }
+            setScrolling(overflow);
+            measuredBodyHeight = bodyHeight;
+            measuredWidth      = width;
+            measuredLimit      = limit;
+        }
+        return frame + measuredBodyHeight;
+    }
+
+    private void setScrolling(boolean overflow) {
+        if (overflow == (scroll.getParent() == codePage)) { return; }
+        codePage.removeAll();
+        if (overflow) {
+            scroll.setViewportView(code);
+            codePage.add(scroll);
+        } else {
+            scroll.setViewportView(null);
+            codePage.add(code);
+        }
+    }
+
     public void openClue() { setVisible(true); revalidate(); repaint(); }
     public void closeClue() {
         setVisible(false);
@@ -158,65 +148,5 @@ public final class CluePanel extends JPanel {
         Graphics2D g = (Graphics2D) graphics.create();
         PixelTheme.asset(g, "paper", 0, 0, getWidth(), getHeight());
         g.dispose();
-    }
-
-    private static final class HintButton extends JButton {
-        private String content = "";
-        private boolean open;
-        private BufferedImage blurred;
-        private int cachedWidth;
-
-        private HintButton() {
-            setContentAreaFilled(false);
-            setCursor(java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.HAND_CURSOR));
-            setBorderPainted(false);
-            setFocusPainted(false);
-        }
-
-        private void setHint(String value, boolean shown) {
-            content = value;
-            open    = shown;
-            blurred = null;
-            getAccessibleContext().setAccessibleName(shown ? "힌트: " + value : "클릭하여 작은 힌트 공개");
-            repaint();
-        }
-
-        @Override protected void paintComponent(Graphics graphics) {
-            Graphics2D g = (Graphics2D) graphics.create();
-            g.setColor(new Color(127, 91, 45));
-            g.drawLine(0, 0, getWidth(), 0);
-            g.setFont(PixelTheme.font(16));
-            g.setColor(PixelTheme.INK);
-            g.drawString("작은 힌트", 2, 25);
-            int width = Math.max(1, getWidth());
-            if (blurred == null || cachedWidth != width) {
-                BufferedImage text = new BufferedImage(width, 84, BufferedImage.TYPE_INT_ARGB);
-                Graphics2D ink     = text.createGraphics();
-                ink.setFont(PixelTheme.font(14));
-                ink.setColor(PixelTheme.INK);
-                int x = 2;
-                int y = 18;
-                for (char character : content.toCharArray()) {
-                    int advance = ink.getFontMetrics().charWidth(character);
-                    if (x + advance > width - 4) { x = 2; y += 20; }
-                    ink.drawString(String.valueOf(character), x, y);
-                    x += advance;
-                }
-                ink.dispose();
-                if (open) {
-                    blurred = text;
-                } else {
-                    float[] kernel = new float[81];
-                    Arrays.fill(kernel, 1f / 81f);
-                    blurred = new ConvolveOp(new Kernel(9, 9, kernel), ConvolveOp.EDGE_NO_OP, null).filter(text, null);
-                }
-                cachedWidth = width;
-            }
-            g.drawImage(blurred, 0, 36, null);
-            if (hasFocus()) {
-                g.drawLine(2, getHeight() - 1, getWidth() - 3, getHeight() - 1);
-            }
-            g.dispose();
-        }
     }
 }

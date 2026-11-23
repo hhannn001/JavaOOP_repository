@@ -31,9 +31,9 @@ import coderoom.shared.ui.ItemSprite;
  *
  * Noyoungeun의 41b432f UI를 유지하며 GameView 선택 상태와 콜백을 연결한다.
  */
-public class InventoryPanel extends JPanel {
+public final class InventoryPanel extends JPanel {
 
-    private static final int SLOT_COUNT = 5;
+    private static final int SLOT_COUNT = 6;
 
     //인벤토리 색상
     private static final Color BG =

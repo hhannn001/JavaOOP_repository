@@ -44,6 +44,16 @@ class GameItemSelectionTest {
                 page[0].selectItem(ItemId.NOTE2);
                 Component clue = find(page[0], "gameClue");
                 assertTrue(clue.isVisible());
+                Component progress = find(page[0], "puzzleProgress");
+                Component attempts = find(page[0], "wrongAttempts");
+                var room = clue.getParent();
+                room.setSize(900, 650);
+                room.doLayout();
+                assertTrue(progress.isVisible());
+                assertTrue(attempts.isVisible());
+                assertFalse(clue.getBounds().intersects(progress.getBounds()));
+                assertFalse(clue.getBounds().intersects(attempts.getBounds()));
+                assertTrue(attempts.getY() - progress.getY() - progress.getHeight() >= 18);
                 JButton key = (JButton) find(page[0], "열쇠");
                 key.doClick();
                 assertFalse(clue.isVisible());

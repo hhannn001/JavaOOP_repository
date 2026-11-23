@@ -1,11 +1,5 @@
 package coderoom.features.mapcatalog;
 
-/**
- * 담당: C
- * 역할: 맵과 사용자별 최고 기록 결합.
- * 직접 선언한 상속·구현 관계 없음.
- */
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -17,6 +11,7 @@ import coderoom.entities.map.MapRepository;
 import coderoom.entities.record.ClearRecord;
 import coderoom.entities.record.ClearRecordRepository;
 
+/** 맵과 사용자별 최고 기록을 결합한다. */
 public class MapCatalogService {
 
 	// [연결]

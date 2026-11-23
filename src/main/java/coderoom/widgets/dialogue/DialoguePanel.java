@@ -1,7 +1,9 @@
 package coderoom.widgets.dialogue;
 
+import coderoom.shared.audio.GameAudio;
 import coderoom.shared.ui.PixelTheme;
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
@@ -50,7 +52,10 @@ public final class DialoguePanel extends JPanel {
             getInputMap(WHEN_FOCUSED).put(KeyStroke.getKeyStroke(key), "advance");
         }
         getActionMap().put("advance", new AbstractAction() {
-            @Override public void actionPerformed(ActionEvent event) { advance(); }
+            @Override public void actionPerformed(ActionEvent event) {
+                GameAudio.play(GameAudio.Cue.CLICK);
+                advance();
+            }
         });
         setVisible(false);
     }
@@ -87,6 +92,8 @@ public final class DialoguePanel extends JPanel {
         super.paintComponent(graphics);
         Graphics2D g = (Graphics2D) graphics.create();
         PixelTheme.pixels(g);
+        g.setColor(new Color(30, 22, 16));
+        g.fillRect(12, 36, Math.max(0, getWidth() - 24), Math.max(0, getHeight() - 40));
         paintFrame(g);
         if (current != null) {
             BufferedImage name = current.speaker() == Speaker.PLAYER ? PLAYER : SYSTEM;

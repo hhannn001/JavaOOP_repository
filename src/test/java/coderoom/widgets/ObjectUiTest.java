@@ -5,21 +5,36 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import coderoom.entities.game.ItemId;
+import coderoom.entities.game.RoomObjectId;
+import coderoom.entities.game.WorkshopRoom;
+import coderoom.entities.map.JdbcMapRepository;
+import coderoom.entities.puzzle.JdbcPuzzleRepository;
+import coderoom.entities.record.JdbcClearRecordRepository;
+import coderoom.features.gameplay.GameFacade;
 import coderoom.features.gameplay.ItemView;
+import coderoom.features.gameplay.PuzzleVariant;
 import coderoom.features.gameplay.ui.AnswerInputPanel;
+import coderoom.shared.db.Database;
 import coderoom.shared.ui.GameOverlayLayout;
 import coderoom.widgets.clue.CluePanel;
 import java.awt.Component;
 import java.awt.Container;
+import java.awt.Dimension;
 import java.awt.event.MouseEvent;
+import java.awt.image.BufferedImage;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 import javax.swing.JButton;
+import javax.swing.JEditorPane;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
 import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
+import javax.swing.text.View;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 class ObjectUiTest {
     @Test void puzzleInputsSurviveClosingAndSwitchingButResetForNewSession() throws Exception {
@@ -61,25 +76,125 @@ class ObjectUiTest {
         });
     }
 
-    @Test void hintRemainsRevealedOnlyInThisGameAndForThisNote() throws Exception {
-        SwingUtilities.invokeAndWait(() -> {
-            ItemView first  = new ItemView(ItemId.NOTE1, "메모 1", "code", "첫 힌트");
-            ItemView second = new ItemView(ItemId.NOTE2, "메모 2", "code", "둘째 힌트");
-            CluePanel clue  = new CluePanel();
-            clue.setClueData(first);
-            assertFalse(clue.isHintRevealed(ItemId.NOTE1));
-            for (Component child : clue.getComponents()) {
-                if ("revealHint".equals(child.getName())) { ((JButton) child).doClick(); }
+    @Test void everyPlayablePuzzleMemoRemainsReadableWithoutShowingHints(@TempDir Path temp) throws Exception {
+        var database = new Database(temp.resolve("memo.db").toString());
+        database.initialize();
+        var puzzles = new JdbcPuzzleRepository(database);
+        var game = new GameFacade(new JdbcMapRepository(database),
+                puzzles, new JdbcClearRecordRepository(database));
+        var study = game.start(4, game.loadMap(1), 0);
+        var notes = new ArrayList<ItemView>(study.items());
+        game.submit(RoomObjectId.DRAWER, "2312");
+        notes.add(game.view(0).items().get(1));
+        for (int map : new int[] {3, 4}) {
+            for (var puzzle : puzzles.findByMapId(map)) {
+                var task = WorkshopRoom.forMap(map).task(puzzle.stepNo() - 1);
+                ItemView.Diagram diagram = map == 4 && puzzle.stepNo() == 4
+                        ? ItemView.Diagram.BALANCE : ItemView.Diagram.NONE;
+                notes.add(new ItemView(ItemId.NOTE1, task.title(), puzzle.code(), "숨길 힌트", diagram));
             }
-            clue.closeClue();
-            clue.setClueData(second);
-            assertFalse(clue.isHintRevealed(ItemId.NOTE2));
-            clue.setClueData(first);
-            assertTrue(clue.isHintRevealed(ItemId.NOTE1));
-            CluePanel fresh = new CluePanel();
-            fresh.setClueData(first);
-            assertFalse(fresh.isHintRevealed(ItemId.NOTE1));
+        }
+        assertEquals(12, notes.size());
+
+        SwingUtilities.invokeAndWait(() -> {
+            JPanel room            = new JPanel(new GameOverlayLayout(true));
+            CluePanel clue         = new CluePanel();
+            JPanel dialogue        = new JPanel();
+            JPanel progress        = new JPanel();
+            JPanel attempts        = new JPanel();
+            AnswerInputPanel input = new AnswerInputPanel();
+            room.add(clue, "clue");
+            room.add(dialogue, "dialogue");
+            room.add(progress, "progress");
+            room.add(attempts, "attempts");
+            room.add(input, "input");
+            clue.openClue();
+            assertTrue(descendants(clue).stream().noneMatch(JScrollPane.class::isInstance));
+            assertTrue(descendants(clue).stream().noneMatch(child -> "revealHint".equals(child.getName())));
+            var reader = descendants(clue).stream().filter(JEditorPane.class::isInstance)
+                    .map(JEditorPane.class::cast).findFirst().orElseThrow();
+            for (var size : List.of(new Dimension(900, 650), new Dimension(1280, 800), new Dimension(1600, 900))) {
+                room.setSize(size);
+                for (boolean speaking : new boolean[] {false, true}) {
+                    dialogue.setVisible(speaking);
+                    input.setVisible(!speaking);
+                    for (int index = 0; index < notes.size(); index++) {
+                        ItemView note = notes.get(index);
+                        clue.setClueData(note);
+                        if (index == 0) {
+                            input.showFourDigits();
+                        } else if (index == 1) {
+                            input.showGrid3x3();
+                        } else {
+                            WorkshopRoom workshop = index < 7 ? WorkshopRoom.ENGINE : WorkshopRoom.GREENHOUSE;
+                            input.showWorkshop(workshop, (index - 2) % 5, PuzzleVariant.STANDARD, 1);
+                        }
+                        if (note.diagram() == ItemView.Diagram.BALANCE) {
+                            if (input.isVisible()) {
+                                layoutTree(room);
+                                assertPuzzleEdgesMatch(clue, input, note.title());
+                            }
+                            descendants(clue).stream().filter(child -> "clueViewToggle".equals(child.getName()))
+                                    .map(JButton.class::cast).findFirst().orElseThrow().doClick();
+                        }
+                        layoutTree(room);
+                        assertFalse(clue.getBounds().intersects(progress.getBounds()));
+                        assertFalse(clue.getBounds().intersects(attempts.getBounds()));
+                        if (input.isVisible()) {
+                            assertPuzzleEdgesMatch(clue, input, note.title());
+                        }
+                        var insets = reader.getInsets();
+                        int width  = reader.getWidth() - insets.left - insets.right;
+                        int height = reader.getHeight() - insets.top - insets.bottom;
+                        View root  = reader.getUI().getRootView(reader);
+                        root.setSize(width, height);
+                        assertTrue(root.getMinimumSpan(View.X_AXIS) <= width,
+                                () -> note.title() + " width " + root.getMinimumSpan(View.X_AXIS) + " > " + width);
+                        assertTrue(root.getPreferredSpan(View.Y_AXIS) <= height,
+                                () -> note.title() + " height " + root.getPreferredSpan(View.Y_AXIS) + " > " + height);
+                    }
+                }
+            }
         });
+    }
+
+    private static void assertPuzzleEdgesMatch(CluePanel clue, AnswerInputPanel input, String title) {
+        int paperTop  = clue.getY() + firstOpaqueRow(clue);
+        int deviceTop = input.getY() + firstOpaqueRow(input);
+        assertTrue(Math.abs(paperTop - deviceTop) <= 3,
+                () -> title + " paper top " + paperTop + ", device top " + deviceTop);
+    }
+
+    private static int firstOpaqueRow(JPanel panel) {
+        int width           = panel.getWidth();
+        BufferedImage image = new BufferedImage(width, panel.getHeight(), BufferedImage.TYPE_INT_ARGB);
+        var graphics        = image.createGraphics();
+        panel.printAll(graphics);
+        graphics.dispose();
+        for (int y = 0; y < image.getHeight(); y++) {
+            int opaque = 0;
+            for (int x = width / 4; x < width * 3 / 4; x++) {
+                if ((image.getRGB(x, y) >>> 24) >= 128) { opaque++; }
+            }
+            if (opaque >= width / 8) { return y; }
+        }
+        throw new AssertionError("패널 위쪽 테두리를 찾을 수 없습니다.");
+    }
+
+    private static List<Component> descendants(Container root) {
+        List<Component> components = new ArrayList<>();
+        for (Component child : root.getComponents()) {
+            components.add(child);
+            if (child instanceof Container container) { components.addAll(descendants(container)); }
+        }
+        return components;
+    }
+
+    private static void layoutTree(Container root) {
+        root.doLayout();
+        for (Component child : root.getComponents()) {
+            if (child instanceof Container container) { layoutTree(container); }
+        }
     }
 
     @Test void physicalDialsAcceptClicksAndKeyboardWithoutChangingAnswerContract() throws Exception {
@@ -103,6 +218,24 @@ class ObjectUiTest {
             assertEquals("012345678", submitted.get());
             fields.get(0).setText("x");
             assertEquals("0", fields.get(0).getText());
+        });
+    }
+
+    @Test void draggingOneDrawerWheelLeavesTheOtherThreeInPlace() throws Exception {
+        SwingUtilities.invokeAndWait(() -> {
+            AnswerInputPanel panel = new AnswerInputPanel();
+            List<JTextField> fields = new ArrayList<>();
+            collect(panel, fields);
+            JTextField wheels = fields.get(0);
+            wheels.setSize(400, 70);
+            long time = System.currentTimeMillis();
+            wheels.dispatchEvent(new MouseEvent(wheels, MouseEvent.MOUSE_PRESSED, time,
+                    MouseEvent.BUTTON1_DOWN_MASK, 150, 50, 1, false, MouseEvent.BUTTON1));
+            wheels.dispatchEvent(new MouseEvent(wheels, MouseEvent.MOUSE_DRAGGED, time,
+                    MouseEvent.BUTTON1_DOWN_MASK, 150, 20, 0, false, MouseEvent.NOBUTTON));
+            wheels.dispatchEvent(new MouseEvent(wheels, MouseEvent.MOUSE_RELEASED, time,
+                    0, 150, 20, 1, false, MouseEvent.BUTTON1));
+            assertEquals("0300", wheels.getText());
         });
     }
 

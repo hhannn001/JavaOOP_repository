@@ -2,6 +2,7 @@ package coderoom.pages.game;
 
 import coderoom.entities.game.ItemId;
 import coderoom.entities.game.GameSession;
+import coderoom.entities.game.WorkshopRoom;
 import coderoom.entities.game.GameStage;
 import coderoom.entities.game.RoomObjectId;
 import coderoom.entities.record.ClearRecord;
@@ -45,6 +46,7 @@ public class GamePage extends JPanel {
     /** 게임 수명 관리와 게임 규칙 사이의 계약. AppScreens의 GameAdapter가 GameFacade에 위임한다. */
     public interface GamePort {
         GameSetup loadMap(long mapId);
+        default GameSetup loadMap(long mapId, long userId) { return loadMap(mapId); }
         GameView start(LoginUser user, GameSetup setup, long nowNanos);
         InspectResult inspect(RoomObjectId object);
         SubmitResult submit(RoomObjectId object, String answer);
@@ -68,15 +70,23 @@ public class GamePage extends JPanel {
         void status(String message);
         void busy(boolean busy);
         void result(Escape escape, SaveState state);
+        default void timeExpired() { }
         default void started() { }
+        default void disposed() { }
         default void escapeFailed(String message) { status(message); }
+        default int escapeRevealDelay() { return 0; }
     }
 
     public enum SaveState { NONE, SAVING, SAVED, FAILED }
 
+    private static final String OUT_OF_ATTEMPTS = "오답 기회를 모두 사용해 탈락했습니다.";
+
     private final GamePort game;
     private final Widgets widgets;
     private final Timer timer;
+    private final Timer timeoutReveal;
+    private final Timer escapeReveal;
+    private boolean workshop;
     private SwingWorker<?, ?> worker;
     private Escape escaped;
     private SaveState saveState = SaveState.NONE;
@@ -88,10 +98,20 @@ public class GamePage extends JPanel {
         requireEdt();
         this.game    = Objects.requireNonNull(game);
         this.widgets = Objects.requireNonNull(widgets);
-        this.timer   = new Timer(250, event -> render(game.view(System.nanoTime())));
+        this.timer         = new Timer(250, null);
+        this.timeoutReveal = new Timer(650, event -> widgets.result(escaped, SaveState.NONE));
+        this.escapeReveal  = new Timer(0, event -> saveEscape());
+        timeoutReveal.setRepeats(false);
+        escapeReveal.setRepeats(false);
+    }
+
+    /** 생성이 끝난 뒤 위젯의 동작 콜백을 연결한다. */
+    public void bindWidgets() {
+        requireEdt();
         setLayout(new BorderLayout());
         add(widgets.room(), BorderLayout.CENTER);
         add(widgets.controls(), BorderLayout.SOUTH);
+        timer.addActionListener(event -> render(game.view(System.nanoTime())));
         widgets.bind(this);
     }
 
@@ -107,7 +127,7 @@ public class GamePage extends JPanel {
         SwingWorker<GameSetup, Void> loading = new SwingWorker<>() {
             @Override
             protected GameSetup doInBackground() {
-                return game.loadMap(mapId);
+                return game.loadMap(mapId, user.userId());
             }
 
             @Override
@@ -119,6 +139,7 @@ public class GamePage extends JPanel {
                 worker = null;
                 try {
                     GameSetup setup = get();
+                    workshop = WorkshopRoom.forMap(setup.map().getMapId()) != null;
                     render(game.start(user, setup, System.nanoTime()));
                     started = true;
                     timer.start();
@@ -143,25 +164,41 @@ public class GamePage extends JPanel {
         requireEdt();
         if (!disposed) {
             widgets.render(view);
-            if (escaped == null && view.stage() != GameStage.ESCAPED
-                    && view.elapsedSeconds() >= GameSession.TIME_LIMIT_SECONDS) {
-                escaped = new Escape(view, null, "제한시간 3분이 지났습니다.");
+            if (escaped == null && view.attemptsExhausted()) {
+                escaped = new Escape(view, null, OUT_OF_ATTEMPTS);
                 timer.stop();
                 widgets.result(escaped, SaveState.NONE);
+            } else if (escaped == null && view.stage() != GameStage.ESCAPED
+                    && view.elapsedSeconds() >= GameSession.TIME_LIMIT_SECONDS) {
+                escaped = new Escape(view, null, "제한시간 %d분이 지났습니다.".formatted(GameSession.TIME_LIMIT_SECONDS / 60));
+                timer.stop();
+                if (workshop) {
+                    widgets.timeExpired();
+                    timeoutReveal.start();
+                } else {
+                    widgets.result(escaped, SaveState.NONE);
+                }
             }
         }
     }
 
     public void inspect(RoomObjectId object) {
         if (canPlay()) {
-            widgets.inspected(game.inspect(object));
+            InspectResult inspected = game.inspect(object);
+            if (object != null && object.isClue()) {
+                render(game.view(System.nanoTime()));
+            }
+            widgets.inspected(inspected);
         }
     }
 
     public void submit(RoomObjectId object, String answer) {
         if (canPlay()) {
-            widgets.submitted(game.submit(object, answer));
-            render(game.view(System.nanoTime()));
+            SubmitResult submission = game.submit(object, answer);
+            if (!submission.view().attemptsExhausted()) {
+                widgets.submitted(submission);
+            }
+            render(submission.view());
         }
     }
 
@@ -171,7 +208,7 @@ public class GamePage extends JPanel {
         }
     }
 
-    /** 탈출 성공 순간 타이머를 멈추고 결과를 표시한 뒤 별도 스레드에서 저장한다. */
+    /** 탈출 성공 순간 타이머를 멈추고 문이 열린 뒤 결과를 표시한다. */
     public void useKey() {
         if (!canPlay()) {
             return;
@@ -184,6 +221,17 @@ public class GamePage extends JPanel {
         }
         escaped = result;
         timer.stop();
+        int delay = widgets.escapeRevealDelay();
+        if (delay > 0) {
+            escapeReveal.setInitialDelay(delay);
+            escapeReveal.start();
+        } else {
+            saveEscape();
+        }
+    }
+
+    private void saveEscape() {
+        if (disposed) { return; }
         saveState = SaveState.FAILED;
         retrySave();
     }
@@ -231,14 +279,19 @@ public class GamePage extends JPanel {
     /** 작업 중에는 이동을 막고, 미저장 결과가 있으면 호출자가 확인창을 표시한다. */
     public boolean canLeave(BooleanSupplier confirmDiscard) {
         requireEdt();
-        return worker == null && (saveState != SaveState.FAILED || confirmDiscard.getAsBoolean());
+        return !escapeReveal.isRunning() && worker == null
+                && (saveState != SaveState.FAILED || confirmDiscard.getAsBoolean());
     }
 
     /** 컨트롤러가 화면을 버릴 때 타이머와 작업을 정리한다. 반복 호출도 안전하다. */
     public void disposeGame() {
         requireEdt();
+        if (disposed) { return; }
         disposed = true;
+        widgets.disposed();
         timer.stop();
+        timeoutReveal.stop();
+        escapeReveal.stop();
         if (worker != null) {
             worker.cancel(true);
             worker = null;

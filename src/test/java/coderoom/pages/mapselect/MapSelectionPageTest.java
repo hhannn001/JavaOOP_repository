@@ -7,10 +7,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 import javax.swing.JButton;
+import javax.swing.JScrollPane;
+import javax.swing.JTextArea;
 import javax.swing.SwingUtilities;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class MapSelectionPageTest {
     @Test void postersOpenDetailsBeforeStartingAndComingSoonCannotStart() throws Exception {
@@ -43,6 +46,50 @@ class MapSelectionPageTest {
             assertEquals(8, buttons(page).size());
             assertEquals(8, buttons(page).stream().filter(button -> !button.isEnabled()).count());
         });
+    }
+
+    @Test void storyFitsAboveTheStartButtonWithoutScrollAtSmallAndLargeSizes() throws Exception {
+        SwingUtilities.invokeAndWait(() -> {
+            String story = """
+                    비 내리는 밤, 주인 없는 서재에서 문이 잠겼다.
+
+                    책상 위에는 누군가 남긴 두 장의 메모와 암호로 잠긴 서랍이 놓여 있다.
+
+                    숫자 사이에 숨은 규칙을 읽고 벽의 다이얼을 맞춰라. 마지막 단서가 가리키는 열쇠를 찾아 이 서재를 벗어나야 한다.
+                    """.strip();
+            MapSelectionPage page = new MapSelectionPage(ignored -> { }, null);
+            page.render(List.of(new MapCard(1, "서재", story, "Java", "보통", "/missing.png", true, false, null)));
+            poster(page, "서재").doClick();
+
+            for (int width : new int[] {900, 1280, 2512}) {
+                page.setSize(width, 650);
+                layout(page);
+                var children = descendants(page);
+                assertTrue(children.stream().noneMatch(JScrollPane.class::isInstance));
+                JTextArea description = children.stream().filter(JTextArea.class::isInstance)
+                        .map(JTextArea.class::cast).findFirst().orElseThrow();
+                assertEquals(story, description.getText());
+                assertTrue(description.getFont().getSize2D() >= 15);
+                assertTrue(description.getPreferredSize().height <= description.getHeight());
+                assertTrue(description.getY() + description.getHeight() <= named(page, "이 방 시작하기").getY());
+            }
+        });
+    }
+
+    private static void layout(Container root) {
+        root.doLayout();
+        for (Component child : root.getComponents()) {
+            if (child instanceof Container container) { layout(container); }
+        }
+    }
+
+    private static List<Component> descendants(Container root) {
+        List<Component> result = new ArrayList<>();
+        for (Component child : root.getComponents()) {
+            result.add(child);
+            if (child instanceof Container container) { result.addAll(descendants(container)); }
+        }
+        return result;
     }
 
     private static MapCard card(int id, boolean playable) {

@@ -17,6 +17,24 @@ public final class JdbcUserRepository implements UserRepository {
         this.database = Objects.requireNonNull(database);
     }
 
+    @Override public boolean canRegister() { return true; }
+
+    @Override
+    public boolean create(String loginId, String passwordHash) {
+        String sql = """
+                INSERT INTO users (login_id, password_hash) VALUES (?, ?)
+                ON CONFLICT(login_id) DO NOTHING
+                """;
+        try (Connection connection = database.open();
+                PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, loginId);
+            statement.setString(2, passwordHash);
+            return statement.executeUpdate() == 1;
+        } catch (SQLException exception) {
+            throw new StorageException("계정을 저장하지 못했습니다.", exception);
+        }
+    }
+
     @Override
     public Optional<UserAccount> findByLoginId(String loginId) {
         String sql = "SELECT user_id, login_id, password_hash FROM users WHERE login_id = ?";

@@ -1,0 +1,23 @@
+배경음악 · Kevin MacLeod (Incompetech)
+CC BY 4.0 · https://creativecommons.org/licenses/by/4.0/
+
+메뉴 — Comfortable Mystery 2
+https://www.incompetech.com/music/royalty-free/index.html?isrc=USUAN1100537
+서재 — Darkest Child
+https://www.incompetech.com/music/royalty-free/index.html?isrc=USUAN1100783
+기계실 — Controlled Chaos - no percussion
+https://www.incompetech.com/music/royalty-free/index.html?isrc=USUAN1200060
+온실 — Long Note Two
+https://www.incompetech.com/music/royalty-free/index.html?isrc=USUAN1100420
+
+원곡을 발췌해 끝과 시작을 겹쳐 편집하고 음량을 조절했습니다.
+
+효과음 · Kenney, Interface Sounds v1.0
+CC0 1.0 · https://creativecommons.org/publicdomain/zero/1.0/
+https://kenney.nl/assets/interface-sounds
+
+메뉴 click_001 / 종이 scratch_002 / 금속 switch_002 / 발판 drop_002
+수레 scroll_004 / 잠김 close_003 / 해결 confirmation_002
+탈출 confirmation_004 / 시간 초과 error_008
+WAV로 변환하고 음량을 조절했습니다. 일부 효과에는 피치, 반복,
+필터 또는 반향을 적용했습니다.

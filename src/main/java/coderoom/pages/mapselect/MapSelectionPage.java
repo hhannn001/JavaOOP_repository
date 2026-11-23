@@ -19,14 +19,13 @@ import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.KeyStroke;
 import javax.swing.SwingConstants;
 import javax.swing.SwingWorker;
 
 /** 실제 카페의 액자와 안내판 위에 방 정보와 입력 영역을 겹친다. */
-public class MapSelectionPage extends JPanel {
+public final class MapSelectionPage extends JPanel {
     private static final BufferedImage GALLERY = read("/images/mapselect/gallery.png");
     private static final BufferedImage DETAIL  = read("/images/mapselect/detail-surface.png");
     private static final Color TEXT_PRIMARY   = new Color(255, 243, 220);
@@ -126,7 +125,10 @@ public class MapSelectionPage extends JPanel {
             place(frame, COLUMNS[slot % 4], slot < 4 ? 309 : 591, 151, 204);
             if (card != null) {
                 JLabel status = label(card.isPlayable() ? "입장 가능" : "준비 중", 15);
-                place(status, COLUMNS[slot % 4], slot < 4 ? 519 : 801, 151, 24);
+                status.setForeground(TEXT_PRIMARY);
+                status.setBackground(new Color(42, 25, 15));
+                status.setOpaque(true);
+                place(status, COLUMNS[slot % 4] + 13, slot < 4 ? 519 : 801, 125, 27);
             }
         }
         addBack();
@@ -154,7 +156,7 @@ public class MapSelectionPage extends JPanel {
                 graphics.fillRect(0, 0, getWidth(), getHeight());
             }
             @Override public void doLayout() {
-                int width  = (int) Math.min(getWidth() * 0.90, getHeight() * 0.90 * 16 / 9);
+                int width  = (int) Math.min(getWidth() * 0.97, getHeight() * 0.97 * 16 / 9);
                 int height = width * 9 / 16;
                 content.setBounds((getWidth() - width) / 2, (getHeight() - height) / 2, width, height);
             }
@@ -208,14 +210,10 @@ public class MapSelectionPage extends JPanel {
         detailText("나의 최고 기록", 21, false, TEXT_SECONDARY, 1188, 272, 276, 34);
         detailText(card.getBestSeconds() == null ? "기록 없음" : card.getBestSeconds() + "초",
                 31, true, TEXT_PRIMARY, 1188, 310, 276, 46);
-        detailText("방 이야기", 23, true, TEXT_PRIMARY, 636, 423, 828, 36);
-        JTextArea story = writing(text(card.getDescription(), "방 이야기를 준비하고 있습니다."), 24);
-        JScrollPane scroll = new JScrollPane(story);
-        scroll.setBorder(null);
-        scroll.setOpaque(false);
-        scroll.getViewport().setOpaque(false);
-        scroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
-        place(scroll, 636, 474, 828, 208);
+        detailText("방 이야기", 23, true, TEXT_PRIMARY, 636, 398, 828, 36);
+        JTextArea story = writing(text(card.getDescription(), "방 이야기를 준비하고 있습니다."), 27);
+        story.setName("roomStory");
+        place(story, 636, 441, 828, 287);
         JButton start = control(card.isPlayable() ? "이 방 시작하기" : "아직 준비 중이에요", () -> {
             if (card.isPlayable() && openMap != null) { openMap.accept(card.getMapId()); }
         });
@@ -223,10 +221,10 @@ public class MapSelectionPage extends JPanel {
         start.putClientProperty("bold", true);
         start.putClientProperty("sceneFont", 28);
         start.setEnabled(card.isPlayable() && canStart);
-        place(start, 636, 708, 828, 84);
+        place(start, 636, 744, 828, 84);
         JButton closeButton = control("닫기", close);
-        closeButton.putClientProperty("sceneFont", 18);
-        place(closeButton, 1448, 18, 58, 58);
+        closeButton.putClientProperty("sceneFont", 25);
+        place(closeButton, 1415, 18, 91, 58);
         refresh();
         start.requestFocusInWindow();
     }
@@ -348,13 +346,19 @@ public class MapSelectionPage extends JPanel {
             component.setBounds(offsetX() + (int) (bounds.x * scale()), offsetY() + (int) (bounds.y * scale()),
                     (int) (bounds.width * scale()), (int) (bounds.height * scale()));
             resizeFont(component);
-            if (component instanceof JScrollPane scroll) { resizeFont((JComponent) scroll.getViewport().getView()); }
+            if (component instanceof JTextArea story) {
+                float size = story.getFont().getSize2D();
+                while (story.getPreferredSize().height > story.getHeight() && size > 15) {
+                    size -= 1;
+                    story.setFont(PixelTheme.font(size));
+                }
+            }
         }
     }
 
     private void resizeFont(JComponent component) {
         Object size = component.getClientProperty("sceneFont");
-        if (size instanceof Integer value) { component.setFont(PixelTheme.font((float) Math.max(10, value * scale()))
+        if (size instanceof Integer value) { component.setFont(PixelTheme.font((float) Math.max(15, value * scale()))
                 .deriveFont(Boolean.TRUE.equals(component.getClientProperty("bold")) ? java.awt.Font.BOLD : java.awt.Font.PLAIN)); }
     }
 
@@ -413,10 +417,9 @@ public class MapSelectionPage extends JPanel {
                 int height   = (int) (image.getHeight() * scale);
                 g.drawImage(image, (getWidth() - width) / 2, (getHeight() - height) / 2, width, height, null);
             }
-            g.setFont(PixelTheme.font(Math.max(10, getWidth() / 12f)));
+            g.setFont(PixelTheme.font(Math.max(15, getWidth() / 10f)));
             if (card == null || image == null) {
-                center(g, card == null ? "준비 중" : "포스터 준비 중", getHeight() / 2);
-                center(g, card == null ? "새로운 이야기" : getText(), getHeight() / 2 + 24);
+                center(g, "준비 중", getHeight() / 2);
             }
             if (isEnabled() && (getModel().isRollover() || hasFocus())) {
                 g.setColor(PixelTheme.LIGHT);

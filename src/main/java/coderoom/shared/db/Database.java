@@ -42,8 +42,10 @@ public final class Database {
             connection.setAutoCommit(false);
             try {
                 runScript(connection, "/db/schema.sql");
-                migrateHintLimit(connection);
+                migrateMapColumns(connection);
+                migratePuzzleTypes(connection);
                 runScript(connection, "/db/seed.sql");
+                runScript(connection, "/db/workshops.sql");
                 connection.commit();
             } catch (SQLException | IOException exception) {
                 try {
@@ -58,16 +60,44 @@ public final class Database {
         }
     }
 
-    /** 기존 DB의 맵·계정·기록을 유지하며 후속 힌트 제한 설정만 추가한다. */
-    private void migrateHintLimit(Connection connection) throws SQLException {
+    /** Adds display settings without replacing map rows referenced by existing records. */
+    private void migrateMapColumns(Connection connection) throws SQLException {
+        boolean hintLimit = false;
+        boolean archived  = false;
         try (Statement statement = connection.createStatement();
                 java.sql.ResultSet columns = statement.executeQuery("PRAGMA table_info(maps)")) {
             while (columns.next()) {
-                if ("hint_limit".equals(columns.getString("name"))) { return; }
+                String name = columns.getString("name");
+                hintLimit |= "hint_limit".equals(name);
+                archived  |= "archived".equals(name);
             }
         }
         try (Statement statement = connection.createStatement()) {
-            statement.execute("ALTER TABLE maps ADD COLUMN hint_limit INTEGER NOT NULL DEFAULT 2 CHECK (hint_limit >= 0)");
+            if (!hintLimit) {
+                statement.execute("ALTER TABLE maps ADD COLUMN hint_limit INTEGER NOT NULL DEFAULT 2 CHECK (hint_limit >= 0)");
+            }
+            if (!archived) {
+                statement.execute("ALTER TABLE maps ADD COLUMN archived INTEGER NOT NULL DEFAULT 0 CHECK (archived IN (0, 1))");
+            }
+        }
+    }
+
+    private void migratePuzzleTypes(Connection connection) throws SQLException, IOException {
+        try (Statement statement = connection.createStatement();
+                java.sql.ResultSet schema = statement.executeQuery(
+                        "SELECT sql FROM sqlite_master WHERE type='table' AND name='puzzles'")) {
+            if (schema.next() && schema.getString(1).contains("'WORKSHOP'")) {
+                return;
+            }
+        }
+        try (Statement statement = connection.createStatement()) {
+            statement.executeUpdate("ALTER TABLE puzzles RENAME TO legacy_puzzles");
+            runScript(connection, "/db/schema.sql");
+            statement.executeUpdate("""
+                    INSERT INTO puzzles (puzzle_id, map_id, step_no, code, answer_type, answer, hint)
+                    SELECT puzzle_id, map_id, step_no, code, answer_type, answer, hint FROM legacy_puzzles
+                    """);
+            statement.executeUpdate("DROP TABLE legacy_puzzles");
         }
     }
 

@@ -22,11 +22,11 @@ class KoreanThemeSettingsTest {
         database.initialize();
         database.initialize();
         var maps = new JdbcMapRepository(database).findAll();
-        assertEquals(java.util.List.of("서재의 마지막 암호", "사라진 기록", "자정의 기계실"),
+        assertEquals(java.util.List.of("서재의 마지막 암호", "새벽 온실의 마지막 씨앗", "자정의 기계실"),
                 maps.stream().map(map -> map.getTitle()).toList());
         assertEquals(1, maps.get(0).getHintLimit());
         assertTrue(maps.get(0).isPlayable());
-        assertEquals(1, maps.stream().filter(map -> map.isPlayable()).count());
+        assertEquals(3, maps.stream().filter(map -> map.isPlayable()).count());
         for (var map : maps) {
             assertTrue(map.getDescription().length() > 80);
             assertNotNull(getClass().getResource(map.getPosterPath()));

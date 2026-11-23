@@ -17,13 +17,6 @@ VALUES
 
 숫자 사이에 숨은 규칙을 읽고 벽의 다이얼을 맞춰라. 마지막 단서가 가리키는 열쇠를 찾아 이 서재를 벗어나야 한다.',
      '추리 · 암호', '보통', '/images/posters/room01_study_cipher.png', 1),
-    (2, '사라진 기록',
-     '지워진 이름 끝에, 당신의 흔적이 남아 있다.
-
-폐쇄된 기록보관소로 도착한 이름 없는 봉투. 안에는 얼굴이 도려진 사진 한 장과 당신의 이름이 적힌 서류가 들어 있었다.
-
-뜯겨 나간 기록을 따라 숨겨진 사건을 추적하라. 마지막 빈칸을 채우는 순간, 이곳에 불려 온 이유가 드러난다.',
-     '미스터리 · 추적', '어려움', '/images/posters/room02_lost_records.png', 0),
     (3, '자정의 기계실',
      '멈춘 톱니가 움직이면, 출구가 열린다.
 
@@ -37,35 +30,38 @@ ON CONFLICT(map_id) DO UPDATE SET
     topic=excluded.topic,
     difficulty=excluded.difficulty,
     poster_path=excluded.poster_path
-WHERE maps.title IN ('The Last Compile', 'Missing Notes', 'Stopped Machine',
-                     '서재의 마지막 암호', '사라진 기록', '자정의 기계실');
+WHERE maps.title IN ('The Last Compile', 'Stopped Machine',
+                     '서재의 마지막 암호', '자정의 기계실');
 
 INSERT INTO puzzles (puzzle_id, map_id, step_no, code, answer_type, answer, hint)
 VALUES
     (1, 1, 1,
-     'int[] digits = {1, 2, 0, 1}' || char(59) || '
-
-for (int digit : digits) {
-    System.out.print(digit + 1)' || char(59) || '
+     'int[] steps = {2, 1, -2, 1}' || char(59) || '
+int total = 0' || char(59) || '
+for (int step : steps) {
+    total += step' || char(59) || '
+    System.out.print(total)' || char(59) || '
 }',
      'DIGITS4', '2312',
-     '배열의 숫자를 왼쪽부터 하나씩 꺼내 1을 더하세요. print는 줄을 바꾸지 않으므로 결과를 이어 붙이면 됩니다.'),
+     '반복할 때마다 total을 이어서 사용한다. 코드가 출력한 순서대로 롤러를 돌린다.'),
     (2, 1, 2,
      'int[][] grid = {
-    {3, 1, 2},
-    {2, 0, 1},
-    {0, 2, 2}
+    {4, 3, 1},
+    {2, 1, 3},
+    {3, 2, 3}
 }' || char(59) || '
-
-for (int[] row : grid) {
-    for (int n : row) {
-        System.out.print(n + 1)' || char(59) || '
+for (int row = 0' || char(59) || ' row < 3' || char(59) || ' row++) {
+    for (int col = 0' || char(59) || ' col < 3' || char(59) || ' col++) {
+        System.out.print(grid[col][row])' || char(59) || '
     }
     System.out.println()' || char(59) || '
 }',
      'GRID3X3', '423312133',
-     '모든 칸의 숫자에 각각 1을 더하세요. 첫 번째 줄은 4, 2, 3입니다. 같은 방법으로 나머지 두 줄을 채워보세요.')
-ON CONFLICT DO NOTHING;
+     'grid에서 첫 인덱스는 행이다. 코드가 col을 첫 인덱스에 넣는다는 점을 확인한다.')
+ON CONFLICT(map_id, step_no) DO UPDATE SET code=excluded.code, hint=excluded.hint
+WHERE puzzles.map_id = 1 AND puzzles.puzzle_id = excluded.puzzle_id
+    AND (puzzles.code LIKE '%System.out.print(digit + 1)%'
+        OR puzzles.code LIKE '%System.out.print(n + 1)%');
 
 -- 기존 계정의 비밀번호와 기록을 초기화하지 않는다.
 INSERT INTO users (user_id, login_id, password_hash)
@@ -75,3 +71,6 @@ VALUES
     (3, 'demo3', 'v1$pbkdf2-sha256$600000$SPzEgYlB7exN4qJYxLqqgQ==$IpucdeWoAObMmFmjrJo0TXLMCTGRpQ4mv1LnoU2ckWc='),
     (4, 'test', 'v1$pbkdf2-sha256$600000$u+LQ9iXt8nk19J7Fi9Nwaw==$n4p0xK2Vy+ICR04ICxgq4Oz3hzVd1Z//LRXBqWJEZwI=')
 ON CONFLICT DO NOTHING;
+
+-- Keep the previous archive map and its historical records in existing databases.
+UPDATE maps SET archived = 1, playable = 0 WHERE map_id = 2;

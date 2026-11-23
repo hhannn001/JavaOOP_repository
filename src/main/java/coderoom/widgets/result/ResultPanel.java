@@ -149,15 +149,20 @@ public final class ResultPanel extends JPanel {
     }
 
     public void renderFailure() {
+        renderFailure(String.format(Locale.ROOT, "남은 시간 00:00 · 제한시간 %02d:%02d",
+                GameSession.TIME_LIMIT_SECONDS / 60, GameSession.TIME_LIMIT_SECONDS % 60),
+                "시간이 다 됐습니다. 다시 도전해 보세요.");
+    }
+
+    public void renderFailure(String detail, String reason) {
         requireEdt();
         updateStars(GameSession.TIME_LIMIT_SECONDS, false);
         failed    = true;
         hasResult = true;
         saveState = SaveState.NONE;
         title.setText("탈출 실패");
-        time.setText(String.format(Locale.ROOT, "남은 시간 00:00 · 제한시간 %02d:%02d",
-                GameSession.TIME_LIMIT_SECONDS / 60, GameSession.TIME_LIMIT_SECONDS % 60));
-        status.setText("시간이 다 됐습니다. 다시 도전해 보세요.");
+        time.setText(detail);
+        status.setText(reason);
         updateButtons();
         setVisible(true);
         repaint();

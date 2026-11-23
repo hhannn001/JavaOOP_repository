@@ -446,7 +446,7 @@ class AIntegrationTest {
             InventoryPanel inventory = (InventoryPanel) findNamed(page, "gameInventory");
             CluePanel clue           = (CluePanel) findNamed(page, "gameClue");
             assertTrue(inventory.isVisible());
-            assertEquals(5, inventory.getComponentCount());
+            assertEquals(6, inventory.getComponentCount());
             for (Component component : inventory.getComponents()) {
                 JButton slot = (JButton) component;
                 assertFalse(slot.isEnabled());
@@ -455,7 +455,7 @@ class AIntegrationTest {
             assertFalse(clue.isVisible());
             clue.openClue();
             assertTrue(clue.isVisible());
-            findButton(clue, "접어두기  X").doClick();
+            findButton(clue, "닫기").doClick();
             assertFalse(clue.isVisible());
             return null;
         });
@@ -499,6 +499,10 @@ class AIntegrationTest {
         await(() -> "maps".equals(host.visible));
         await(() -> hasButton(host.pages.get("maps"), "서재의 마지막 암호"));
         edt(() -> {
+            assertFalse(hasButton(host.pages.get("maps"), "사라진 기록"));
+            findButton(host.pages.get("maps"), "새벽 온실의 마지막 씨앗").doClick();
+            assertTrue(findButton(host.pages.get("maps"), "이 방 시작하기").isEnabled());
+            findButton(host.pages.get("maps"), "닫기").doClick();
             findButton(host.pages.get("maps"), "서재의 마지막 암호").doClick();
             assertTrue(findButton(host.pages.get("maps"), "이 방 시작하기").isEnabled());
             findButton(host.pages.get("maps"), "이 방 시작하기").doClick();
@@ -513,14 +517,15 @@ class AIntegrationTest {
             RoomPanel room = findRoomPanel(host.pages.get("game"));
             room.setSize(1586, 992);
             // D의 서랍 클릭 영역이 실제 A 게임 화면에서도 이벤트를 받는지 확인한다.
-            long when = System.currentTimeMillis();
+            long when  = System.currentTimeMillis();
+            var drawer = room.screenPoint(600, 600);
             room.dispatchEvent(new MouseEvent(room, MouseEvent.MOUSE_MOVED, when, 0,
-                    600, 600, 0, false));
+                    drawer.x, drawer.y, 0, false));
             assertEquals("서랍장", room.getToolTipText());
             room.dispatchEvent(new MouseEvent(room, MouseEvent.MOUSE_PRESSED, when, 0,
-                    600, 600, 1, false, MouseEvent.BUTTON1));
+                    drawer.x, drawer.y, 1, false, MouseEvent.BUTTON1));
             room.dispatchEvent(new MouseEvent(room, MouseEvent.MOUSE_RELEASED, when, 0,
-                    600, 600, 1, false, MouseEvent.BUTTON1));
+                    drawer.x, drawer.y, 1, false, MouseEvent.BUTTON1));
             assertThrows(IllegalArgumentException.class,
                     () -> findButton(host.pages.get("game"), "맵 선택으로"));
             assertThrows(IllegalArgumentException.class,
@@ -571,7 +576,11 @@ class AIntegrationTest {
             java.util.List<JTextField> fields = new ArrayList<>();
             collectFields(page, fields);
             assertEquals(1, fields.size());
-            fields.get(0).setText("0000");
+            fields.get(0).setText("2312");
+            findButton(page, "↻").doClick();
+            assertEquals("0000", fields.get(0).getText());
+            assertFalse(hasLabel(page, "서랍 잠금장치"));
+            captureStudyLock(page, "study-drawer-playtest");
             findButton(page, "서랍 열기  →").doClick();
             dismissDialogue.run();
             assertFalse(hasButton(page, "메모 2"));
@@ -584,6 +593,7 @@ class AIntegrationTest {
             fields.clear();
             collectFields(page, fields);
             assertEquals(9, fields.size());
+            captureStudyLock(page, "study-wall-playtest");
             String answer = "423312133";
             for (int i = 0; i < fields.size(); i++) {
                 fields.get(i).setText(answer.substring(i, i + 1));
@@ -593,12 +603,32 @@ class AIntegrationTest {
             findButton(page, "열쇠").doClick();
             page.useKey();
             assertFalse(page.isTimerRunning());
+            assertFalse(page.canLeave(() -> true));
+            assertFalse(findNamed(page, "gameInventory").isVisible());
             return null;
         });
         await(() -> hasLabel(page, "기록 저장 완료"));
         var records = new coderoom.entities.record.JdbcClearRecordRepository(database).findByUserId(4);
         assertEquals(1, records.size());
         assertTrue(records.get(0).getBestSeconds() >= 0);
+    }
+
+    private static void captureStudyLock(GamePage page, String fileName) throws java.io.IOException {
+        page.setSize(1280, 800);
+        layoutStudy(page);
+        var image = new java.awt.image.BufferedImage(page.getWidth(), page.getHeight(),
+                java.awt.image.BufferedImage.TYPE_INT_RGB);
+        var graphics = image.createGraphics();
+        page.paint(graphics);
+        graphics.dispose();
+        javax.imageio.ImageIO.write(image, "png", java.nio.file.Path.of("target", fileName + ".png").toFile());
+    }
+
+    private static void layoutStudy(Container component) {
+        component.doLayout();
+        for (Component child : component.getComponents()) {
+            if (child instanceof Container container) { layoutStudy(container); }
+        }
     }
 
     private static void collectFields(Component component, List<JTextField> fields) {

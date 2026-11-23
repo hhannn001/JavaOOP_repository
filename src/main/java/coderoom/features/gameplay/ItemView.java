@@ -9,6 +9,7 @@ import java.util.Objects;
  * 직접 선언한 상속·구현 관계 없음.
  */
 public final class ItemView {
+    public enum Diagram { NONE, BALANCE }
     // [표시 데이터]
     // 아이템 식별자, 제목, 내용과 힌트를 제공한다.
     // content는 Java 코드 종이 또는 열쇠 설명이며 정답은 아니다.
@@ -19,6 +20,8 @@ public final class ItemView {
     private final String title;
     private final String content;
     private final String hint;
+    private final Diagram diagram;
+    private final int balanceLoad;
 
     /** 단서 패널에 필요한 공개 정보만 보관한다. */
     public ItemView(ItemId id, String title, String content) {
@@ -26,6 +29,16 @@ public final class ItemView {
     }
 
     public ItemView(ItemId id, String title, String content, String hint) {
+        this(id, title, content, hint, Diagram.NONE);
+    }
+
+    public ItemView(ItemId id, String title, String content, String hint, Diagram diagram) {
+        this(id, title, content, hint, diagram, PuzzleVariant.STANDARD.balanceLoad());
+    }
+
+    public ItemView(ItemId id, String title, String content, String hint, Diagram diagram, int balanceLoad) {
+        this.balanceLoad = balanceLoad;
+        this.diagram = Objects.requireNonNull(diagram);
         this.hint    = Objects.requireNonNull(hint);
         this.id      = Objects.requireNonNull(id, "아이템 ID가 필요합니다.");
         this.title   = Objects.requireNonNull(title, "제목이 필요합니다.");
@@ -36,4 +49,6 @@ public final class ItemView {
     public String title() { return title; }
     public String hint() { return hint; }
     public String content() { return content; }
+    public Diagram diagram() { return diagram; }
+    public int balanceLoad() { return balanceLoad; }
 }

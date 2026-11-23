@@ -9,6 +9,7 @@ import coderoom.widgets.result.ResultPanel;
 import coderoom.widgets.result.TimeLimitBar;
 import java.awt.image.BufferedImage;
 import java.util.List;
+import java.util.Set;
 import javax.swing.SwingUtilities;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -34,9 +35,9 @@ class TimeLimitTest {
     @Test void escapeMustPrecedeDeadline() {
         GameSession early = readySession();
         GameSession late  = readySession();
-        assertTrue(early.escape(179_999_999_999L));
-        assertTrue(early.escape(190_000_000_000L));
-        assertFalse(late.escape(180_000_000_000L));
+        assertTrue(early.escape(599_999_999_999L));
+        assertTrue(early.escape(610_000_000_000L));
+        assertFalse(late.escape(600_000_000_000L));
     }
 
     private GameSession readySession() {
@@ -52,13 +53,31 @@ class TimeLimitTest {
             AIntegrationStubs.Game game       = new AIntegrationStubs.Game();
             AIntegrationStubs.Widgets widgets = new AIntegrationStubs.Widgets();
             GamePage page                    = new GamePage(game, widgets);
-            page.render(new GameView(GameStage.START, List.of(), null, 179));
+            page.render(new GameView(GameStage.START, List.of(), null, 599));
             assertNull(widgets.escape);
-            page.render(new GameView(GameStage.START, List.of(), null, 180));
+            page.render(new GameView(GameStage.START, List.of(), null, 600));
             assertNotNull(widgets.escape);
             assertNull(widgets.escape.record());
             assertFalse(page.isTimerRunning());
             page.useKey();
+            page.retrySave();
+            assertTrue(game.saved.isEmpty());
+            page.disposeGame();
+        });
+    }
+
+    @Test void exhaustedAttemptsShowFailureWithoutSaving() throws Exception {
+        SwingUtilities.invokeAndWait(() -> {
+            AIntegrationStubs.Game game       = new AIntegrationStubs.Game();
+            AIntegrationStubs.Widgets widgets = new AIntegrationStubs.Widgets();
+            GamePage page                     = new GamePage(game, widgets);
+            page.render(new GameView(GameStage.START, List.of(), null, 18, 0, 2,
+                    false, null, Set.of(), Set.of(), Set.of(), 'B', 1, 0));
+            assertNotNull(widgets.escape);
+            assertNull(widgets.escape.record());
+            assertTrue(widgets.escape.message().contains("탈락"));
+            assertEquals(GamePage.SaveState.NONE, widgets.state);
+            assertFalse(page.isTimerRunning());
             page.retrySave();
             assertTrue(game.saved.isEmpty());
             page.disposeGame();
@@ -75,7 +94,7 @@ class TimeLimitTest {
             paint(result);
             TimeLimitBar timer = new TimeLimitBar();
             timer.setSize(360, 48);
-            for (long elapsed : new long[] {0, 90, 180, 200}) {
+            for (long elapsed : new long[] {0, 300, 600, 620}) {
                 timer.setElapsedSeconds(elapsed);
                 paint(timer);
             }

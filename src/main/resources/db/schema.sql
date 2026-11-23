@@ -11,6 +11,11 @@ CREATE TABLE IF NOT EXISTS users (
     password_hash TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS remembered_logins (
+    device_hash TEXT PRIMARY KEY NOT NULL,
+    user_id INTEGER NOT NULL REFERENCES users(user_id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS maps (
     map_id INTEGER PRIMARY KEY,
     title TEXT NOT NULL,
@@ -19,7 +24,8 @@ CREATE TABLE IF NOT EXISTS maps (
     difficulty TEXT NOT NULL,
     poster_path TEXT NOT NULL,
     playable INTEGER NOT NULL CHECK (playable IN (0, 1)),
-    hint_limit INTEGER NOT NULL DEFAULT 2 CHECK (hint_limit >= 0)
+    hint_limit INTEGER NOT NULL DEFAULT 2 CHECK (hint_limit >= 0),
+    archived INTEGER NOT NULL DEFAULT 0 CHECK (archived IN (0, 1))
 );
 
 CREATE TABLE IF NOT EXISTS puzzles (
@@ -27,7 +33,7 @@ CREATE TABLE IF NOT EXISTS puzzles (
     map_id INTEGER NOT NULL,
     step_no INTEGER NOT NULL,
     code TEXT NOT NULL,
-    answer_type TEXT NOT NULL CHECK (answer_type IN ('DIGITS4', 'GRID3X3')),
+    answer_type TEXT NOT NULL CHECK (answer_type IN ('DIGITS4', 'GRID3X3', 'VALVE', 'LEVER_ORDER', 'DEBUG_LINES', 'CARD_ORDER', 'WORKSHOP')),
     answer TEXT NOT NULL,
     hint TEXT NOT NULL,
 

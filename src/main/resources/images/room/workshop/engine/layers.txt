@@ -1,0 +1,14 @@
+battery-a 240 216
+battery-b 240 301
+battery-c 240 386
+battery-d 240 471
+battery-e 240 556
+pressure-needle 538 726
+lever-1 670 697
+lever-2 729 697
+lever-3 788 697
+lever-4 847 697
+sleeve-large 1206 589
+sleeve-medium 1320 611
+sleeve-small 1408 635
+door-bolt 1341 436

@@ -1,6 +1,9 @@
 package coderoom.app;
 
+import coderoom.features.gameplay.PuzzleVariant;
+import java.util.function.LongFunction;
 import coderoom.entities.user.JdbcUserRepository;
+import coderoom.entities.user.RememberedLogin;
 import coderoom.entities.map.JdbcMapRepository;
 import coderoom.entities.puzzle.JdbcPuzzleRepository;
 import coderoom.entities.record.JdbcClearRecordRepository;
@@ -13,6 +16,7 @@ import coderoom.features.auth.PasswordVerifier;
 import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
+import java.util.prefs.Preferences;
 import javax.swing.SwingWorker;
 import javax.swing.SwingUtilities;
 
@@ -48,7 +52,8 @@ public class Main {
             @Override public void initialize() { database.initialize(); }
             @Override public AppController createController() {
                 MainFrame frame = new MainFrame();
-                AppController controller = new AppController(frame, createScreens(database),
+                AppController controller = new AppController(frame,
+                        createScreens(database, PuzzleVariant.rotatingDeck()),
                         () -> JOptionPane.showConfirmDialog(frame,
                                 "기록이 저장되지 않았습니다. 나가시겠습니까?", "기록 저장 확인",
                                 JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION);
@@ -64,12 +69,18 @@ public class Main {
 
     /** 구체 JDBC 저장소는 이 조립 지점에서만 생성한다. */
     static AppScreens createScreens(Database database) {
+        return createScreens(database, ignored -> PuzzleVariant.STANDARD);
+    }
+
+    private static AppScreens createScreens(Database database,
+            LongFunction<PuzzleVariant> variants) {
         JdbcUserRepository users          = new JdbcUserRepository(database);
         JdbcMapRepository maps            = new JdbcMapRepository(database);
         JdbcPuzzleRepository puzzles      = new JdbcPuzzleRepository(database);
         JdbcClearRecordRepository records = new JdbcClearRecordRepository(database);
-        return new AppScreens(new LoginService(users, new PasswordVerifier()),
-                new MapCatalogService(maps, records), () -> new GameFacade(maps, puzzles, records),
+        RememberedLogin rememberedLogin = new RememberedLogin(database, Preferences.userNodeForPackage(Main.class));
+        return new AppScreens(new LoginService(users, new PasswordVerifier(), rememberedLogin),
+                new MapCatalogService(maps, records), () -> new GameFacade(maps, puzzles, records, variants),
                 new coderoom.features.dashboard.DashboardRecords(database));
     }
 

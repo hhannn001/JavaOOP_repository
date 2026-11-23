@@ -1,6 +1,7 @@
 package coderoom.features.auth;
 
 import coderoom.entities.user.LoginUser;
+import coderoom.entities.user.RememberedLogin;
 import coderoom.entities.user.UserAccount;
 import coderoom.entities.user.UserRepository;
 import java.util.Arrays;
@@ -12,10 +13,30 @@ public final class LoginService {
     private static final String INVALID_LOGIN = "ID 또는 비밀번호를 확인하세요.";
     private final UserRepository users;
     private final PasswordVerifier verifier;
+    private final RememberedLogin rememberedLogin;
 
     public LoginService(UserRepository users, PasswordVerifier verifier) {
-        this.users = Objects.requireNonNull(users, "사용자 저장소가 필요합니다.");
-        this.verifier = Objects.requireNonNull(verifier, "비밀번호 검증기가 필요합니다.");
+        this(users, verifier, null);
+    }
+
+    public LoginService(UserRepository users, PasswordVerifier verifier, RememberedLogin rememberedLogin) {
+        this.users           = Objects.requireNonNull(users, "사용자 저장소가 필요합니다.");
+        this.verifier        = Objects.requireNonNull(verifier, "비밀번호 검증기가 필요합니다.");
+        this.rememberedLogin = rememberedLogin;
+    }
+
+    public boolean canRememberLogin() {
+        return rememberedLogin != null;
+    }
+
+    public Optional<LoginResult> restoreLogin() {
+        return canRememberLogin() ? rememberedLogin.restore().map(LoginResult::success) : Optional.empty();
+    }
+
+    public void clearRememberedLogin() {
+        if (rememberedLogin != null) {
+            rememberedLogin.clear();
+        }
     }
 
     /**
@@ -26,6 +47,10 @@ public final class LoginService {
      * DB와 해시 계산이 있으므로 Swing에서는 작업 스레드에서 호출한다.
      */
     public LoginResult login(String loginId, char[] password) {
+        return login(loginId, password, false);
+    }
+
+    public LoginResult login(String loginId, char[] password, boolean remember) {
         try {
             if (loginId == null || loginId.isBlank() || isBlank(password)) {
                 return LoginResult.failure("ID와 비밀번호를 입력하세요.");
@@ -38,11 +63,42 @@ public final class LoginService {
             if (!verifier.verify(password, account.passwordHash())) {
                 return LoginResult.failure(INVALID_LOGIN);
             }
-            return LoginResult.success(new LoginUser(account.userId(), account.loginId()));
+            LoginUser user = new LoginUser(account.userId(), account.loginId());
+            if (remember && canRememberLogin()) {
+                rememberedLogin.save(user);
+            }
+            return LoginResult.success(user);
         } finally {
             if (password != null) {
                 Arrays.fill(password, '\0');
             }
+        }
+    }
+
+    public enum Registration { CREATED, DUPLICATE, EMPTY, MISMATCH }
+
+    public boolean canRegister() { return users.canRegister(); }
+
+    public Registration register(String loginId, char[] password) {
+        try {
+            if (loginId == null || loginId.isBlank() || isBlank(password)) {
+                return Registration.EMPTY;
+            }
+            return users.create(loginId, verifier.hash(password)) ? Registration.CREATED : Registration.DUPLICATE;
+        } finally {
+            if (password != null) { Arrays.fill(password, '\0'); }
+        }
+    }
+
+    public Registration register(String loginId, char[] password, char[] confirmation) {
+        try {
+            if (loginId == null || loginId.isBlank() || isBlank(password)) {
+                return Registration.EMPTY;
+            }
+            return Arrays.equals(password, confirmation) ? register(loginId, password) : Registration.MISMATCH;
+        } finally {
+            if (password != null) { Arrays.fill(password, '\0'); }
+            if (confirmation != null) { Arrays.fill(confirmation, '\0'); }
         }
     }
 

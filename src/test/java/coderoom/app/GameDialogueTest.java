@@ -49,8 +49,18 @@ class GameDialogueTest {
                 assertFalse(dialogue.isVisible());
                 page[0].inspect(RoomObjectId.WINDOW);
                 assertTrue(text.getText().contains("못 나갈"));
+                page[0].inspect(RoomObjectId.DRAWER);
+                var answer = find(page[0], coderoom.features.gameplay.ui.AnswerInputPanel.class);
+                assertFalse(dialogue.isVisible());
+                page[0].setSize(1280, 800);
+                layout(page[0]);
+                var lock = find(answer, javax.swing.JTextField.class).getParent();
+                var pull = java.util.Arrays.stream(lock.getComponents())
+                        .filter(child -> "studyLockLatch".equals(child.getName())).findFirst().orElseThrow();
+                var before = pull.getLocation();
                 page[0].submit(RoomObjectId.DRAWER, "0000");
-                assertTrue(text.getText().contains("아닌 것"));
+                assertFalse(dialogue.isVisible());
+                assertFalse(before.equals(pull.getLocation()));
                 page[0].submit(RoomObjectId.DRAWER, "2312");
                 assertTrue(text.getText().contains("두 번째 메모"));
                 dialogue.advance();
@@ -66,15 +76,42 @@ class GameDialogueTest {
                 page[0].useKey();
                 assertTrue(text.getText().contains("열쇠"));
                 page[0].inspect(RoomObjectId.WALL_DIAL);
-                for (int width : new int[] {900, 1280}) {
+                var clue   = find(page[0], coderoom.widgets.clue.CluePanel.class);
+                var puzzle = find(page[0], coderoom.features.gameplay.ui.AnswerInputPanel.class);
+                assertTrue(clue.isVisible());
+                assertFalse(dialogue.isVisible());
+                for (int width : new int[] {900, 1280, 2512}) {
                     page[0].setSize(width, 800);
+                    dialogue.close();
                     layout(page[0]);
+                    var initialClueBounds = clue.getBounds();
+                    dialogue.showLines(new DialoguePanel.Line(DialoguePanel.Speaker.SYSTEM, "조작을 확인하세요."));
+                    layout(page[0]);
+                    org.junit.jupiter.api.Assertions.assertEquals(initialClueBounds.x, clue.getX());
+                    org.junit.jupiter.api.Assertions.assertEquals(initialClueBounds.width, clue.getWidth());
+                    org.junit.jupiter.api.Assertions.assertEquals(puzzle.getY() + puzzle.puzzleContentTop(),
+                            clue.getY() + clue.paperTopInset(clue.getHeight()));
+                    assertFalse(clue.getBounds().intersects(dialogue.getBounds()));
+                    if (width == 900) {
+                        var memoScroll = find(clue, javax.swing.JScrollPane.class);
+                        assertTrue(memoScroll.getVerticalScrollBar().isVisible());
+                        assertTrue(memoScroll.getVerticalScrollBar().getMaximum()
+                                > memoScroll.getVerticalScrollBar().getVisibleAmount());
+                    }
+                    var inventory = find(page[0], coderoom.widgets.inventory.InventoryPanel.class);
+                    var inventoryBounds = inventory.getParent().getBounds();
+                    assertFalse(inventory.getParent().isVisible());
+                    assertFalse(inventory.isVisible());
+                    assertTrue(dialogue.getBounds().contains(inventoryBounds));
+                    assertTrue(dialogue.getParent().getComponentZOrder(dialogue)
+                            < dialogue.getParent().getComponentZOrder(inventory.getParent()));
                     assertTrue(dialogue.getHeight() <= 200);
                     assertTrue(text.getY() >= 60);
                     assertTrue(text.getHeight() >= text.getFontMetrics(text.getFont()).getHeight() * 2);
                     assertTrue(text.getWidth() > 600);
-                    coderoom.features.gameplay.ui.AnswerInputPanel puzzle = find(page[0], coderoom.features.gameplay.ui.AnswerInputPanel.class);
                     assertFalse(puzzle.getBounds().intersects(dialogue.getBounds()));
+                    assertTrue(clue.isVisible());
+                    assertTrue(puzzle.getX() > clue.getX() + clue.getWidth());
                     assertFalse(find(puzzle, javax.swing.JTextField.class).isEnabled());
                     BufferedImage image = new BufferedImage(width, 800, BufferedImage.TYPE_INT_ARGB);
                     Graphics2D graphics = image.createGraphics();
@@ -92,12 +129,11 @@ class GameDialogueTest {
                         System.currentTimeMillis(), 0, 5, 5, 1, false, java.awt.event.MouseEvent.BUTTON1));
                 assertFalse(dialogue.isVisible());
                 assertFalse(surface.isVisible());
-                coderoom.features.gameplay.ui.AnswerInputPanel puzzle = find(page[0], coderoom.features.gameplay.ui.AnswerInputPanel.class);
                 assertTrue(puzzle.isVisible());
                 assertTrue(find(puzzle, javax.swing.JTextField.class).isEnabled());
                 assertTrue(find(puzzle, javax.swing.JTextField.class).getText().equals("0"));
                 dialogue.showLines(new DialoguePanel.Line(DialoguePanel.Speaker.SYSTEM,
-                        "출입문 위 장치가 켜진다. ‘보안 시험 시작. 제한시간은 3분입니다. 메모의 코드로 서랍과 금고를 열고, 열쇠를 찾아 탈출하십시오.’"));
+                        "출입문 위 장치가 켜진다. ‘보안 시험 시작. 제한시간은 10분입니다. 메모의 코드로 서랍과 금고를 열고, 열쇠를 찾아 탈출하십시오.’"));
                 page[0].setSize(900, 650);
                 layout(page[0]);
                 assertTrue(text.getPreferredSize().height <= text.getHeight(), "긴 대사도 본문 영역 안에 표시되어야 한다.");
