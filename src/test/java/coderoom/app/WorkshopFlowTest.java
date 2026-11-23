@@ -267,7 +267,7 @@ class WorkshopFlowTest {
                 assertTrue(specimenCard.contains("specimen-marks/wave.png"));
                 assertTrue(specimenCard.contains("||"));
                 var specimenDocument = specimenEditor.getDocument();
-                assertTrue(specimenDocument.getText(0, specimenDocument.getLength()).contains("!제외"));
+                assertTrue(specimenDocument.getText(0, specimenDocument.getLength()).contains("!reject"));
                 snapshot(page, "greenhouse-symbol-card");
                 button(page, "seed1").doClick();
                 button(page, "seed2").doClick();

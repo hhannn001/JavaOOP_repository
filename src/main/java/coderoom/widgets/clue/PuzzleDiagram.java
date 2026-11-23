@@ -22,7 +22,7 @@ final class PuzzleDiagram extends JPanel {
     private static final Color WASH  = new Color(143, 91, 42, 33);
 
     private static final Pattern NUMBER      = Pattern.compile("-?\\d+");
-    private static final Pattern GRID_VALUES = Pattern.compile("(?:grid|숫자표)\\s*=\\s*\\{([^;]+)}");
+    private static final Pattern GRID_VALUES = Pattern.compile("\\bgrid\\s*=\\s*\\{([^;]+)}");
 
     private ItemView clue;
     private List<String> numbers = List.of();

@@ -224,6 +224,10 @@ class DatabaseGameTest {
                             || (map == 2 && (step == 0 || step == 3));
                     assertEquals(hasDiagram, clue.diagram() != ItemView.Diagram.NONE);
                     if (!expected.equals(standard)) { assertEquals(variant, clue.variant()); }
+                    if (mapIds[map] == 3 && step == 0) {
+                        assertTrue(clue.content().contains("m.voltage"));
+                        assertFalse(clue.content().contains("모듈하나"));
+                    }
                     if (mapIds[map] == 4 && step == 4) {
                         assertTrue(clue.content().contains("낮은 선로에 물이 차 있으면 높은 선로로 간다."));
                         assertTrue(clue.content().contains("본선 앞에 정지턱이 있으면 우회선로로 간다."));
@@ -231,8 +235,8 @@ class DatabaseGameTest {
                         assertFalse(clue.content().contains("bufferAhead"));
                     }
                     if (mapIds[map] == 3 && step == 4) {
-                        assertTrue(clue.content().contains("boolean 가동등켜짐 = 전력정상 && 부하정상"), variant.toString());
-                        assertTrue(clue.content().contains("boolean 안전등켜짐 = 압력정상 && 밀폐완료"), variant.toString());
+                        assertTrue(clue.content().contains("boolean running = powerOk && loadOk"), variant.toString());
+                        assertTrue(clue.content().contains("boolean safe = pressureOk && sealed"), variant.toString());
                     }
                     if (!expected.equals(standard)) {
                         assertEquals(variant, game.inspect(devices[step]).variant(), "map " + mapIds[map] + ", step " + step);

@@ -347,7 +347,8 @@ final class WorkshopPanel extends JPanel {
     }
 
     private void interlock() {
-        String[] names = {"전력", "밀폐", "부하", "압력"};
+        String[] names   = {"전력", "밀폐", "부하", "압력"};
+        String[] signals = {"powerOk", "sealed", "loadOk", "pressureOk"};
         Color[] cable = {new Color(232, 174, 67), new Color(111, 190, 210),
                          new Color(229, 124, 88), new Color(168, 196, 112)};
         int[] ports      = {-1, -1, -1, -1};
@@ -404,7 +405,7 @@ final class WorkshopPanel extends JPanel {
                         else { attach.accept(slot); }
                     });
             inputs[i].hotspot();
-            outputs[i] = control("signal" + i, names[i], terminals[i] - 46, 460, 92, 92,
+            outputs[i] = control("signal" + i, names[i] + " (" + signals[i] + ")", terminals[i] - 46, 460, 92, 92,
                     () -> select.accept(slot));
             outputs[i].sprite(plug);
             MouseAdapter drag = new MouseAdapter() {
@@ -456,8 +457,8 @@ final class WorkshopPanel extends JPanel {
         board.effects(g -> {
             deviceLight(g, 344, 119, lamps[0]);
             deviceLight(g, 659, 119, lamps[1]);
-            PropBoard.engraving(g, "가동등", 344, 184, 25);
-            PropBoard.engraving(g, "안전등", 659, 184, 25);
+            PropBoard.engraving(g, "running", 344, 184, 25);
+            PropBoard.engraving(g, "safe", 659, 184, 25);
             for (int i = 0; i < ports.length; i++) {
                 PropBoard.sprite(g, socket, sockets[i] - 47, 236, 94, 94);
             }
@@ -481,7 +482,7 @@ final class WorkshopPanel extends JPanel {
                     g.fillOval(terminals[i] - 6, 551, 12, 12);
                     signalMark(g, i, terminals[i], 576);
                 }
-                PropBoard.engraving(g, names[i], terminals[i], 611, 25);
+                PropBoard.engraving(g, signals[i], terminals[i], 611, 25);
                 if (cut[0] == i) { faultLamp(g, terminals[i], 454); }
             }
         });
