@@ -628,7 +628,7 @@ final class WorkshopPanel extends JPanel {
         feedback.setForeground(PixelTheme.LIGHT);
         feedback.setFont(PixelTheme.font(13));
         feedback.setVisible(true);
-        finishControl.describe("발판과 레일 연결 확인");
+        finishControl.describe("발판과 레일 고정");
         RailPlatformPanel rail = new RailPlatformPanel(
                 PropBoard.sprite("cross-platform"), PropBoard.sprite("long-platform"));
         Runnable updateStatus = () -> {
@@ -643,6 +643,11 @@ final class WorkshopPanel extends JPanel {
         };
         PropBoard.Control horizontal = new PropBoard.Control("adjustHorizontalRail", "가로 레일 조절");
         PropBoard.Control vertical   = new PropBoard.Control("adjustVerticalRail", "세로 레일 조절");
+        BufferedImage adjustFace = PropBoard.sprite("rail-adjust-button");
+        horizontal.labeledFace(adjustFace);
+        vertical.labeledFace(adjustFace);
+        horizontal.hideTooltip();
+        vertical.hideTooltip();
         horizontal.addActionListener(event -> {
             interactionChanged.run();
             rail.adjustRail(0, horizontal);
@@ -661,8 +666,8 @@ final class WorkshopPanel extends JPanel {
             return rail.answer();
         };
         restore = () -> {
-            feedback.setText(instructions);
             rail.reset();
+            updateStatus.run();
             rail.describeRail(0, horizontal);
             rail.describeRail(1, vertical);
         };

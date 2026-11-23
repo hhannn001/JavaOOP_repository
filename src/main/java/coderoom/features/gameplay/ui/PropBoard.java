@@ -170,6 +170,7 @@ class PropBoard extends JPanel {
         private boolean hotspot;
         private boolean showsTooltip = true;
         private BufferedImage sprite;
+        private BufferedImage labeledFace;
         private javax.swing.Timer resistance;
         private int wobble;
 
@@ -217,6 +218,11 @@ class PropBoard extends JPanel {
             repaint();
         }
 
+        void labeledFace(BufferedImage image) {
+            labeledFace = image;
+            repaint();
+        }
+
         void hotspot() { hotspot = true; }
 
         @Override protected void fireActionPerformed(ActionEvent event) {
@@ -244,14 +250,23 @@ class PropBoard extends JPanel {
                     }
                     return;
                 }
-                int top = pressed ? 3 : 1;
+                int top    = pressed ? 3 : 1;
                 int height = getHeight() - top - 2;
                 if (height <= 0) { return; }
-                g.setColor(lit ? new Color(63, 88, 43, 235) : new Color(INK.getRed(), INK.getGreen(), INK.getBlue(), 222));
-                g.fillRoundRect(1, top, getWidth() - 3, height, 8, 8);
-                g.setColor(active ? PixelTheme.LIGHT : RIM);
-                g.setStroke(new BasicStroke(active ? 2 : 1));
-                g.drawRoundRect(1, top, getWidth() - 3, height, 8, 8);
+                if (labeledFace != null) {
+                    g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+                    g.drawImage(labeledFace, 0, top, getWidth(), height, null);
+                    if (active && isEnabled() && !pressed) {
+                        g.setColor(new Color(255, 226, 167, 100));
+                        g.drawRoundRect(3, top + 2, getWidth() - 7, height - 5, height, height);
+                    }
+                } else {
+                    g.setColor(lit ? new Color(63, 88, 43, 235) : new Color(INK.getRed(), INK.getGreen(), INK.getBlue(), 222));
+                    g.fillRoundRect(1, top, getWidth() - 3, height, 8, 8);
+                    g.setColor(active ? PixelTheme.LIGHT : RIM);
+                    g.setStroke(new BasicStroke(active ? 2 : 1));
+                    g.drawRoundRect(1, top, getWidth() - 3, height, 8, 8);
+                }
                 String label = getText();
                 var font = PixelTheme.font(Math.max(9, Math.min(18, getHeight() * .36f)));
                 g.setFont(font);
