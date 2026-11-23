@@ -216,7 +216,7 @@ final class RailPlatformPanel extends JPanel {
         adjuster.describe(label);
     }
 
-    boolean docked() { return active < 0 && across == 1 && down == 1; }
+    private boolean docked() { return active < 0 && across == 1 && down == 1; }
 
     String answer() {
         if (!docked()) { return ""; }

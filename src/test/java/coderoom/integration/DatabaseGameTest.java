@@ -305,6 +305,7 @@ class DatabaseGameTest {
             statement.executeUpdate("UPDATE maps SET poster_path='/images/room/workshop/greenhouse/poster.jpg' WHERE map_id=4");
             statement.executeUpdate("UPDATE puzzles SET answer='AB', code='old balance' WHERE puzzle_id=404");
             statement.executeUpdate("UPDATE puzzles SET code='낮은 왼쪽 화분으로', answer='BBC' WHERE puzzle_id=402");
+            statement.executeUpdate("UPDATE puzzles SET code='old platforms' WHERE puzzle_id=403");
             statement.executeUpdate("UPDATE puzzles SET code='old specimen', answer='C' WHERE puzzle_id=401");
             statement.executeUpdate("UPDATE puzzles SET code='old rail', answer='BA' WHERE puzzle_id=405");
             statement.executeUpdate("UPDATE puzzles SET code='System.out.print(digit + 1)' WHERE puzzle_id=1");
@@ -329,7 +330,7 @@ class DatabaseGameTest {
         assertEquals("legacy code", dashboard.solvedProblems("test").get(0).code());
         assertNull(new GameFacade(maps, puzzles, records).loadMap(4, 4).previousBest());
         assertEquals(AnswerCheck.CORRECT, puzzles.findByMapId(4).get(3).check("BC"));
-        assertTrue(puzzles.findByMapId(4).get(1).code().contains("낮은 배수구"));
+        assertTrue(puzzles.findByMapId(4).get(1).code().contains("유입관과 배수구 높이"));
         assertTrue(puzzles.findByMapId(1).get(0).code().contains("total += step"));
         assertTrue(puzzles.findByMapId(1).get(1).code().contains("grid[col][row]"));
         assertEquals(AnswerCheck.CORRECT, puzzles.findByMapId(4).get(0).check("BC"));

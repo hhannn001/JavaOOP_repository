@@ -256,6 +256,8 @@ class WorkshopFlowTest {
                 vertical.doClick();
                 assertEquals("가로 레일 · 3단", horizontal.getText());
                 assertEquals("세로 레일 · 1단", vertical.getText());
+                var railFeedback = (JLabel) named(page, "workshopFeedback");
+                assertEquals("레일이 맞았습니다. 황동 걸쇠를 누르세요.", railFeedback.getText());
                 snapshot(page, "greenhouse-rail-platform");
                 submit(page);
                 startDevice(page, RoomObjectId.DRAWER);

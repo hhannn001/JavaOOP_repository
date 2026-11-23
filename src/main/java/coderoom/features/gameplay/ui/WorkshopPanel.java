@@ -631,27 +631,34 @@ final class WorkshopPanel extends JPanel {
         finishControl.describe("발판과 레일 연결 확인");
         RailPlatformPanel rail = new RailPlatformPanel(
                 PropBoard.sprite("cross-platform"), PropBoard.sprite("long-platform"));
+        Runnable updateStatus = () -> {
+            String answer = rail.answer();
+            if (answer.isEmpty()) {
+                feedback.setText(instructions);
+            } else if (answer.length() > 2) {
+                feedback.setText("가로·세로 레일 끝을 고정 레일에 맞춰 주세요.");
+            } else {
+                feedback.setText("레일이 맞았습니다. 황동 걸쇠를 누르세요.");
+            }
+        };
         PropBoard.Control horizontal = new PropBoard.Control("adjustHorizontalRail", "가로 레일 조절");
         PropBoard.Control vertical   = new PropBoard.Control("adjustVerticalRail", "세로 레일 조절");
         horizontal.addActionListener(event -> {
             interactionChanged.run();
             rail.adjustRail(0, horizontal);
+            updateStatus.run();
         });
         vertical.addActionListener(event -> {
             interactionChanged.run();
             rail.adjustRail(1, vertical);
+            updateStatus.run();
         });
         board.place(horizontal, 744, 393, 185, 43);
         board.place(vertical, 422, 487, 181, 43);
         board.place(rail, 0, 0, PropBoard.WIDTH, PropBoard.HEIGHT);
         response = () -> {
-            String answer = rail.answer();
-            if (!rail.docked()) {
-                feedback.setText(instructions);
-            } else if (answer.length() > 2) {
-                feedback.setText("가로·세로 레일 끝을 고정 레일에 맞춰 주세요.");
-            }
-            return answer;
+            updateStatus.run();
+            return rail.answer();
         };
         restore = () -> {
             feedback.setText(instructions);
