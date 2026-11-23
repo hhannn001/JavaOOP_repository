@@ -11,6 +11,7 @@ import coderoom.features.gameplay.GameSetup;
 import coderoom.features.gameplay.GameView;
 import coderoom.features.gameplay.InspectResult;
 import coderoom.features.gameplay.SubmitResult;
+import coderoom.shared.ui.HandCursor;
 import java.awt.BorderLayout;
 import java.util.Objects;
 import java.util.concurrent.CancellationException;
@@ -109,6 +110,7 @@ public class GamePage extends JPanel {
     public void bindWidgets() {
         requireEdt();
         setLayout(new BorderLayout());
+        setCursor(HandCursor.openHand());
         add(widgets.room(), BorderLayout.CENTER);
         add(widgets.controls(), BorderLayout.SOUTH);
         timer.addActionListener(event -> render(game.view(System.nanoTime())));

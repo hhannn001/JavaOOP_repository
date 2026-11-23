@@ -1,9 +1,9 @@
 package coderoom.features.gameplay.ui;
 
+import coderoom.shared.ui.HandCursor;
 import coderoom.shared.ui.PixelTheme;
 import java.awt.Color;
 import java.awt.Graphics2D;
-import java.awt.Cursor;
 import java.awt.Graphics;
 import java.awt.Point;
 import java.awt.Rectangle;
@@ -50,7 +50,6 @@ final class DragPuzzlePanel extends JPanel {
                         selected = index;
                         pointer  = event.getPoint();
                         focused  = index;
-                        setCursor(Cursor.getPredefinedCursor(Cursor.MOVE_CURSOR));
                         repaint();
                     }
                 }
@@ -72,6 +71,10 @@ final class DragPuzzlePanel extends JPanel {
         };
         addMouseListener(mouse);
         addMouseMotionListener(mouse);
+        HandCursor.install(this, point -> {
+            int index = indexAt(point);
+            return index >= 0 && pieces[index] >= 0;
+        });
         addKeyListener(new KeyAdapter() {
             @Override public void keyPressed(KeyEvent event) {
                 if (!isEnabled()) { return; }
@@ -124,7 +127,6 @@ final class DragPuzzlePanel extends JPanel {
     private void clearSelection() {
         pointer  = null;
         selected = -1;
-        setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         repaint();
     }
 

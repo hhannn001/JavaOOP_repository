@@ -1,9 +1,9 @@
 package coderoom.features.gameplay.ui;
 
 import coderoom.shared.audio.GameAudio;
+import coderoom.shared.ui.HandCursor;
 import coderoom.shared.ui.PixelTheme;
 import java.awt.Color;
-import java.awt.Cursor;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
@@ -42,11 +42,6 @@ final class RailPlatformPanel extends JPanel {
         setBackground(new Color(25, 48, 55));
         getAccessibleContext().setAccessibleName("스페이스로 발판을 전환하고 방향키로 움직입니다. 레일 조절 장치로 이음 위치를 바꿉니다.");
         MouseAdapter mouse = new MouseAdapter() {
-            @Override public void mouseMoved(MouseEvent event) {
-                boolean onPlatform = platform(0).contains(event.getPoint()) || platform(1).contains(event.getPoint());
-                setCursor(Cursor.getPredefinedCursor(onPlatform ? Cursor.HAND_CURSOR : Cursor.DEFAULT_CURSOR));
-            }
-
             @Override public void mousePressed(MouseEvent event) {
                 if (!isEnabled() || !SwingUtilities.isLeftMouseButton(event)) { return; }
                 requestFocusInWindow();
@@ -87,6 +82,7 @@ final class RailPlatformPanel extends JPanel {
         };
         addMouseListener(mouse);
         addMouseMotionListener(mouse);
+        HandCursor.install(this, point -> platform(0).contains(point) || platform(1).contains(point));
         addKeyListener(new KeyAdapter() {
             @Override public void keyPressed(KeyEvent event) {
                 if (!isEnabled()) { return; }

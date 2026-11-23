@@ -1,10 +1,10 @@
 package coderoom.features.gameplay.ui;
 
 import coderoom.shared.audio.GameAudio;
+import coderoom.shared.ui.HandCursor;
 import coderoom.shared.ui.PixelTheme;
 import java.awt.BasicStroke;
 import java.awt.Color;
-import java.awt.Cursor;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
@@ -95,7 +95,7 @@ final class StudyLockPanel extends PropBoard {
             this.positions = positions;
             setOpaque(false);
             setBorder(BorderFactory.createEmptyBorder());
-            setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+            HandCursor.install(this);
             getAccessibleContext().setAccessibleName(description);
             setToolTipText("눌러 돌리거나 끌어서 돌리기 · 숫자 입력 가능");
             ((AbstractDocument) getDocument()).setDocumentFilter(new DocumentFilter() {

@@ -4,6 +4,7 @@ import coderoom.shared.audio.GameAudio;
 import coderoom.features.gameplay.PuzzleVariant;
 import coderoom.entities.game.WorkshopRoom;
 import coderoom.entities.puzzle.AnswerType;
+import coderoom.shared.ui.HandCursor;
 import coderoom.shared.ui.PixelTheme;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
@@ -93,7 +94,7 @@ public final class AnswerInputPanel extends JPanel {
         button.setMargin(new java.awt.Insets(0, 0, 0, 0));
         button.setBorder(BorderFactory.createEmptyBorder());
         button.setContentAreaFilled(false);
-        button.setCursor(java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.HAND_CURSOR));
+        HandCursor.install(button);
         button.setToolTipText(label);
         button.getAccessibleContext().setAccessibleName(label);
         return button;
@@ -204,7 +205,7 @@ public final class AnswerInputPanel extends JPanel {
 
     private void configure(JTextField field, int limit, String name) {
         field.setOpaque(false);
-        field.setCursor(java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.HAND_CURSOR));
+        HandCursor.install(field);
         field.setBorder(BorderFactory.createEmptyBorder());
         field.setFont(PixelTheme.font(24));
         field.getAccessibleContext().setAccessibleName(name);

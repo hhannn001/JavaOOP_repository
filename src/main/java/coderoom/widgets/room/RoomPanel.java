@@ -4,10 +4,10 @@ import coderoom.entities.game.RoomObjectId;
 import coderoom.entities.game.GameStage;
 import coderoom.entities.game.WorkshopRoom;
 import coderoom.features.gameplay.GameView;
+import coderoom.shared.ui.HandCursor;
 import java.awt.AlphaComposite;
 import java.awt.BasicStroke;
 import java.awt.Color;
-import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.FontMetrics;
 import java.awt.Graphics;
@@ -256,9 +256,9 @@ public class RoomPanel extends JPanel {
         setPreferredSize(new Dimension(960, 600));
         setBackground(LETTERBOX);
         setOpaque(true);
-        setCursor(Cursor.getPredefinedCursor(Cursor.CROSSHAIR_CURSOR));
         addMouseListener(mouse);
         addMouseMotionListener(mouse);
+        HandCursor.install(this, point -> !puzzleOpen && hotspotAt(point) != null);
     }
 
     private void animateCamera(boolean back) {
@@ -644,7 +644,6 @@ public class RoomPanel extends JPanel {
             return;
         }
         hovered = spot;
-        setCursor(Cursor.getPredefinedCursor(spot == null ? Cursor.CROSSHAIR_CURSOR : Cursor.HAND_CURSOR));
         setToolTipText(spot == null ? null : spot.label());
         repaint();
     }

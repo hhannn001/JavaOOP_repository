@@ -2,10 +2,10 @@ package coderoom.features.gameplay.ui;
 
 import coderoom.shared.audio.GameAudio;
 import coderoom.entities.game.WorkshopRoom;
+import coderoom.shared.ui.HandCursor;
 import coderoom.shared.ui.PixelTheme;
 import java.awt.BasicStroke;
 import java.awt.Color;
-import java.awt.Cursor;
 import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
@@ -177,7 +177,7 @@ class PropBoard extends JPanel {
             super(label);
             setName(name);
             describe(label);
-            setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+            HandCursor.install(this);
             setContentAreaFilled(false);
             setBorderPainted(false);
             setRolloverEnabled(true);

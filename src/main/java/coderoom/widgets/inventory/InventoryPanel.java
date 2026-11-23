@@ -1,5 +1,6 @@
 package coderoom.widgets.inventory;
 
+import coderoom.shared.ui.HandCursor;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
@@ -115,6 +116,7 @@ public final class InventoryPanel extends JPanel {
             button.setFocusPainted(false);
             button.setContentAreaFilled(false);
             button.setOpaque(false);
+            HandCursor.install(button);
             button.setEnabled(false);
 
             button.setBorder(BorderFactory.createEmptyBorder(3, 3, 3, 3));

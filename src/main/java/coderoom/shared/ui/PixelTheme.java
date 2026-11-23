@@ -60,6 +60,7 @@ public final class PixelTheme {
                 BorderFactory.createLineBorder(new Color(128, 94, 48), 2),
                 BorderFactory.createEmptyBorder(8, 12, 8, 12)));
         button.setFocusPainted(true);
+        HandCursor.install(button);
         return button;
     }
 

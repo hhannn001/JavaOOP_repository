@@ -15,6 +15,7 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 
 import coderoom.features.gameplay.ItemView;
+import coderoom.shared.ui.HandCursor;
 import coderoom.shared.ui.PixelTheme;
 
 /**
@@ -52,6 +53,7 @@ public final class CluePanel extends JPanel {
         close.setForeground(PixelTheme.INK);
         close.setContentAreaFilled(false);
         close.setBorder(BorderFactory.createEmptyBorder(6, 2, 6, 10));
+        HandCursor.install(close);
         close.addActionListener(event -> closeClue());
         header.add(title, BorderLayout.WEST);
         header.add(close, BorderLayout.EAST);
@@ -75,6 +77,7 @@ public final class CluePanel extends JPanel {
         switchView.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(new Color(155, 113, 63)),
                 BorderFactory.createEmptyBorder(5, 8, 5, 8)));
+        HandCursor.install(switchView);
         switchView.addActionListener(event -> showReading(!codeVisible));
         reading.add(switchView, BorderLayout.SOUTH);
         add(reading, BorderLayout.CENTER);

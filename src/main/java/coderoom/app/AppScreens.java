@@ -3,6 +3,7 @@ package coderoom.app;
 import coderoom.shared.audio.GameAudio;
 import coderoom.entities.game.ItemId;
 import coderoom.shared.db.StorageException;
+import coderoom.shared.ui.HandCursor;
 import coderoom.shared.ui.GameOverlayLayout;
 import coderoom.entities.game.GameSession;
 import coderoom.entities.game.GameStage;
@@ -166,6 +167,7 @@ final class AppScreens implements AppController.Screens {
         button.setFont(coderoom.shared.ui.PixelTheme.font(17).deriveFont(Font.BOLD));
         button.setUI(new BasicButtonUI());
         button.setFocusPainted(false);
+        HandCursor.install(button);
         button.setOpaque(true);
         button.setContentAreaFilled(true);
         button.setBorderPainted(false);
@@ -179,6 +181,7 @@ final class AppScreens implements AppController.Screens {
     private static JButton settingsButton(Runnable openSettings) {
         JButton settings = DashboardPage.settingsIconButton(openSettings);
         settings.setPreferredSize(new Dimension(64, 64));
+        HandCursor.install(settings);
         return settings;
     }
 
@@ -294,6 +297,7 @@ final class AppScreens implements AppController.Screens {
                     }
                 }
             });
+            HandCursor.install(dialogueClick);
             room.add(dialogueClick, "dialogueClick");
             dialogue.setOnChanged(this::updateFocus);
             room.setComponentZOrder(dimmer, 0);
