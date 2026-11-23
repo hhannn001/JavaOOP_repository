@@ -14,7 +14,6 @@ public enum PuzzleVariant {
     private static final int[] VOLTAGES = {15, 24, 29, 34, 11};
     private static final int[] WATTS    = {20, 40, 35, 20, 15};
     private static final String SLEEVE_BY_JOINT = "ACBA";
-    private static final String[] SIGNALS = {"power", "sealed", "loadOk", "pressOk"};
 
     public static LongFunction<PuzzleVariant> rotatingDeck() {
         return new LongFunction<>() {
@@ -79,12 +78,6 @@ public enum PuzzleVariant {
             default -> throw new IllegalArgumentException("Unknown pressure lever " + lever);
         };
     }
-
-    public String interlockPairs() { return switch (this) {
-        case STANDARD -> "ACBD";
-        case COPPER -> "ABCD";
-        case BRASS -> "ADBC";
-    }; }
 
     public int balanceLoad() { return switch (this) {
         case STANDARD -> 13;
@@ -184,21 +177,6 @@ public enum PuzzleVariant {
                 if (!code.contains("안전 배출 기록")) { return original; }
                 answer = pressureOrder();
             }
-            case 315 -> {
-                answer = interlockPairs();
-                String log = "power만 차단 → 2\nsealed만 차단 → 1\nsealed와 loadOk 동시 차단 → 0";
-                if (code.contains(log)) {
-                    String first = signal(answer, 0);
-                    String other = signal(answer, 1);
-                    String safe  = signal(answer, 2);
-                    code = code.replace(log, first + "만 차단 → 2\n" + safe + "만 차단 → 1\n"
-                            + safe + " + " + other + " 동시 차단 → 0");
-                    hint = safe + "만 끊을 때 1이다. " + other + "도 끊을 때 어느 불이 더 꺼지는지 확인한다.";
-                } else if (code.contains("power && loadOk") && code.contains("sealed && pressOk")) {
-                    code = code.replace("power && loadOk", signalPair(answer, 0))
-                            .replace("sealed && pressOk", signalPair(answer, 2));
-                } else { return original; }
-            }
             case 401 -> {
                 String originalConditions = STANDARD.specimenRule().javaConditions();
                 if (!code.contains(originalConditions)) { return original; }
@@ -242,10 +220,4 @@ public enum PuzzleVariant {
     }
 
     private static String gridRow(String row) { return "{" + String.join(", ", row.split("")) + "}"; }
-
-    private static String signalPair(String pairs, int index) {
-        return signal(pairs, index) + " && " + signal(pairs, index + 1);
-    }
-
-    private static String signal(String pairs, int index) { return SIGNALS[pairs.charAt(index) - 'A']; }
 }

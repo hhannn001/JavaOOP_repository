@@ -2,6 +2,7 @@ package coderoom.features.gameplay.ui;
 
 import coderoom.entities.game.WorkshopRoom;
 import coderoom.features.gameplay.PuzzleVariant;
+import coderoom.shared.ui.BridgeArt;
 import coderoom.shared.ui.PixelTheme;
 import coderoom.shared.ui.SpecimenMark;
 import java.awt.BasicStroke;
@@ -16,6 +17,7 @@ import java.awt.geom.CubicCurve2D;
 import java.awt.geom.Ellipse2D;
 import java.awt.image.BufferedImage;
 import java.util.Arrays;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.stream.IntStream;
 import javax.swing.JLabel;
@@ -33,6 +35,7 @@ final class WorkshopPanel extends JPanel {
     private java.util.function.Consumer<String> submitFailedRoute = route -> { };
     private Runnable cancel = () -> { };
     private Runnable interactionChanged = () -> { };
+    private Consumer<BridgeArt.Placement> bridgeChanged = placement -> { };
     private Supplier<String> response;
     private Runnable restore = () -> { };
 
@@ -345,15 +348,12 @@ final class WorkshopPanel extends JPanel {
 
     private void interlock() {
         String[] names = {"전력", "밀폐", "부하", "압력"};
-        String[] signals = {"power", "sealed", "loadOk", "pressOk"};
         Color[] cable = {new Color(232, 174, 67), new Color(111, 190, 210),
                          new Color(229, 124, 88), new Color(168, 196, 112)};
-        int[] ports = {-1, -1, -1, -1};
-        int[] source = {-1};
+        int[] ports      = {-1, -1, -1, -1};
+        int[] source     = {-1};
         int[] cut        = {-1};
-        int[] prediction = {-1};
-        boolean[] verified = new boolean[2];
-        boolean[] lamps = new boolean[2];
+        boolean[] lamps  = new boolean[2];
         int[] sockets   = {221, 351, 654, 784};
         int[] terminals = {217, 406, 594, 785};
         Point[] looseEnd = {null};
@@ -368,14 +368,16 @@ final class WorkshopPanel extends JPanel {
                 inputs[i].describe(wire < 0 ? "빈 소켓 " + (i + 1)
                         : "연결된 신호 " + names[wire] + " · 드래그해서 옮기기");
             }
-            cut[0]        = -1;
-            prediction[0] = -1;
-            Arrays.fill(verified, false);
+            for (int i = 0; i < outputs.length; i++) {
+                int signal = i;
+                boolean pluggedIn = Arrays.stream(ports).anyMatch(port -> port == signal);
+                outputs[i].sprite(pluggedIn ? null : plug);
+            }
+            cut[0] = -1;
             interactionChanged.run();
             updateInterlock(ports, lamps, cut[0], names);
         };
         java.util.function.IntConsumer select = wire -> {
-            if (source[0] != wire) { prediction[0] = -1; }
             source[0] = wire;
             board.repaint();
             for (int i = 0; i < outputs.length; i++) { outputs[i].lit(i == wire); }
@@ -396,11 +398,13 @@ final class WorkshopPanel extends JPanel {
             int slot = i;
             inputs[i] = control("port" + i, "빈 소켓 " + (i + 1), sockets[i] - 33, 250, 66, 66,
                     () -> {
-                        if (source[0] < 0 && ports[slot] >= 0) { select.accept(ports[slot]); }
+                        boolean holdingLoosePlug = source[0] >= 0
+                                && Arrays.stream(ports).noneMatch(port -> port == source[0]);
+                        if (ports[slot] >= 0 && !holdingLoosePlug) { select.accept(ports[slot]); }
                         else { attach.accept(slot); }
                     });
             inputs[i].hotspot();
-            outputs[i] = control("signal" + i, names[i] + " (" + signals[i] + ")", terminals[i] - 46, 460, 92, 92,
+            outputs[i] = control("signal" + i, names[i], terminals[i] - 46, 460, 92, 92,
                     () -> select.accept(slot));
             outputs[i].sprite(plug);
             MouseAdapter drag = new MouseAdapter() {
@@ -438,47 +442,22 @@ final class WorkshopPanel extends JPanel {
             inputs[i].addMouseListener(drag);
             inputs[i].addMouseMotionListener(drag);
         }
-        for (int lamp = 0; lamp < lamps.length; lamp++) {
-            int channel = lamp;
-            int x       = lamp == 0 ? 344 : 659;
-            String name = lamp == 0 ? "가동 표시등" : "안전 표시등";
-            control("predict" + lamp, name + "이 계속 켜져 있다고 예측", x - 53, 66, 106, 102, () -> {
-                prediction[0] = channel;
-                feedback.setText("예측 · " + name + " 켜짐");
-                board.repaint();
-            }).hotspot();
-        }
         control("faultTest", "차단 시험", 410, 59, 180, 99, () -> {
             int failure = source[0];
-            if (failure < 0 || Arrays.stream(ports).anyMatch(port -> port < 0)) {
+            if (cut[0] < 0 && (failure < 0 || Arrays.stream(ports).anyMatch(port -> port < 0))) {
                 feedback.setText("네 신호를 연결한 뒤 시험할 플러그를 선택하세요.");
                 return;
             }
-            cut[0] = cut[0] == failure ? -1 : failure;
+            cut[0] = cut[0] < 0 ? failure : -1;
             interactionChanged.run();
             updateInterlock(ports, lamps, cut[0], names);
-            if (cut[0] >= 0 && prediction[0] >= 0
-                    && circuitConnected(ports, 0, -1)
-                    && circuitConnected(ports, 1, -1)) {
-                int circuit = variant.interlockPairs().indexOf('A' + failure) / 2;
-                if (lamps[prediction[0]]) { verified[circuit] = true; }
-                feedback.setText(feedback.getText() + (lamps[prediction[0]] ? " · 예측 일치" : " · 예측 다시 확인"));
-            }
-            prediction[0] = -1;
             board.repaint();
         }).sprite(PropBoard.sprite("red-button"));
         board.effects(g -> {
             deviceLight(g, 344, 119, lamps[0]);
             deviceLight(g, 659, 119, lamps[1]);
-            if (verified[0]) { powerGlow(g, 394, 156); }
-            if (verified[1]) { powerGlow(g, 709, 156); }
-            PropBoard.engraving(g, "running", 344, 184, 25);
-            PropBoard.engraving(g, "safe", 659, 184, 25);
-            if (prediction[0] >= 0) {
-                int x = prediction[0] == 0 ? 344 : 659;
-                g.setColor(new Color(249, 206, 134));
-                g.drawOval(x - 49, 70, 98, 98);
-            }
+            PropBoard.engraving(g, "가동등", 344, 184, 25);
+            PropBoard.engraving(g, "안전등", 659, 184, 25);
             for (int i = 0; i < ports.length; i++) {
                 PropBoard.sprite(g, socket, sockets[i] - 47, 236, 94, 94);
             }
@@ -496,10 +475,13 @@ final class WorkshopPanel extends JPanel {
                 PropBoard.sprite(g, plug, pointer.x - 21, pointer.y - 24, 42, 48);
             }
             for (int i = 0; i < terminals.length; i++) {
-                g.setColor(cable[i]);
-                g.fillOval(terminals[i] - 6, 551, 12, 12);
-                signalMark(g, i, terminals[i], 576);
-                PropBoard.engraving(g, signals[i], terminals[i], 611, 25);
+                int wire = i;
+                if (Arrays.stream(ports).noneMatch(port -> port == wire)) {
+                    g.setColor(cable[i]);
+                    g.fillOval(terminals[i] - 6, 551, 12, 12);
+                    signalMark(g, i, terminals[i], 576);
+                }
+                PropBoard.engraving(g, names[i], terminals[i], 611, 25);
                 if (cut[0] == i) { faultLamp(g, terminals[i], 454); }
             }
         });
@@ -508,8 +490,8 @@ final class WorkshopPanel extends JPanel {
             String wiring = sortedPair(ports[0], ports[1]) + sortedPair(ports[2], ports[3]);
             if (!circuitConnected(ports, 0, -1)
                     || !circuitConnected(ports, 1, -1)) { return wiring; }
-            if (!verified[0] || !verified[1] || cut[0] >= 0) {
-                feedback.setText("두 회로를 시험하고 신호를 복구하세요.");
+            if (cut[0] >= 0) {
+                feedback.setText("빨간 버튼으로 신호를 복구해 두 불을 켜세요.");
                 return "";
             }
             return wiring;
@@ -517,13 +499,14 @@ final class WorkshopPanel extends JPanel {
         restore = () -> {
             Arrays.fill(ports, -1);
             Arrays.fill(lamps, false);
-            source[0]     = -1;
-            cut[0]        = -1;
-            prediction[0] = -1;
-            Arrays.fill(verified, false);
+            source[0]   = -1;
+            cut[0]      = -1;
             looseEnd[0] = null;
             for (int i = 0; i < inputs.length; i++) { inputs[i].describe("빈 소켓 " + (i + 1)); }
-            for (PropBoard.Control output : outputs) { output.lit(false); }
+            for (PropBoard.Control output : outputs) {
+                output.sprite(plug);
+                output.lit(false);
+            }
         };
     }
 
@@ -564,7 +547,7 @@ final class WorkshopPanel extends JPanel {
 
     private boolean circuitConnected(int[] ports, int circuit, int failed) {
         int index   = circuit * 2;
-        String pair = variant.interlockPairs();
+        String pair = "ACBD";
         int first   = pair.charAt(index) - 'A';
         int second  = pair.charAt(index + 1) - 'A';
         int left    = ports[index];
@@ -627,30 +610,36 @@ final class WorkshopPanel extends JPanel {
         RailPlatformPanel rail = new RailPlatformPanel(
                 PropBoard.sprite("cross-platform"), PropBoard.sprite("long-platform"));
         Runnable updateStatus = () -> {
+            bridgeChanged.accept(rail.placement());
             String answer = rail.answer();
-            if (answer.isEmpty()) {
+            if (!rail.platformsInPlace()) {
                 feedback.setText(instructions);
+            } else if (!rail.centerInPlace()) {
+                feedback.setText("왼쪽의 목재 발판을 가운데 빈자리에 끼우세요.");
             } else if (answer.length() > 2) {
                 feedback.setText("가로·세로 레일 끝을 고정 레일에 맞춰 주세요.");
             } else {
                 feedback.setText("레일이 맞았습니다. 황동 걸쇠를 누르세요.");
             }
         };
-        PropBoard.Control horizontal = new PropBoard.Control("adjustHorizontalRail", "가로 레일 조절");
-        PropBoard.Control vertical   = new PropBoard.Control("adjustVerticalRail", "세로 레일 조절");
+        rail.onPlacementChanged(updateStatus);
+        PropBoard.Control horizontal = new PropBoard.Control("adjustHorizontalRail", "레일 위치 조정");
+        PropBoard.Control vertical   = new PropBoard.Control("adjustVerticalRail", "레일 위치 조정");
         BufferedImage adjustFace = PropBoard.sprite("rail-adjust-button");
         horizontal.labeledFace(adjustFace);
         vertical.labeledFace(adjustFace);
         horizontal.hideTooltip();
         vertical.hideTooltip();
+        horizontal.describe("가로 레일 위치 조정");
+        vertical.describe("세로 레일 위치 조정");
         horizontal.addActionListener(event -> {
             interactionChanged.run();
-            rail.adjustRail(0, horizontal);
+            rail.adjustRail(0);
             updateStatus.run();
         });
         vertical.addActionListener(event -> {
             interactionChanged.run();
-            rail.adjustRail(1, vertical);
+            rail.adjustRail(1);
             updateStatus.run();
         });
         board.place(horizontal, 744, 393, 185, 43);
@@ -663,8 +652,6 @@ final class WorkshopPanel extends JPanel {
         restore = () -> {
             rail.reset();
             updateStatus.run();
-            rail.describeRail(0, horizontal);
-            rail.describeRail(1, vertical);
         };
         restore.run();
     }
@@ -684,25 +671,31 @@ final class WorkshopPanel extends JPanel {
         String initialDescription = "빈 운반차 · "
                 + (variant.railFlooded() ? "낮은 선로 침수" : "낮은 선로 배수됨")
                 + (variant.railBlocked() ? " · 본선에 정지턱" : " · 본선 정지턱 없음");
-        Point dock     = new Point(90, 286);
-        Point bridge   = new Point(151, 286);
-        Point fork     = new Point(225, 286);
-        Point crossing = new Point(478, 183);
-        Point lower    = new Point(526, 394);
-        Point upperEnd = new Point(683, 216);
-        Point lowerEnd = new Point(682, 361);
-        Point junction = new Point(705, 284);
-        Point exit     = new Point(805, 283);
-        Point mainExit = new Point(817, 184);
-        Point flood    = new Point(352, 346);
-        Point blocked  = new Point(768, 184);
+        Point dock      = new Point(152, 332);
+        Point bridge    = new Point(215, 332);
+        Point fork      = new Point(289, 333);
+        Point highJoint = new Point(356, 302);
+        Point lowJoint  = new Point(350, 364);
+        Point highBend  = new Point(538, 231);
+        Point lowBend   = new Point(507, 443);
+        Point crossing  = new Point(657, 230);
+        Point lower     = new Point(662, 445);
+        Point upperEnd  = new Point(715, 267);
+        Point lowerEnd  = new Point(714, 405);
+        Point junction  = new Point(766, 330);
+        Point mainBend  = new Point(840, 230);
+        Point sideBend  = new Point(819, 330);
+        Point sideExit  = new Point(887, 330);
+        Point mainExit  = new Point(891, 230);
+        Point flood     = new Point(422, 400);
+        Point blocked   = new Point(854, 230);
         BufferedImage emptyCart  = PropBoard.sprite("trolley-empty");
         BufferedImage loadedCart = PropBoard.sprite("trolley");
         BufferedImage bufferStop = PropBoard.sprite("rail-buffer");
         var trolley = new PropBoard.Control("pushTrolley", "빈 운반차 밀기");
         trolley.sprite(emptyCart);
         trolley.setEnabled(crossingConnected);
-        board.place(trolley, dock.x, dock.y, 125, 92);
+        board.place(trolley, dock.x - CartMotion.HALF_WIDTH, dock.y - CartMotion.HALF_HEIGHT, 125, 92);
         var motion = new CartMotion(board, trolley, dock);
         PropBoard.Control latch = control("workshopStart", "운반이 끝나면 황동 걸쇠 누르기",
                 879, 507, 77, 72, () -> activate.run());
@@ -727,11 +720,11 @@ final class WorkshopPanel extends JPanel {
                 latch.lit(false);
             }
             board.repaint();
-        }, "출구 쪽 분기", "본선");
+        }, "우회선로", "본선");
         BufferedImage switchLeft  = PropBoard.sprite("rail-left");
         BufferedImage switchRight = PropBoard.sprite("rail-right");
-        board.place(first.control(), 229, 333, 116, 89);
-        board.place(second.control(), 721, 316, 116, 89);
+        board.place(first.control(), 403, 308, 96, 65);
+        board.place(second.control(), 571, 300, 96, 65);
         first.sprites(switchLeft, switchRight);
         second.sprites(switchLeft, switchRight);
         first.control().hideTooltip();
@@ -756,26 +749,30 @@ final class WorkshopPanel extends JPanel {
             boolean bufferAhead = !tested[0] && variant.railBlocked();
             boolean high        = first.value() == 1;
             boolean side        = second.value() == 0;
-            Point bend          = high ? new Point(312, 249) : flood;
+            Point branchJoint   = high ? highJoint : lowJoint;
+            Point bend          = high ? highBend : lowBend;
             Point approach      = high ? crossing : lower;
             Point endOfTrack    = high ? upperEnd : lowerEnd;
+            Point destination   = side ? sideExit : mainExit;
+            Point departureBend = side ? sideBend : mainBend;
             if (position[0] == 0) {
                 if (high != flooded) {
-                    motion.travel(reject, bridge, fork, high ? new Point(263, 264) : flood, fork, bridge, dock);
+                    Point obstacle = high ? new Point(379, 293) : flood;
+                    motion.travel(reject, bridge, fork, branchJoint, obstacle, branchJoint, fork, bridge, dock);
                 } else {
-                    motion.travel(() -> { position[0] = 1; resume.run(); }, bridge, fork, bend, approach);
+                    motion.travel(() -> { position[0] = 1; resume.run(); }, bridge, fork, branchJoint, bend, approach);
                 }
                 return;
             }
 
             if (side != bufferAhead) {
-                if (!side) { motion.travel(reject, endOfTrack, blocked, endOfTrack, approach); }
-                else { motion.travel(reject, endOfTrack, junction, exit, junction, endOfTrack, approach); }
+                Point obstacle = side ? sideExit : blocked;
+                motion.travel(reject, endOfTrack, junction, departureBend, obstacle,
+                        departureBend, junction, endOfTrack, approach);
             } else if (!tested[0]) {
                 motion.travel(() -> {
                     testRoute[0] = letters(first, second);
                     returning[0] = true;
-                    Point returnTurn = side || !high ? junction : new Point(776, 184);
                     motion.travel(() -> {
                         position[0]  = 0;
                         tested[0]    = true;
@@ -783,15 +780,15 @@ final class WorkshopPanel extends JPanel {
                         trolley.sprite(loadedCart);
                         trolley.describe("씨앗을 실은 운반차 · 선로 배수됨 · 본선 정지턱 없음");
                         resume.run();
-                    }, returnTurn, endOfTrack, approach, bend, fork, bridge, dock);
-                }, endOfTrack, side || !high ? junction : new Point(776, 184), side ? exit : mainExit);
+                    }, departureBend, junction, endOfTrack, approach, bend, branchJoint, fork, bridge, dock);
+                }, endOfTrack, junction, departureBend, destination);
             } else {
                 motion.travel(() -> {
                     position[0] = 2;
                     latch.setEnabled(true);
                     latch.lit(true);
                     resume.run();
-                }, lowerEnd, junction, new Point(776, 215), mainExit);
+                }, endOfTrack, junction, departureBend, destination);
             }
         });
         trolley.describe(initialDescription);
@@ -818,8 +815,17 @@ final class WorkshopPanel extends JPanel {
                     recess.dispose();
                 }
             }
-            turnout(g, 294, 333, 391, first.value() == 0 ? 384 : 284);
-            turnout(g, 766, 331, second.value() == 0 ? 869 : 838, second.value() == 0 ? 331 : 225);
+            Point entry = first.value() == 0 ? lowJoint : highJoint;
+            turnout(g, 22, fork, entry);
+            if (second.value() == 0) {
+                turnout(g, 23, junction, sideBend);
+            } else {
+                switchSleepers(g, junction, mainBend);
+                switchSleepers(g, mainBend, mainExit);
+                turnout(g, 23, junction, mainBend, mainExit);
+            }
+            PropBoard.engraving(g, "1. " + first.label(), 450, 387, 18);
+            PropBoard.engraving(g, "2. " + second.label(), 619, 380, 18);
         });
         response = () -> position[0] == 2 ? testRoute[0] + letters(first, second) : "";
         restore = () -> {
@@ -870,19 +876,46 @@ final class WorkshopPanel extends JPanel {
         }
     }
 
-    private static void turnout(Graphics2D graphics, int x, int y, int endX, int endY) {
+    private static void switchSleepers(Graphics2D graphics, Point from, Point to) {
+        Graphics2D ties = (Graphics2D) graphics.create();
+        try {
+            double distance = from.distance(to);
+            double angle    = Math.atan2(to.y - from.y, to.x - from.x);
+            double span     = 64 * Math.cos(angle);
+            ties.translate(from.x, from.y);
+            ties.rotate(angle);
+            for (int offset = 15; offset < distance - 5; offset += 27) {
+                int edge = (int) (span / 2);
+                ties.setColor(new Color(49, 29, 21));
+                ties.fillRoundRect(offset - 4, -edge, 10, edge * 2, 3, 3);
+                ties.setColor(new Color(121, 79, 49));
+                ties.drawLine(offset - 3, -edge + 3, offset - 3, edge - 3);
+            }
+        } finally {
+            ties.dispose();
+        }
+    }
+
+    private static void turnout(Graphics2D graphics, int gauge, Point... centers) {
         Graphics2D rails = (Graphics2D) graphics.create();
         try {
-            for (int offset : new int[] {-12, 12}) {
-                rails.setStroke(new BasicStroke(9, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-                rails.setColor(new Color(55, 33, 23));
-                rails.drawLine(x, y + offset, endX, endY + offset);
-                rails.setStroke(new BasicStroke(5, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-                rails.setColor(new Color(171, 113, 58));
-                rails.drawLine(x, y + offset, endX, endY + offset);
-                rails.setStroke(new BasicStroke(1.3f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-                rails.setColor(new Color(255, 216, 145, 218));
-                rails.drawLine(x, y + offset - 2, endX, endY + offset - 2);
+            for (int offset : new int[] {-gauge, gauge}) {
+                var rail = new java.awt.geom.Path2D.Double();
+                rail.moveTo(centers[0].x, centers[0].y + offset);
+                for (int i = 1; i < centers.length; i++) {
+                    rail.lineTo(centers[i].x, centers[i].y + offset);
+                }
+                rails.setStroke(new BasicStroke(11, BasicStroke.CAP_BUTT, BasicStroke.JOIN_ROUND));
+                rails.setColor(new Color(53, 32, 20));
+                rails.draw(rail);
+                rails.setStroke(new BasicStroke(7, BasicStroke.CAP_BUTT, BasicStroke.JOIN_ROUND));
+                rails.setColor(new Color(163, 109, 58));
+                rails.draw(rail);
+                rails.translate(0, -1.5);
+                rails.setStroke(new BasicStroke(2, BasicStroke.CAP_BUTT, BasicStroke.JOIN_ROUND));
+                rails.setColor(new Color(227, 187, 115));
+                rails.draw(rail);
+                rails.translate(0, 1.5);
             }
         } finally {
             rails.dispose();
@@ -890,6 +923,8 @@ final class WorkshopPanel extends JPanel {
     }
 
     private static final class CartMotion {
+        static final int HALF_WIDTH  = 62;
+        static final int HALF_HEIGHT = 46;
         private final PropBoard board;
         private final PropBoard.Control cart;
         private final Timer timer;
@@ -910,7 +945,7 @@ final class WorkshopPanel extends JPanel {
         void place(Point point) {
             timer.stop();
             current = point;
-            board.move(cart, point.x, point.y);
+            board.move(cart, point.x - HALF_WIDTH, point.y - HALF_HEIGHT);
         }
 
         boolean isMoving() { return timer.isRunning(); }
@@ -938,7 +973,7 @@ final class WorkshopPanel extends JPanel {
             if (part == 0) { part = 1; }
             current = new Point((int) (from.x + (to.x - from.x) * part),
                     (int) (from.y + (to.y - from.y) * part));
-            board.move(cart, current.x, current.y);
+            board.move(cart, current.x - HALF_WIDTH, current.y - HALF_HEIGHT);
         }
     }
 
@@ -997,6 +1032,8 @@ final class WorkshopPanel extends JPanel {
     }
 
     void onFailedRoute(java.util.function.Consumer<String> submit) { submitFailedRoute = submit; }
+
+    void onBridgeChanged(Consumer<BridgeArt.Placement> action) { bridgeChanged = action; }
 
     void onInteractionChanged(Runnable action) { interactionChanged = action; }
 

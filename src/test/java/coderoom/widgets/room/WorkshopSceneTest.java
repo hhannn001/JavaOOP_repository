@@ -95,17 +95,43 @@ class WorkshopSceneTest {
         }
     }
 
-    @Test void movingPlatformsLeaveTheWaterAndRailsInPlace() {
+    @Test void solvingTheGutterDrainsWaterFromTheBridgeAndRails() {
+        var clock = new java.util.concurrent.atomic.AtomicLong();
+        var scene = new WorkshopScene(WorkshopRoom.GREENHOUSE, clock::get);
+        Rectangle bridge = new Rectangle(700, 640, 125, 100);
+        Rectangle rail   = new Rectangle(606, 730, 60, 75);
+        Rectangle floor  = new Rectangle(431, 740, 35, 44);
+        int[] floodedBridge = region(scene, 0, Set.of(), bridge);
+        int[] floodedRail   = paintedRegion(scene, rail, 0);
+        int[] dryFloor      = paintedRegion(scene, floor, 0);
+        assertArrayEquals(floodedBridge, region(scene, 0, Set.of(1), bridge));
+
+        clock.set(230_000_000L);
+        int[] drainingBridge = paintedRegion(scene, bridge, 0);
+        assertFalse(Arrays.equals(floodedBridge, drainingBridge));
+        clock.set(WorkshopScene.TRANSITION_MS * 1_000_000L);
+        int[] exposedBridge = paintedRegion(scene, bridge, 0);
+        assertFalse(Arrays.equals(drainingBridge, exposedBridge));
+        assertFalse(Arrays.equals(floodedRail, paintedRegion(scene, rail, 0)));
+        assertArrayEquals(dryFloor, paintedRegion(scene, floor, 0));
+    }
+
+    @Test void bridgeFollowsPartialAndCompletedPuzzlePlacement() {
         WorkshopScene scene = settledScene(WorkshopRoom.GREENHOUSE);
-        Rectangle aboveMovedPlank = new Rectangle(1000, 638, 4, 2);
-        Rectangle belowMovedPlank = new Rectangle(898, 706, 4, 3);
-        Rectangle movedPlank      = new Rectangle(993, 666, 8, 5);
-        assertArrayEquals(region(scene, 0, Set.of(1), aboveMovedPlank),
-                region(scene, 0, Set.of(1, 2), aboveMovedPlank));
-        assertArrayEquals(region(scene, 0, Set.of(1), belowMovedPlank),
-                region(scene, 0, Set.of(1, 2), belowMovedPlank));
-        assertFalse(Arrays.equals(region(scene, 0, Set.of(1), movedPlank),
-                region(scene, 0, Set.of(1, 2), movedPlank)));
+        Rectangle surround  = new Rectangle(1000, 638, 4, 2);
+        Rectangle tray      = new Rectangle(592, 668, 24, 19);
+        Rectangle gap       = new Rectangle(810, 741, 22, 12);
+        int[] unchanged     = region(scene, 0, Set.of(1), surround);
+        int[] looseCenter   = paintedRegion(scene, tray, 0);
+        scene.updateBridge(new coderoom.shared.ui.BridgeArt.Placement(1, 1, false, 1, -1));
+        int[] emptyGap = paintedRegion(scene, gap, 0);
+        assertArrayEquals(looseCenter, paintedRegion(scene, tray, 0));
+        scene.updateBridge(coderoom.shared.ui.BridgeArt.Placement.SOLVED);
+        int[] joinedDeck = paintedRegion(scene, gap, 0);
+        assertFalse(Arrays.equals(emptyGap, joinedDeck));
+        assertFalse(Arrays.equals(looseCenter, paintedRegion(scene, tray, 0)));
+        assertArrayEquals(unchanged, paintedRegion(scene, surround, 0));
+        assertArrayEquals(joinedDeck, region(scene, 0, Set.of(1, 2), gap));
     }
 
     @Test void trolleyOutlineAvoidsTransparentCornersAndFollowsTheMovedAsset() {
@@ -128,9 +154,14 @@ class WorkshopSceneTest {
         scene.update(new GameView(GameStage.START, List.of(), null, 18, 2, 5,
                 false, null, Set.of(1, 2), Set.of()));
         var outline = scene.outline(platforms);
-        assertTrue(outline.contains(995, 667));
-        assertFalse(outline.intersects(1035, 631, 90, 110));
-        assertFalse(outline.contains(912, 809));
+        assertTrue(outline.contains(810, 742));
+        assertFalse(outline.contains(600, 650));
+        assertFalse(outline.contains(800, 864));
+        var trolley = scene.spots().stream().filter(spot -> spot.id() == RoomObjectId.FOURTH_DEVICE)
+                .findFirst().orElseThrow();
+        var overlap = new java.awt.geom.Area(outline);
+        overlap.intersect(new java.awt.geom.Area(scene.outline(trolley)));
+        assertTrue(overlap.isEmpty());
     }
 
     @Test void ambienceMovesInTheGlassAndSteamStopsAtTheRepairedPipe() {
@@ -143,24 +174,22 @@ class WorkshopSceneTest {
         assertArrayEquals(ambience(pipe, 0, true, true), ambience(pipe, 1.3, true, true));
     }
 
-    @Test void overheadLampDipsTwiceThenReturnsToItsUsualBrightness() {
-        Rectangle lamp = new Rectangle(801, 159, 20, 20);
-        int[] usual = ambience(lamp, 1.2, true, true);
-        assertFalse(Arrays.equals(usual, ambience(lamp, 1.4, true, true)));
-        assertArrayEquals(usual, ambience(lamp, 1.57, true, true));
-        assertFalse(Arrays.equals(usual, ambience(lamp, 1.74, true, true)));
-        assertArrayEquals(usual, ambience(lamp, 2, true, true));
-    }
+    @Test void engineRoomDarkensAndFlickersUntilPowerIsRestored() {
+        WorkshopScene scene    = settledScene(WorkshopRoom.ENGINE);
+        Rectangle overheadLamp = new Rectangle(811, 168, 1, 1);
+        Rectangle doorLamp     = new Rectangle(1380, 168, 1, 1);
+        Rectangle floor        = new Rectangle(295, 820, 1, 1);
+        for (Rectangle sample : List.of(overheadLamp, doorLamp, floor)) {
+            int dark = region(scene, 0, Set.of(), sample, 0)[0];
+            int lit  = region(scene, 0, Set.of(0), sample, 0)[0];
 
-    @Test void restoringPowerStabilizesThePaintedEngineLamp() {
-        WorkshopScene scene = settledScene(WorkshopRoom.ENGINE);
-        Rectangle lamp = new Rectangle(811, 168, 1, 1);
-        int steady = region(scene, 0, Set.of(), lamp, 1.2)[0];
-        int dip    = region(scene, 0, Set.of(), lamp, 1.4)[0];
-
-        assertTrue(((steady >> 16) & 255) - ((dip >> 16) & 255) > 70);
-        assertEquals(steady, region(scene, 0, Set.of(0), lamp, 1.4)[0]);
-        assertEquals(steady, region(scene, 0, Set.of(0), lamp, 1.74)[0]);
+            assertTrue(((lit >> 16) & 255) - ((dark >> 16) & 255) > 45);
+            assertFalse(dark == region(scene, 0, Set.of(), sample, 2)[0]);
+            assertEquals(dark, region(scene, 0, Set.of(), sample, 2.2)[0]);
+            assertEquals(lit, region(scene, 0, Set.of(), sample, 2.42)[0]);
+            assertEquals(dark, region(scene, 0, Set.of(), sample, 3)[0]);
+            assertEquals(lit, region(scene, 0, Set.of(0), sample, 2.2)[0]);
+        }
     }
 
     @Test void bothWorkshopDoorsAreStillOpeningAtOneSecond() {
@@ -187,8 +216,8 @@ class WorkshopSceneTest {
     private static int[] ambience(Rectangle area, double seconds, boolean engine, boolean sealed) {
         var image = new BufferedImage(1586, 992, BufferedImage.TYPE_INT_ARGB);
         var g = image.createGraphics();
-        if (engine) { RoomAmbience.engine(g, seconds, sealed, false, 0); }
-        else { RoomAmbience.greenhouse(g, seconds, true); }
+        if (engine) { RoomAmbience.engine(g, seconds, sealed, 0); }
+        else { RoomAmbience.greenhouse(g, seconds); }
         g.dispose();
         return image.getRGB(area.x, area.y, area.width, area.height, null, 0, area.width);
     }

@@ -414,6 +414,7 @@ final class AppScreens implements AppController.Screens {
                 syncInvestigation();
             });
             answer.setOnSubmit(value -> actions.submit(activeObject, value));
+            answer.setOnBridgeChanged(room::renderBridge);
             resultPanel.setOnRetrySave(actions::retrySave);
         }
         @Override

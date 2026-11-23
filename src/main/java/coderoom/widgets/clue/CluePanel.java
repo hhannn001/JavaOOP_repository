@@ -95,7 +95,7 @@ public final class CluePanel extends JPanel {
         if (diagramType == ItemView.Diagram.BALANCE) { balance.setLoad(value.variant().balanceLoad()); }
         else if (diagramType != ItemView.Diagram.NONE) { diagram.setClue(value); }
         switchView.setVisible(diagramType != ItemView.Diagram.NONE);
-        showReading(diagramType != ItemView.Diagram.BALANCE);
+        showReading(!diagramType.opensAsDiagram());
         revalidate();
         repaint();
     }
@@ -103,7 +103,12 @@ public final class CluePanel extends JPanel {
     private void showReading(boolean showCode) {
         codeVisible = showCode;
         content.show(pages, showCode ? "code" : diagramType == ItemView.Diagram.BALANCE ? "balance" : "diagram");
-        switchView.setText(showCode ? "그림으로 보기" : "Java 규칙 보기");
+        String textView = switch (diagramType) {
+            case PIPE_LEAK -> "글로 보기";
+            case INTERLOCK -> "연결 코드 보기";
+            default -> "Java 규칙 보기";
+        };
+        switchView.setText(showCode ? "그림으로 보기" : textView);
         if (getParent() != null) { getParent().revalidate(); }
     }
 

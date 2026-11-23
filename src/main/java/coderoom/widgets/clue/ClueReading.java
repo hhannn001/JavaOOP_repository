@@ -1,6 +1,7 @@
 package coderoom.widgets.clue;
 
 import coderoom.shared.ui.SpecimenMark;
+import java.awt.FontMetrics;
 import java.util.regex.Pattern;
 import javax.swing.JEditorPane;
 import javax.swing.text.Element;
@@ -60,7 +61,8 @@ final class ClueReading extends JEditorPane {
         renderedSize  = size;
         renderedWidth = width;
         var codeFont = new java.awt.Font(java.awt.Font.MONOSPACED, java.awt.Font.PLAIN, size - 1);
-        int columns  = Math.max(16, (width - 30) / getFontMetrics(codeFont).charWidth('m'));
+        FontMetrics metrics = getFontMetrics(codeFont);
+        int lineWidth       = Math.max(metrics.charWidth('m') * 16, width - 52);
         String[] sections = note.strip().split("\\R[ \\t]*\\R");
         var html = new StringBuilder("""
                 <html><head><style>
@@ -71,7 +73,7 @@ final class ClueReading extends JEditorPane {
                 """.formatted(size, size - 1));
         for (String section : sections) {
             if (JAVA_LINE.matcher(section).find()) {
-                html.append("<pre>").append(highlight(wrapCode(section, columns))).append("</pre>");
+                html.append("<pre>").append(highlight(wrapCode(section, lineWidth, metrics))).append("</pre>");
             } else {
                 html.append("<p>").append(escape(section).replace("\n", "<br>")).append("</p>");
             }
@@ -80,13 +82,15 @@ final class ClueReading extends JEditorPane {
         setCaretPosition(0);
     }
 
-    private static String wrapCode(String code, int columns) {
+    private static String wrapCode(String code, int width, FontMetrics metrics) {
         var wrapped = new StringBuilder();
         for (String line : code.split("\\R")) {
             if (!wrapped.isEmpty()) { wrapped.append('\n'); }
             String indent = " ".repeat(line.length() - line.stripLeading().length() + 4);
-            while (line.length() > columns) {
-                int boundary = Math.max(line.lastIndexOf(' ', columns), line.lastIndexOf('(', columns - 1) + 1);
+            while (metrics.stringWidth(line) > width) {
+                int fit = line.length() - 1;
+                while (fit > 0 && metrics.stringWidth(line.substring(0, fit)) > width) { fit--; }
+                int boundary = Math.max(line.lastIndexOf(' ', fit), line.lastIndexOf('(', fit - 1) + 1);
                 if (boundary <= indent.length() || line.contains("'") || line.contains("\"")) { break; }
                 wrapped.append(line, 0, boundary).append('\n');
                 line = indent + line.substring(boundary).stripLeading();

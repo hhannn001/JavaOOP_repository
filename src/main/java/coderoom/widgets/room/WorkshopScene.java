@@ -5,16 +5,18 @@ import coderoom.entities.game.GameStage;
 import coderoom.entities.game.RoomObjectId;
 import coderoom.entities.game.WorkshopRoom;
 import coderoom.features.gameplay.GameView;
+import coderoom.shared.ui.BridgeArt;
+import java.awt.AlphaComposite;
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.GradientPaint;
 import java.awt.Graphics2D;
-import java.awt.Polygon;
 import java.awt.Rectangle;
 import java.awt.Shape;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.Area;
 import java.awt.geom.Ellipse2D;
+import java.awt.geom.Path2D;
 import java.awt.geom.RoundRectangle2D;
 import java.awt.image.BufferedImage;
 import java.io.BufferedReader;
@@ -36,11 +38,10 @@ final class WorkshopScene {
     private record Layer(int x, int y, BufferedImage registered, BufferedImage movable, Shape outline) { }
 
     static final int TRANSITION_MS = 1030;
-    private static final int CROSS_SLIDE_X = 19;
-    private static final int CROSS_SLIDE_Y = 21;
-    private static final int LONG_SLIDE_Y  = 24;
     private static final Shape DRAIN_BASIN = SpriteOutline.polygon(
             617, 603, 964, 603, 1159, 891, 407, 891);
+    private static final Shape FLOOD_SURFACE = SpriteOutline.polygon(
+            622, 610, 962, 610, 1149, 888, 420, 888);
     private static final List<RoomObjectId> DEVICE_IDS = List.of(RoomObjectId.DRAWER, RoomObjectId.WALL_DIAL,
             RoomObjectId.THIRD_DEVICE, RoomObjectId.FOURTH_DEVICE, RoomObjectId.FIFTH_DEVICE);
     private static final List<RoomObjectId> EVIDENCE_IDS = List.of(RoomObjectId.EVIDENCE_1, RoomObjectId.EVIDENCE_2,
@@ -64,7 +65,8 @@ final class WorkshopScene {
     private final LongSupplier clock;
     private final String path;
     private final BufferedImage base;
-    private final BufferedImage drained;
+    private final BufferedImage drainedBed;
+    private final BridgeProjection bridge;
     private final BufferedImage repairedPipe;
     private final BufferedImage openEnvelope;
     private final Map<String, Layer> layers = new LinkedHashMap<>();
@@ -81,7 +83,11 @@ final class WorkshopScene {
         this.clock = clock;
         this.path = "/images/room/workshop/" + room.name().toLowerCase(Locale.ROOT) + "/";
         base    = image("background.jpg");
-        drained = room == WorkshopRoom.GREENHOUSE ? image("drained.jpg") : null;
+        boolean greenhouse = room == WorkshopRoom.GREENHOUSE;
+        drainedBed = greenhouse ? image("drained-bed.jpg") : null;
+        bridge     = greenhouse ? new BridgeProjection(
+                readResource("/images/game-ui/workshop/parts/cross-platform.png"),
+                readResource("/images/game-ui/workshop/parts/long-platform.png")) : null;
         repairedPipe = room == WorkshopRoom.ENGINE ? image("pipe-repaired.png") : null;
         spots   = buildSpots(room);
         openEnvelope = room == WorkshopRoom.GREENHOUSE
@@ -94,7 +100,6 @@ final class WorkshopScene {
                 int x                 = Integer.parseInt(fields[1]);
                 int y                 = Integer.parseInt(fields[2]);
                 BufferedImage movable = image("layers/" + id + "-movable.png");
-                movable = maskPlatform(id, movable, x, y);
                 Shape outline         = SpriteOutline.fromAlpha(movable,
                         new Rectangle(x, y, movable.getWidth(), movable.getHeight()));
                 layers.put(id, new Layer(x, y, image("layers/" + id + ".png"), movable, outline));
@@ -102,42 +107,6 @@ final class WorkshopScene {
         } catch (IOException exception) {
             throw new IllegalStateException("방의 오브젝트를 불러오지 못했습니다.", exception);
         }
-    }
-
-    private static BufferedImage maskPlatform(String id, BufferedImage sprite, int x, int y) {
-        // The original crops include water above the planks and pixels from the adjoining platform.
-        Shape silhouette = switch (id) {
-            case "cross-platform" -> SpriteOutline.polygon(
-                    598, 635, 605, 627, 614, 627, 613, 642, 619, 642, 630, 633,
-                    956, 633, 969, 642, 975, 642, 975, 627, 984, 628, 990, 636,
-                    990, 665, 984, 670, 853, 670, 850, 665, 738, 665, 735, 670,
-                    606, 670, 599, 667);
-            case "long-platform" -> SpriteOutline.polygon(
-                    739, 667, 851, 667, 879, 778, 879, 796, 869, 796, 869, 789,
-                    720, 789, 720, 796, 709, 796, 709, 778);
-            default -> null;
-        };
-        if (silhouette == null) { return sprite; }
-
-        BufferedImage masked = new BufferedImage(sprite.getWidth(), sprite.getHeight(), BufferedImage.TYPE_INT_ARGB);
-        Graphics2D graphics  = masked.createGraphics();
-        try {
-            graphics.translate(-x, -y);
-            graphics.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING,
-                    java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
-            graphics.fill(silhouette);
-            graphics.setComposite(java.awt.AlphaComposite.SrcIn);
-            graphics.drawImage(sprite, x, y, null);
-            if (id.equals("cross-platform")) {
-                // Continue the front edge behind the section originally hidden by the other plank.
-                graphics.setComposite(java.awt.AlphaComposite.SrcOver);
-                graphics.drawImage(sprite, 735, 665, 853, 670,
-                        615 - x, 665 - y, 733 - x, 670 - y, null);
-            }
-        } finally {
-            graphics.dispose();
-        }
-        return masked;
     }
 
     private static List<Spot> buildSpots(WorkshopRoom room) {
@@ -183,6 +152,7 @@ final class WorkshopScene {
             moved = true;
         }
         state = view;
+        if (bridge != null && view.solvedSteps().contains(2)) { updateBridge(BridgeArt.Placement.SOLVED); }
         if (!outlinedSteps.equals(view.solvedSteps())) {
             outlinedSteps = view.solvedSteps();
             outlines.clear();
@@ -203,6 +173,13 @@ final class WorkshopScene {
 
     private int slide(int target, int step) {
         return (int) Math.round(target * movementProgress(step));
+    }
+
+    void updateBridge(BridgeArt.Placement placement) {
+        if (bridge != null && bridge.update(placement)) {
+            outlines.remove(RoomObjectId.THIRD_DEVICE);
+            silhouettes.remove(RoomObjectId.THIRD_DEVICE);
+        }
     }
 
     Shape outline(Spot spot) {
@@ -277,12 +254,11 @@ final class WorkshopScene {
                 yield tank;
             }
             case THIRD_DEVICE -> {
-                Area platforms = new Area(solved(2)
-                        ? movedOutline("cross-platform", CROSS_SLIDE_X * state.platformDirection(),
-                                CROSS_SLIDE_Y, 0, 0, 0) : partOutline("cross-platform"));
-                platforms.add(new Area(solved(2)
-                        ? movedOutline("long-platform", 0, LONG_SLIDE_Y, 0, 0, 0) : partOutline("long-platform")));
-                yield platforms;
+                Area deck  = new Area(bridge.outline());
+                Shape cart = greenhouseOutline(RoomObjectId.FOURTH_DEVICE);
+                deck.subtract(new Area(cart));
+                deck.subtract(new Area(new BasicStroke(9).createStrokedShape(cart)));
+                yield deck;
             }
             case FOURTH_DEVICE -> solved(4) ? arrivedTrolley().createTransformedShape(partOutline("trolley"))
                     : partOutline("trolley");
@@ -316,29 +292,34 @@ final class WorkshopScene {
     }
 
     void paint(Graphics2D graphics, double ambientSeconds) {
-        paint(graphics, ambientSeconds, true);
+        paint(graphics, ambientSeconds, null);
     }
 
-    void paint(Graphics2D graphics, double ambientSeconds, boolean drawBackground) {
+    void paint(Graphics2D graphics, double ambientSeconds, Rectangle surroundBounds) {
         boolean engine = room == WorkshopRoom.ENGINE;
         long elapsed = state == null ? 0 : state.elapsedSeconds();
         int phase = phase(elapsed);
-        if (drawBackground) { graphics.drawImage(base, 0, 0, null); }
-        if (!engine && solved(1)) {
-            var water = (Graphics2D) graphics.create();
-            water.clip(DRAIN_BASIN);
-            water.setComposite(java.awt.AlphaComposite.SrcOver.derive((float) movementProgress(1)));
-            water.drawImage(drained, 0, 0, null);
-            water.dispose();
+        if (surroundBounds == null) { graphics.drawImage(base, 0, 0, null); }
+        if (!engine) {
+            Graphics2D floor = (Graphics2D) graphics.create();
+            floor.clip(DRAIN_BASIN);
+            floor.drawImage(drainedBed, 0, 0, null);
+            bridge.paint(floor);
+            floor.dispose();
         }
         if (engine) {
             paintEngine(graphics, phase, elapsed);
-            RoomAmbience.engine(graphics, ambientSeconds, solved(1), solved(0), phase);
+            RoomAmbience.engine(graphics, ambientSeconds, solved(1), phase);
         } else {
-            RoomAmbience.greenhouse(graphics, ambientSeconds, solved(1));
-            paintGreenhouse(graphics, phase);
+            RoomAmbience.greenhouse(graphics, ambientSeconds);
+            paintGreenhouse(graphics, phase, ambientSeconds);
         }
         paintEvidence(graphics);
+        if (engine) {
+            Rectangle bounds = surroundBounds == null
+                    ? new Rectangle(0, 0, base.getWidth(), base.getHeight()) : surroundBounds;
+            RoomAmbience.engineLighting(graphics, bounds, ambientSeconds, solved(0));
+        }
     }
 
     static int phase(long seconds) {
@@ -406,19 +387,7 @@ final class WorkshopScene {
         else if (phase == 4) { shutter(graphics, 1305, 252, 201, 287); }
     }
 
-    private void paintGreenhouse(Graphics2D graphics, int phase) {
-        if (!solved(1) && phase > 0) {
-            Polygon water = new Polygon(new int[] {629, 955, 1138, 455}, new int[] {608, 608, 886, 886}, 4);
-            graphics.setColor(new Color(34, 103, 147, 29 * phase));
-            graphics.fill(water);
-            for (int index = 0; index < phase; index++) {
-                int y = 669 + index * 47;
-                graphics.setColor(new Color(159, 206, 229, 120));
-                graphics.drawLine(626 - index * 23, y, 977 + index * 25, y);
-            }
-            graphics.setColor(new Color(147, 104, 62));
-            graphics.fillOval(939 + phase * 10, 727 + phase * 11, 27, 9);
-        }
+    private void paintGreenhouse(Graphics2D graphics, int phase, double ambientSeconds) {
         for (Map.Entry<String, Layer> item : layers.entrySet()) {
             String id = item.getKey();
             Layer part = item.getValue();
@@ -426,26 +395,26 @@ final class WorkshopScene {
                 case "seed-chest" -> {
                     if (!solved(3)) { at(graphics, part); }
                 }
-                case "cross-platform" -> {
-                    move(graphics, part, solved(2) ? slide(CROSS_SLIDE_X * state.platformDirection(), 2) : 0,
-                            solved(2) ? slide(CROSS_SLIDE_Y, 2) : 0, 0, 0, 0);
-                }
-                case "long-platform" -> {
-                    move(graphics, part, 0, solved(2) ? slide(LONG_SLIDE_Y, 2) : 0, 0, 0, 0);
-                }
-                case "trolley" -> {
-                    if (solved(4)) {
-                        AffineTransform transform = trolleyPosition(movementProgress(4));
-                        transform.translate(part.x(), part.y());
-                        graphics.drawImage(part.movable(), transform, null);
-                    } else { at(graphics, part); }
-                }
+                case "trolley" -> { } // The cart stays in front of the water and platforms.
                 case "catchment-float" -> {
                     if (phase < 2) { at(graphics, part); }
                     else { move(graphics, part, 0, -5 * (phase - 1), -.07 * phase, 1266, 241); }
                 }
                 default -> at(graphics, part);
             }
+        }
+        double drainedFraction = solved(1) ? movementProgress(1) : 0;
+        paintFloodSurface(graphics, phase, ambientSeconds, drainedFraction);
+        Layer cart = layers.get("trolley");
+        if (solved(4)) {
+            AffineTransform transform = trolleyPosition(movementProgress(4));
+            transform.translate(cart.x(), cart.y());
+            graphics.drawImage(cart.movable(), transform, null);
+        } else {
+            Graphics2D foreground = (Graphics2D) graphics.create();
+            foreground.clip(cart.outline());
+            at(foreground, cart);
+            foreground.dispose();
         }
         if (solved(0) && !solved(3)) {
             var seeds = (Graphics2D) graphics.create();
@@ -574,6 +543,44 @@ final class WorkshopScene {
         }
     }
 
+    private void paintFloodSurface(Graphics2D graphics, int phase, double seconds, double drainedFraction) {
+        if (drainedFraction >= 1) { return; }
+
+        int edgeY = (int) Math.round(888 - 278 * drainedFraction);
+        Graphics2D water = (Graphics2D) graphics.create();
+        try {
+            water.clip(FLOOD_SURFACE);
+            water.clipRect(420, 610, 729, edgeY - 609);
+            water.setComposite(AlphaComposite.SrcOver.derive((float) (1 - .5 * drainedFraction)));
+            water.setPaint(new GradientPaint(0, 610, new Color(20, 53, 71, 206),
+                    0, 888, new Color(17, 71, 92, 222)));
+            water.fill(FLOOD_SURFACE);
+            // Sample the undisturbed reflection between the rails in the base art.
+            water.setComposite(AlphaComposite.SrcOver.derive((float) (.31 * (1 - drainedFraction))));
+            water.drawImage(base, 420, 610, 1149, 888, 719, 620, 869, 812, null);
+            water.setComposite(AlphaComposite.SrcOver.derive((float) (1 - .5 * drainedFraction)));
+
+            // Broken streaks carry the window reflection across the submerged objects.
+            for (int i = 0; i < 48; i++) {
+                int y         = 615 + i * 41 % 273;
+                double spread = (y - 610) / 278.0;
+                int x         = 558 + i * 83 % 450;
+                double drift  = Math.sin(seconds * 1.3 + i * .92) * (3 + 7 * spread);
+                double width  = 15 + i * 13 % 52 + 33 * spread;
+                var glint = new Path2D.Double();
+                glint.moveTo(x + drift, y);
+                glint.quadTo(x + drift + width * .44, y - 2 - spread * 3, x + drift + width, y + 1);
+                water.setColor(new Color(121, 184, 212, 25 + i % 4 * 8));
+                water.draw(glint);
+            }
+            RoomAmbience.basinRipples(water, seconds, phase);
+            water.setColor(new Color(139, 195, 215, drainedFraction > 0 ? 95 : 36));
+            water.drawLine(420, edgeY - 1, 1149, edgeY - 1);
+        } finally {
+            water.dispose();
+        }
+    }
+
     private void paintGreenhouseMarkings(Graphics2D graphics) {
         if (!solved(1)) {
             // The arrow and the outlet share the same metal fitting; the arrow is not a collectible.
@@ -581,11 +588,6 @@ final class WorkshopScene {
             graphics.drawLine(1388, 533, 1367, 533);
             graphics.drawLine(1367, 533, 1375, 529);
             graphics.drawLine(1367, 533, 1375, 537);
-        } else if (!solved(2)) {
-            graphics.setColor(new Color(215, 170, 99, 200));
-            graphics.drawLine(960, 659, 987, 658);
-            graphics.drawLine(987, 658, 979, 654);
-            graphics.drawLine(987, 658, 979, 662);
         }
     }
 

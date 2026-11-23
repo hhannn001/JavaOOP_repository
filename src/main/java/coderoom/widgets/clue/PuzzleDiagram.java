@@ -22,7 +22,7 @@ final class PuzzleDiagram extends JPanel {
     private static final Color WASH  = new Color(143, 91, 42, 33);
 
     private static final Pattern NUMBER      = Pattern.compile("-?\\d+");
-    private static final Pattern GRID_VALUES = Pattern.compile("\\bgrid\\s*=\\s*\\{([^;]+)}");
+    private static final Pattern GRID_VALUES = Pattern.compile("(?:grid|숫자표)\\s*=\\s*\\{([^;]+)}");
 
     private ItemView clue;
     private List<String> numbers = List.of();
@@ -57,7 +57,9 @@ final class PuzzleDiagram extends JPanel {
 
             switch (clue.diagram()) {
                 case GRID -> grid(g);
+                case PIPE_LEAK -> pipeLeak(g);
                 case DISTRIBUTION -> distribution(g);
+                case INTERLOCK -> interlock(g);
                 case SEEDS -> seeds(g);
                 case NONE, BALANCE -> { }
             }
@@ -79,6 +81,80 @@ final class PuzzleDiagram extends JPanel {
         center(g, "출발 숫자표", 70, 176, 14);
         center(g, "벽의 다이얼", 246, 176, 14);
         center(g, "숫자표의 각 열은 위에서 아래로 읽기", 160, 206, 14);
+    }
+
+    private static void pipeLeak(Graphics2D g) {
+        box(g, 5, 5, 310, 79, "", 16);
+        left(g, "1. A~D 손잡이에서 두 번 검침", 15, 25, 16);
+        PixelTheme.asset(g, "workshop/parts/handwheel", 29, 33, 29, 29);
+        PixelTheme.asset(g, "workshop/parts/handwheel", 180, 33, 29, 29);
+        left(g, "밸브 닫고", 64, 54, 15);
+        left(g, "밸브 열고", 215, 54, 15);
+        right(g, 140, 171, 48);
+        center(g, "명찰은 닫힘 / 열림 순서  ·  ‘–’는 미검침", 160, 74, 13);
+
+        box(g, 5, 91, 310, 66, "", 16);
+        left(g, "2. 차이가 가장 큰 이음쇠 선택", 15, 111, 16);
+        box(g, 16, 119, 114, 29, "열림 − 닫힘", 15);
+        right(g, 138, 163, 133);
+        left(g, "해당 손잡이 다시 누르기", 173, 138, 13);
+
+        box(g, 5, 164, 310, 71, "", 16);
+        left(g, "3. 슬리브 장착", 15, 184, 16);
+        PixelTheme.asset(g, "workshop/parts/sleeve-collar", 16, 192, 40, 32);
+        left(g, "선택한 이음쇠와 같은 줄 표시", 63, 206, 14);
+        left(g, "슬리브를 받침에 놓고 황동 걸쇠 누르기", 63, 225, 13);
+    }
+
+    private static void left(Graphics2D g, String text, int x, int baseline, int size) {
+        g.setColor(PixelTheme.INK);
+        g.setFont(PixelTheme.font(size).deriveFont(Font.BOLD));
+        g.drawString(text, x, baseline);
+    }
+
+    private static void interlock(Graphics2D g) {
+        box(g, 7, 5, 306, 128, "", 16);
+        panelLamp(g, 108, 23, new Color(167, 43, 32), "가동등");
+        panelLamp(g, 212, 23, new Color(87, 119, 42), "안전등");
+        PixelTheme.asset(g, "workshop/parts/red-button", 146, 8, 28, 28);
+        center(g, "차단·복구", 160, 47, 11);
+
+        int[] sockets = {72, 112, 208, 248};
+        for (int x : sockets) {
+            PixelTheme.asset(g, "workshop/parts/socket", x - 14, 52, 28, 28);
+        }
+        g.setColor(BRASS);
+        g.drawLine(160, 99, 160, 65);
+        g.drawLine(160, 65, 155, 71);
+        g.drawLine(160, 65, 165, 71);
+
+        String[] signals = {"전력", "밀폐", "부하", "압력"};
+        for (int i = 0; i < signals.length; i++) {
+            int x = 49 + i * 67;
+            PixelTheme.asset(g, "workshop/parts/plug", x - 13, 86, 26, 26);
+            center(g, signals[i], x, 125, 12);
+        }
+        g.setColor(BRASS);
+        g.fillOval(290, 110, 14, 14);
+        g.setColor(PixelTheme.INK);
+        g.fillOval(294, 114, 6, 6);
+
+        box(g, 7, 143, 148, 52, "", 16);
+        center(g, "왼쪽 가동등", 81, 162, 13);
+        center(g, "전력 + 부하", 81, 184, 17);
+        box(g, 165, 143, 148, 52, "", 16);
+        center(g, "오른쪽 안전등", 239, 162, 13);
+        center(g, "압력 + 밀폐", 239, 184, 17);
+
+        box(g, 7, 209, 306, 26, "두 불 켜짐 → 오른쪽 아래 황동 버튼", 14);
+    }
+
+    private static void panelLamp(Graphics2D g, int x, int y, Color color, String name) {
+        g.setColor(BRASS);
+        g.fillOval(x - 13, y - 13, 26, 26);
+        g.setColor(color);
+        g.fillOval(x - 9, y - 9, 18, 18);
+        center(g, name, x, y + 24, 12);
     }
 
     private void distribution(Graphics2D g) {

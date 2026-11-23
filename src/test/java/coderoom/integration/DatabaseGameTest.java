@@ -201,8 +201,8 @@ class DatabaseGameTest {
         var variants = coderoom.features.gameplay.PuzzleVariant.values();
         String[][][] solutions = {
             {{"2312", "423312133"}, {"ACD", "CB", "CAE", "DCAB", "ACBD"}, {"BC", "ABC", "AB", "BC", "BAAB"}},
-            {{"3241", "241134423"}, {"D", "AA", "EDA", "BDAC", "ABCD"}, {"AD", "BBC", "AB", "CA", "AAAB"}},
-            {{"1425", "324413241"}, {"ACDE", "BC", "AED", "CADB", "ADBC"}, {"BE", "ABB", "AB", "DC", "BBAB"}}
+            {{"3241", "241134423"}, {"D", "AA", "EDA", "BDAC", "ACBD"}, {"AD", "BBC", "AB", "CA", "AAAB"}},
+            {{"1425", "324413241"}, {"ACDE", "BC", "AED", "CADB", "ACBD"}, {"BE", "ABB", "AB", "DC", "BBAB"}}
         };
         long[] mapIds = {1, 3, 4};
         RoomObjectId[] devices = {RoomObjectId.DRAWER, RoomObjectId.WALL_DIAL,
@@ -220,14 +220,19 @@ class DatabaseGameTest {
                     ItemView clue = mapIds[map] == 1 ? game.view(started).items().get(step)
                             : game.inspect(devices[step]).instructions();
                     assertEquals(ItemView.Diagram.forPuzzle(setup.puzzles().get(step).puzzleId()), clue.diagram());
-                    boolean hasDiagram = (map == 0 && step == 1) || (map == 1 && step == 2)
+                    boolean hasDiagram = (map == 0 && step == 1) || (map == 1 && (step == 1 || step == 2 || step == 4))
                             || (map == 2 && (step == 0 || step == 3));
                     assertEquals(hasDiagram, clue.diagram() != ItemView.Diagram.NONE);
                     if (!expected.equals(standard)) { assertEquals(variant, clue.variant()); }
+                    if (mapIds[map] == 4 && step == 4) {
+                        assertTrue(clue.content().contains("낮은 선로에 물이 차 있으면 높은 선로로 간다."));
+                        assertTrue(clue.content().contains("본선 앞에 정지턱이 있으면 우회선로로 간다."));
+                        assertTrue(clue.content().contains("if (본선정지턱있음) 우회선로()"));
+                        assertFalse(clue.content().contains("bufferAhead"));
+                    }
                     if (mapIds[map] == 3 && step == 4) {
-                        String log      = game.inspect(devices[step]).instructions().content();
-                        String[] probes = {"sealed와 loadOk", "loadOk + sealed", "sealed + pressOk"};
-                        assertTrue(log.contains(probes[deck]), variant.toString());
+                        assertTrue(clue.content().contains("boolean 가동등켜짐 = 전력정상 && 부하정상"), variant.toString());
+                        assertTrue(clue.content().contains("boolean 안전등켜짐 = 압력정상 && 밀폐완료"), variant.toString());
                     }
                     if (!expected.equals(standard)) {
                         assertEquals(variant, game.inspect(devices[step]).variant(), "map " + mapIds[map] + ", step " + step);
@@ -349,8 +354,8 @@ class DatabaseGameTest {
         assertEquals(AnswerCheck.WRONG, platforms.check("ABBB"));
         assertEquals(AnswerCheck.CORRECT, puzzles.findByMapId(4).get(4).check("BAAB"));
         Puzzle interlock = puzzles.findByMapId(3).get(4);
-        assertTrue(interlock.code().contains("int lamps = (running ? 1 : 0)"));
-        assertTrue(interlock.code().contains("sealed와 loadOk 동시 차단 → 0"));
+        assertTrue(interlock.code().contains("boolean running = powerOk && loadOk;"));
+        assertTrue(interlock.code().contains("boolean safe = pressureOk && sealed;"));
         assertEquals(AnswerCheck.CORRECT, interlock.check("ACBD"));
     }
 

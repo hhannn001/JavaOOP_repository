@@ -214,7 +214,7 @@ public final class GameFacade {
         }
         int index                = ItemId.notes().indexOf(item);
         Puzzle puzzle            = setup.puzzles().get(index);
-        String text              = puzzle.code();
+        String text              = ClueText.korean(puzzle.puzzleId(), puzzle.code());
         ItemView.Diagram diagram = ItemView.Diagram.forPuzzle(puzzle.puzzleId());
         PuzzleVariant variant    = deviceVariants.get(index);
         if (workshop != null) {

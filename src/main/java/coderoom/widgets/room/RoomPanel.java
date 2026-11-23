@@ -4,6 +4,7 @@ import coderoom.entities.game.RoomObjectId;
 import coderoom.entities.game.GameStage;
 import coderoom.entities.game.WorkshopRoom;
 import coderoom.features.gameplay.GameView;
+import coderoom.shared.ui.BridgeArt;
 import coderoom.shared.ui.HandCursor;
 import java.awt.AlphaComposite;
 import java.awt.BasicStroke;
@@ -341,6 +342,12 @@ public class RoomPanel extends JPanel {
         repaint();
     }
 
+    public void renderBridge(BridgeArt.Placement placement) {
+        if (workshop == null) { return; }
+        workshop.updateBridge(placement);
+        repaint();
+    }
+
     public void renderWorkshop(GameView view) {
         if (workshop != null) {
             if (workshop.update(view)) { startDeviceTransition(-1); }
@@ -484,9 +491,9 @@ public class RoomPanel extends JPanel {
             applyWalk(g, layout);
             g.translate(layout.offsetX(), layout.offsetY());
             g.scale(layout.scale(), layout.scale());
-            if (surround != null) { paintSurround(g, layout); }
+            Rectangle surroundBounds = surround == null ? null : paintSurround(g, layout);
             if (workshop != null) {
-                workshop.paint(g, ambientSeconds, surround == null);
+                workshop.paint(g, ambientSeconds, surroundBounds);
                 drawHighlights(g);
                 return;
             }
@@ -548,7 +555,7 @@ public class RoomPanel extends JPanel {
         doorway.dispose();
     }
 
-    private void paintSurround(Graphics2D graphics, Layout layout) {
+    private Rectangle paintSurround(Graphics2D graphics, Layout layout) {
         int width  = background.getWidth();
         int height = background.getHeight();
         int left   = (int) Math.floor(-layout.offsetX() / layout.scale()) - 2;
@@ -570,6 +577,7 @@ public class RoomPanel extends JPanel {
                         sourceX[column], sourceY[row], sourceX[column + 1], sourceY[row + 1], null);
             }
         }
+        return new Rectangle(left, top, right - left, bottom - top);
     }
 
     private static void drawSprite(Graphics2D graphics, BufferedImage sprite, Rectangle area) {

@@ -133,10 +133,11 @@ class ObjectUiTest {
                         boolean hasDiagram = note.diagram() != ItemView.Diagram.NONE;
                         assertEquals(hasDiagram, toggle.isVisible(), note.title());
                         if (hasDiagram) {
-                            boolean startsWithDiagram = note.diagram() == ItemView.Diagram.BALANCE;
+                            boolean startsWithDiagram = note.diagram().opensAsDiagram();
                             if (!startsWithDiagram) { toggle.doClick(0); }
                             layoutTree(room);
-                            String diagramName = startsWithDiagram ? "balanceDiagram" : "puzzleDiagram";
+                            String diagramName = note.diagram() == ItemView.Diagram.BALANCE
+                                    ? "balanceDiagram" : "puzzleDiagram";
                             var diagram = descendants(clue).stream().filter(child -> diagramName.equals(child.getName()))
                                     .map(JPanel.class::cast).findFirst().orElseThrow();
                             assertTrue(diagram.isVisible(), note.title());

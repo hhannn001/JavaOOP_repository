@@ -3,7 +3,6 @@ package coderoom.widgets.room;
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Graphics2D;
-import java.awt.Polygon;
 import java.awt.RadialGradientPaint;
 import java.awt.Rectangle;
 import java.awt.geom.Area;
@@ -21,11 +20,9 @@ final class RoomAmbience {
             new int[][] {{406, 476}, {483, 552}, {561, 635}, {659, 711}, {720, 785},
                          {795, 866}, {875, 929}, {953, 983}, {990, 1042}, {1051, 1088}},
             new int[][] {{213, 298}, {310, 439}});
-    private static final Polygon POOL = new Polygon(
-            new int[] {625, 963, 1156, 419}, new int[] {610, 610, 886, 886}, 4);
     private static final BufferedImage STEAM = softLight(new Color(215, 224, 220, 168));
     private static final BufferedImage AMBER = softLight(new Color(255, 178, 67, 117));
-    private static final BufferedImage DIM   = softLight(new Color(14, 12, 16, 226));
+    private static final Color BLACKOUT = new Color(8, 12, 23, 175);
     private static final Drop[] DROPS = drops();
 
     private record Drop(double x, double y, double speed, int length, int alpha) { }
@@ -36,7 +33,7 @@ final class RoomAmbience {
         rain(graphics, STUDY_GLASS, new Rectangle(142, 79, 223, 303), seconds, 33);
     }
 
-    static void greenhouse(Graphics2D graphics, double seconds, boolean drained) {
+    static void greenhouse(Graphics2D graphics, double seconds) {
         Graphics2D glass = (Graphics2D) graphics.create();
         glass.clip(GREENHOUSE_GLASS);
         for (int i = 0; i < 17; i++) {
@@ -51,23 +48,22 @@ final class RoomAmbience {
         glass.dispose();
 
         rain(graphics, GREENHOUSE_GLASS, new Rectangle(405, 211, 685, 232), seconds, DROPS.length);
-        if (drained) { return; }
-        Graphics2D water = (Graphics2D) graphics.create();
-        water.clip(POOL);
+    }
+
+    static void basinRipples(Graphics2D water, double seconds, int phase) {
         water.setStroke(new BasicStroke(1.25f));
-        for (int i = 0; i < 11; i++) {
-            double age = cycle(seconds * .43 + i * .381);
-            int x = 565 + i * 67 % 450;
-            int y = 645 + i * 51 % 227;
-            double spread = 7 + age * (16 + (y - 645) * .12);
-            int alpha = (int) (62 * Math.sin(Math.PI * age));
+        for (int i = 0; i < 14 + phase; i++) {
+            double age    = cycle(seconds * .43 + i * .381);
+            int x         = 550 + i * 67 % 500;
+            int y         = 630 + i * 51 % 246;
+            double spread = 7 + age * (16 + (y - 630) * .12);
+            int alpha     = (int) (90 * Math.sin(Math.PI * age));
             water.setColor(new Color(157, 208, 228, alpha));
             water.draw(new Ellipse2D.Double(x - spread, y - spread * .23, spread * 2, spread * .46));
         }
-        water.dispose();
     }
 
-    static void engine(Graphics2D graphics, double seconds, boolean sealed, boolean powered, int pressurePhase) {
+    static void engine(Graphics2D graphics, double seconds, boolean sealed, int pressurePhase) {
         Graphics2D g = (Graphics2D) graphics.create();
         if (!sealed) {
             int count = 6 + pressurePhase * 3;
@@ -80,21 +76,26 @@ final class RoomAmbience {
                 drawGlow(g, STEAM, x, y, width, height, .63 * Math.sin(Math.PI * age));
             }
         }
-        double lampDip = powered ? 0 : doubleFlicker(seconds);
-        double doorDip = powered ? 0 : doubleFlicker(seconds + 2.7);
-        drawGlow(g, AMBER, 811, 184, 410, 300, .28 * (1 - lampDip));
-        drawGlow(g, AMBER, 1380, 168, 235, 170, .25 * (1 - doorDip));
-        if (lampDip > 0) { drawGlow(g, DIM, 811, 183, 540, 385, .90 * lampDip); }
-        if (doorDip > 0) { drawGlow(g, DIM, 1380, 168, 350, 270, .85 * doorDip); }
         g.dispose();
     }
 
-    private static double doubleFlicker(double seconds) {
-        double phase = seconds % 6.4;
-        return dip(phase - 1.4, .12) + .68 * dip(phase - 1.74, .10);
+    static void engineLighting(Graphics2D graphics, Rectangle bounds, double seconds, boolean powered) {
+        double phase = seconds % 7;
+        double light = powered ? 1 : .82 * pulse(phase - 2, .14) + pulse(phase - 2.42, .19);
+        Graphics2D g = (Graphics2D) graphics.create();
+        if (light < 1) {
+            g.setComposite(java.awt.AlphaComposite.SrcOver.derive((float) (1 - light)));
+            g.setColor(BLACKOUT);
+            g.fill(bounds);
+        }
+        if (light > 0) {
+            drawGlow(g, AMBER, 811, 184, 410, 300, .28 * light);
+            drawGlow(g, AMBER, 1380, 168, 235, 170, .25 * light);
+        }
+        g.dispose();
     }
 
-    private static double dip(double offset, double radius) {
+    private static double pulse(double offset, double radius) {
         double distance = Math.abs(offset) / radius;
         return distance >= 1 ? 0 : .5 + .5 * Math.cos(Math.PI * distance);
     }

@@ -10,13 +10,19 @@ import java.util.Objects;
  */
 public final class ItemView {
     public enum Diagram {
-        NONE, GRID, DISTRIBUTION, SEEDS, BALANCE;
+        NONE, GRID, PIPE_LEAK, DISTRIBUTION, INTERLOCK, SEEDS, BALANCE;
+
+        public boolean opensAsDiagram() {
+            return this == BALANCE || this == PIPE_LEAK || this == INTERLOCK;
+        }
 
         public static Diagram forPuzzle(long id) {
             if (id > Integer.MAX_VALUE || id < 1) { return NONE; }
             return switch ((int) id) {
                 case 2 -> GRID;
+                case 312 -> PIPE_LEAK;
                 case 313 -> DISTRIBUTION;
+                case 315 -> INTERLOCK;
                 case 401 -> SEEDS;
                 case 404 -> BALANCE;
                 default -> NONE;

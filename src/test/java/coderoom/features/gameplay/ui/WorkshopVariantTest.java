@@ -27,10 +27,14 @@ class WorkshopVariantTest {
                 key(rails, KeyEvent.VK_SPACE);
                 key(rails, KeyEvent.VK_DOWN);
                 assertEquals("", panel.answer());
-                key(rails, KeyEvent.VK_SPACE);
+                for (int i = 0; i < 2; i++) { key(rails, KeyEvent.VK_SPACE); }
                 key(rails, KeyEvent.VK_RIGHT);
                 assertEquals("", panel.answer());
                 key(rails, KeyEvent.VK_RIGHT);
+                assertEquals("", panel.answer());
+                key(rails, KeyEvent.VK_SPACE);
+                key(rails, KeyEvent.VK_SPACE);
+                key(rails, KeyEvent.VK_ENTER);
                 assertEquals("ABBB", panel.answer());
                 var horizontal = (AbstractButton) find(panel, "adjustHorizontalRail");
                 var vertical   = (AbstractButton) find(panel, "adjustVerticalRail");
@@ -39,6 +43,8 @@ class WorkshopVariantTest {
                 assertEquals("ABCC", panel.answer());
                 vertical.doClick(0);
                 assertEquals("AB", panel.answer());
+                key(rails, KeyEvent.VK_ENTER);
+                assertEquals("", panel.answer());
                 panel.reset();
                 assertEquals("", panel.answer());
             }

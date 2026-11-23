@@ -4,6 +4,7 @@ import coderoom.shared.audio.GameAudio;
 import coderoom.features.gameplay.PuzzleVariant;
 import coderoom.entities.game.WorkshopRoom;
 import coderoom.entities.puzzle.AnswerType;
+import coderoom.shared.ui.BridgeArt;
 import coderoom.shared.ui.HandCursor;
 import coderoom.shared.ui.PixelTheme;
 import java.awt.BorderLayout;
@@ -44,6 +45,7 @@ public final class AnswerInputPanel extends JPanel {
     private final JButton close = headerButton("×", "닫기");
     private Runnable onClose;
     private Consumer<String> onSubmit;
+    private Consumer<BridgeArt.Placement> onBridgeChanged = placement -> { };
 
     public AnswerInputPanel() {
         setOpaque(false);
@@ -112,12 +114,15 @@ public final class AnswerInputPanel extends JPanel {
         }
     }
 
+    public void setOnBridgeChanged(Consumer<BridgeArt.Placement> callback) { onBridgeChanged = callback; }
+
     public void showWorkshop(WorkshopRoom room, int index, PuzzleVariant variant, int platformDirection) {
         if (workshop != null) { workshop.cancel(); }
         mode     = InputMode.WORKSHOP;
         workshop = workshopStates.computeIfAbsent(room.task(index), key -> {
             WorkshopPanel device = new WorkshopPanel(room, index, variant, platformDirection);
             device.onInteractionChanged(() -> showMessage(" "));
+            device.onBridgeChanged(placement -> onBridgeChanged.accept(placement));
             device.onStart(() -> {
                 if (isVisible() && workshop == device) { submitAnswer(); }
             });
