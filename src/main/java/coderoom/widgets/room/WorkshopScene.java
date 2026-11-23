@@ -17,6 +17,7 @@ import java.awt.geom.AffineTransform;
 import java.awt.geom.Area;
 import java.awt.geom.Ellipse2D;
 import java.awt.geom.Path2D;
+import java.awt.geom.Point2D;
 import java.awt.geom.RoundRectangle2D;
 import java.awt.image.BufferedImage;
 import java.io.BufferedReader;
@@ -87,7 +88,8 @@ final class WorkshopScene {
         drainedBed = greenhouse ? image("drained-bed.jpg") : null;
         bridge     = greenhouse ? new BridgeProjection(
                 readResource("/images/game-ui/workshop/parts/cross-platform.png"),
-                readResource("/images/game-ui/workshop/parts/long-platform.png")) : null;
+                readResource("/images/game-ui/workshop/parts/long-platform.png"),
+                image("completed-bridge.png")) : null;
         repairedPipe = room == WorkshopRoom.ENGINE ? image("pipe-repaired.png") : null;
         spots   = buildSpots(room);
         openEnvelope = room == WorkshopRoom.GREENHOUSE
@@ -165,10 +167,13 @@ final class WorkshopScene {
         return view != null && view.stage() == GameStage.ESCAPED;
     }
 
-    private double movementProgress(int step) {
+    private double movementTime(int step) {
         if (step != movingStep) { return 1; }
-        double time = Math.min(1, (clock.getAsLong() - movementStarted) / (TRANSITION_MS * 1_000_000.0));
-        return 1 - Math.pow(1 - time, 3);
+        return Math.min(1, (clock.getAsLong() - movementStarted) / (TRANSITION_MS * 1_000_000.0));
+    }
+
+    private double movementProgress(int step) {
+        return 1 - Math.pow(1 - movementTime(step), 3);
     }
 
     private int slide(int target, int step) {
@@ -281,14 +286,23 @@ final class WorkshopScene {
     private AffineTransform arrivedTrolley() { return trolleyPosition(1); }
 
     private AffineTransform trolleyPosition(double progress) {
-        Layer part = layers.get("trolley");
-        double x = part.x() + (727 - part.x()) * progress;
-        double y = part.y() + (593 - part.y()) * progress;
-        double scale = 1 - .5 * progress;
-        AffineTransform transform = AffineTransform.getTranslateInstance(x, y);
+        Layer cart     = layers.get("trolley");
+        double anchorX = cart.x() + cart.movable().getWidth() / 2.0;
+        double anchorY = cart.y() + 106;
+        Point2D start  = BridgeProjection.trolleyTrackPoint(0);
+        Point2D target = BridgeProjection.trolleyTrackPoint(progress);
+        double scale   = 1 - .5 * Math.min(1, progress / BridgeProjection.CART_TURN);
+
+        AffineTransform transform = AffineTransform.getTranslateInstance(
+                anchorX + target.getX() - start.getX(), anchorY + target.getY() - start.getY());
         transform.scale(scale, scale);
-        transform.translate(-part.x(), -part.y());
+        transform.translate(-anchorX, -anchorY);
         return transform;
+    }
+
+    private AffineTransform movingTrolley() {
+        double time = movementTime(4);
+        return trolleyPosition(time * time * (3 - 2 * time));
     }
 
     void paint(Graphics2D graphics, double ambientSeconds) {
@@ -406,8 +420,9 @@ final class WorkshopScene {
         double drainedFraction = solved(1) ? movementProgress(1) : 0;
         paintFloodSurface(graphics, phase, ambientSeconds, drainedFraction);
         Layer cart = layers.get("trolley");
-        if (solved(4)) {
-            AffineTransform transform = trolleyPosition(movementProgress(4));
+        AffineTransform cartMotion = solved(4) ? movingTrolley() : null;
+        if (cartMotion != null) {
+            AffineTransform transform = new AffineTransform(cartMotion);
             transform.translate(cart.x(), cart.y());
             graphics.drawImage(cart.movable(), transform, null);
         } else {
@@ -431,7 +446,7 @@ final class WorkshopScene {
             int width  = chest.movable().getWidth();
             int height = chest.movable().getHeight();
             var placement = (Graphics2D) graphics.create();
-            if (solved(4)) { placement.transform(trolleyPosition(movementProgress(4))); }
+            if (cartMotion != null) { placement.transform(cartMotion); }
             placement.drawImage(chest.movable(), x, y, width, height, null);
             placement.dispose();
         }

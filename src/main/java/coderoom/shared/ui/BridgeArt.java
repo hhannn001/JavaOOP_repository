@@ -31,6 +31,10 @@ public final class BridgeArt {
         public static final Placement SOLVED  = new Placement(1, 1, true, HORIZONTAL_ALIGNMENT, VERTICAL_ALIGNMENT);
     }
 
+    public static double verticalTrackCenter() { return (VERTICAL_RAIL_A + VERTICAL_RAIL_B) / 2.0; }
+
+    public static double horizontalTrackCenter() { return (HORIZONTAL_RAIL_A + HORIZONTAL_RAIL_B) / 2.0; }
+
     public static Rectangle centerBounds(boolean fitted) {
         return new Rectangle(fitted ? CENTER_SOCKET : CENTER_TRAY);
     }

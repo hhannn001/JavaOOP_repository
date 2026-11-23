@@ -144,7 +144,17 @@ class WorkshopSceneTest {
         scene.update(new GameView(GameStage.SAFE_OPEN, List.of(), null, 24, 5, 5,
                 false, null, Set.of(0, 1, 2, 3, 4), Set.of()));
         assertFalse(scene.outline(trolley).contains(800, 851));
-        assertTrue(scene.outline(trolley).contains(810, 627));
+        assertTrue(scene.outline(trolley).contains(905, 727));
+    }
+
+    @Test void trolleyPassesThroughTheCrossingAndTurnsRightAlongTheRail() {
+        var start = BridgeProjection.trolleyTrackPoint(0);
+        var joint = BridgeProjection.trolleyTrackPoint(BridgeProjection.CART_TURN);
+        var end   = BridgeProjection.trolleyTrackPoint(1);
+        assertTrue(start.getY() > joint.getY());
+        assertTrue(Math.abs(start.getX() - joint.getX()) < 3);
+        assertEquals(joint.getY(), end.getY(), 0.01);
+        assertTrue(end.getX() > joint.getX());
     }
 
     @Test void solvedPlatformsStayInsideThePitAndLeaveTheCartClear() {
