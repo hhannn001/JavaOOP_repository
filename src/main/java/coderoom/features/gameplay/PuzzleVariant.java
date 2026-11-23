@@ -188,7 +188,7 @@ public enum PuzzleVariant {
                 answer = selected.toString();
             }
             case 402 -> {
-                if (!code.contains("홈통의 높이")) { return original; }
+                if (!code.contains("홈통의 높이") && !code.contains("홈통 끝을 이어라")) { return original; }
                 answer = (highGutterInlet() ? "A" : "B") + "B" + (lowGutterOutlet() ? "C" : "B");
             }
             case 404 -> {

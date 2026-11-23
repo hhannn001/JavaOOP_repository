@@ -334,6 +334,10 @@ class DatabaseGameTest {
         assertTrue(puzzles.findByMapId(1).get(1).code().contains("grid[col][row]"));
         assertEquals(AnswerCheck.CORRECT, puzzles.findByMapId(4).get(0).check("BC"));
         assertEquals(AnswerCheck.CORRECT, puzzles.findByMapId(4).get(1).check("ABC"));
+        var platforms = puzzles.findByMapId(4).get(2);
+        assertTrue(platforms.code().contains("황동 걸쇠"));
+        assertEquals(AnswerCheck.CORRECT, platforms.check("AB"));
+        assertEquals(AnswerCheck.WRONG, platforms.check("ABBB"));
         assertEquals(AnswerCheck.CORRECT, puzzles.findByMapId(4).get(4).check("BAAB"));
         Puzzle interlock = puzzles.findByMapId(3).get(4);
         assertTrue(interlock.code().contains("int lamps = (running ? 1 : 0)"));
