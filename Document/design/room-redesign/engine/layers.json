@@ -1,0 +1,132 @@
+{
+  "width": 1586,
+  "height": 992,
+  "layers": [
+    {
+      "id": "battery-a",
+      "x": 240,
+      "y": 216,
+      "width": 188,
+      "height": 94,
+      "registered": "layers/battery-a.png",
+      "movable": "layers/battery-a-movable.png"
+    },
+    {
+      "id": "battery-b",
+      "x": 240,
+      "y": 301,
+      "width": 188,
+      "height": 94,
+      "registered": "layers/battery-b.png",
+      "movable": "layers/battery-b-movable.png"
+    },
+    {
+      "id": "battery-c",
+      "x": 240,
+      "y": 386,
+      "width": 188,
+      "height": 94,
+      "registered": "layers/battery-c.png",
+      "movable": "layers/battery-c-movable.png"
+    },
+    {
+      "id": "battery-d",
+      "x": 240,
+      "y": 471,
+      "width": 188,
+      "height": 94,
+      "registered": "layers/battery-d.png",
+      "movable": "layers/battery-d-movable.png"
+    },
+    {
+      "id": "battery-e",
+      "x": 240,
+      "y": 556,
+      "width": 188,
+      "height": 94,
+      "registered": "layers/battery-e.png",
+      "movable": "layers/battery-e-movable.png"
+    },
+    {
+      "id": "pressure-needle",
+      "x": 538,
+      "y": 726,
+      "width": 75,
+      "height": 76,
+      "registered": "layers/pressure-needle.png",
+      "movable": "layers/pressure-needle-movable.png"
+    },
+    {
+      "id": "lever-1",
+      "x": 670,
+      "y": 697,
+      "width": 49,
+      "height": 132,
+      "registered": "layers/lever-1.png",
+      "movable": "layers/lever-1-movable.png"
+    },
+    {
+      "id": "lever-2",
+      "x": 729,
+      "y": 697,
+      "width": 49,
+      "height": 132,
+      "registered": "layers/lever-2.png",
+      "movable": "layers/lever-2-movable.png"
+    },
+    {
+      "id": "lever-3",
+      "x": 788,
+      "y": 697,
+      "width": 49,
+      "height": 132,
+      "registered": "layers/lever-3.png",
+      "movable": "layers/lever-3-movable.png"
+    },
+    {
+      "id": "lever-4",
+      "x": 847,
+      "y": 697,
+      "width": 49,
+      "height": 132,
+      "registered": "layers/lever-4.png",
+      "movable": "layers/lever-4-movable.png"
+    },
+    {
+      "id": "sleeve-large",
+      "x": 1206,
+      "y": 589,
+      "width": 121,
+      "height": 113,
+      "registered": "layers/sleeve-large.png",
+      "movable": "layers/sleeve-large-movable.png"
+    },
+    {
+      "id": "sleeve-medium",
+      "x": 1320,
+      "y": 611,
+      "width": 101,
+      "height": 99,
+      "registered": "layers/sleeve-medium.png",
+      "movable": "layers/sleeve-medium-movable.png"
+    },
+    {
+      "id": "sleeve-small",
+      "x": 1408,
+      "y": 635,
+      "width": 90,
+      "height": 92,
+      "registered": "layers/sleeve-small.png",
+      "movable": "layers/sleeve-small-movable.png"
+    },
+    {
+      "id": "door-bolt",
+      "x": 1341,
+      "y": 436,
+      "width": 168,
+      "height": 63,
+      "registered": "layers/door-bolt.png",
+      "movable": "layers/door-bolt-movable.png"
+    }
+  ]
+}
