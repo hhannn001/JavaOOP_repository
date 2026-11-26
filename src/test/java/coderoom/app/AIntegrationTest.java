@@ -477,7 +477,8 @@ class AIntegrationTest {
             assertEquals("dashboard", host.visible);
             DashboardPage dashboard = (DashboardPage) host.pages.get("dashboard");
             assertEquals(new Color(27, 23, 20), dashboard.getBackground());
-            assertEquals(7, countButtons(dashboard));
+            assertEquals(8, countButtons(dashboard));
+            assertFalse(findButton(dashboard, "도움말").isVisible());
             assertFalse(findButton(dashboard, "고양이 부르기").isVisible());
             assertTrue(findButton(dashboard, "고양이 쓰다듬기").isVisible());
             assertFalse(findButton(dashboard, "방 선택하기").isVisible());
@@ -491,6 +492,7 @@ class AIntegrationTest {
         edt(() -> {
             DashboardPage dashboard = (DashboardPage) host.pages.get("dashboard");
             assertTrue(findButton(dashboard, "고양이 부르기").isVisible());
+            assertTrue(findButton(dashboard, "도움말").isVisible());
             assertTrue(findButton(dashboard, "고양이 쓰다듬기").isVisible());
             findButton(dashboard, "방 선택하기").doClick();
             assertEquals("dashboard", host.visible);
