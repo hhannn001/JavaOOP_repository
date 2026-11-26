@@ -1,6 +1,8 @@
 package coderoom.app;
 
+import coderoom.shared.ui.HandCursor;
 import coderoom.features.dashboard.DashboardRecords;
+import coderoom.widgets.clue.RecordedPuzzleReview;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
@@ -47,31 +49,39 @@ final class DashboardRecordDialog extends JDialog {
         super(SwingUtilities.getWindowAncestor(owner), title, ModalityType.DOCUMENT_MODAL);
         this.records = records;
         this.loginId = loginId;
+        setCursor(HandCursor.openHand());
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         boolean ranking  = "리더보드".equals(title);
         boolean calendar = "진척도".equals(title);
         JPanel surface   = ranking ? boardSurface() : new DashboardRecordSurface(calendar);
         if (calendar) {
             status.setForeground(new Color(54, 47, 37));
-            personal.setForeground(new Color(54, 47, 37));
         }
         surface.setLayout(new BorderLayout(0, 12));
         surface.setBackground(PAPER);
-        surface.setBorder(BorderFactory.createEmptyBorder(ranking ? 105 : 64, ranking ? 58 : 36, 32, ranking ? 58 : 36));
-        JLabel heading = DashboardPage.imageLabel(title, ranking ? "leaderboard"
-                : "진척도".equals(title) ? "journal" : "bookshelf");
+        surface.setBorder(BorderFactory.createEmptyBorder(ranking ? 30 : 64, ranking ? 32 : 36, 32, ranking ? 32 : 36));
+        JLabel heading = ranking ? label(title, 28)
+                : DashboardPage.imageLabel(title, calendar ? "journal" : "bookshelf");
         heading.setHorizontalAlignment(SwingConstants.CENTER);
         JPanel north = new JPanel(new BorderLayout(0, 12));
         north.setOpaque(false);
         north.add(heading, BorderLayout.NORTH);
         rooms.setUI(new javax.swing.plaf.basic.BasicComboBoxUI() {
+            @Override protected javax.swing.plaf.basic.ComboPopup createPopup() {
+                var popup = super.createPopup();
+                HandCursor.install(popup.getList());
+                return popup;
+            }
+
             @Override protected JButton createArrowButton() {
                 JButton arrow = new JButton("▼");
                 arrow.setFocusPainted(false);
+                arrow.setMargin(new java.awt.Insets(0, 0, 0, 0));
                 arrow.setBorderPainted(false);
                 arrow.setFont(SceneObjectButton.PixelFont.at(16));
                 arrow.setBackground(PAPER);
                 arrow.setForeground(INK);
+                HandCursor.install(arrow);
                 return arrow;
             }
         });
@@ -84,11 +94,12 @@ final class DashboardRecordDialog extends JDialog {
                 return this;
             }
         });
+        HandCursor.install(rooms);
         rooms.setFont(SceneObjectButton.PixelFont.at(18));
         rooms.setBackground(PAPER);
         rooms.setForeground(INK);
         rooms.setEnabled(false);
-        rooms.getAccessibleContext().setAccessibleName("Room 선택");
+        rooms.getAccessibleContext().setAccessibleName("방 선택");
         if (ranking) {
             north.add(rooms, BorderLayout.CENTER);
         }
@@ -96,22 +107,11 @@ final class DashboardRecordDialog extends JDialog {
         surface.add(north, BorderLayout.NORTH);
         body.setOpaque(false);
         rows.setOpaque(false);
+        body.add(rows, BorderLayout.CENTER);
         if (ranking) {
-            body.add(rows, BorderLayout.CENTER);
-        } else {
-            JPanel stack = new JPanel(new BorderLayout());
-            stack.setOpaque(false);
-            stack.add(rows, BorderLayout.NORTH);
-            javax.swing.JScrollPane scroll = new javax.swing.JScrollPane(stack);
-            scroll.setBorder(BorderFactory.createEmptyBorder());
-            scroll.setOpaque(false);
-            scroll.getViewport().setOpaque(false);
-            scroll.getVerticalScrollBar().setUnitIncrement(24);
-            body.add(scroll, BorderLayout.CENTER);
+            personal.setBorder(BorderFactory.createEmptyBorder(10, 8, 10, 8));
+            body.add(personal, BorderLayout.SOUTH);
         }
-        personal.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createEmptyBorder(20, 0, 0, 0), BorderFactory.createEmptyBorder(12, 8, 12, 8)));
-        body.add(personal, BorderLayout.SOUTH);
         surface.add(body, BorderLayout.CENTER);
         JPanel actions = new JPanel(new GridLayout(1, 2, 10, 0));
         actions.setOpaque(false);
@@ -126,30 +126,6 @@ final class DashboardRecordDialog extends JDialog {
         }
         close.addActionListener(event -> dispose());
         surface.add(actions, BorderLayout.SOUTH);
-        if (ranking) {
-            // 이미지의 위 패널에 9행, 아래의 독립 패널에 내 기록을 배치한다.
-            surface.removeAll();
-            surface.setLayout(null);
-            surface.add(heading);
-            surface.add(rooms);
-            surface.add(status);
-            surface.add(rows);
-            surface.add(personal);
-            surface.add(actions);
-            personal.setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 8));
-            surface.addComponentListener(new java.awt.event.ComponentAdapter() {
-                @Override public void componentResized(java.awt.event.ComponentEvent event) {
-                    int width  = surface.getWidth();
-                    int height = surface.getHeight();
-                    heading.setBounds(width / 5, (int) (height * 0.13), width * 3 / 5, (int) (height * 0.06));
-                    rooms.setBounds(width / 9, (int) (height * 0.205), width * 7 / 9, (int) (height * 0.04));
-                    status.setBounds(width / 10, (int) (height * 0.255), width * 4 / 5, (int) (height * 0.035));
-                    rows.setBounds(width / 10, (int) (height * 0.30), width * 4 / 5, (int) (height * 0.35));
-                    personal.setBounds(width / 10, (int) (height * 0.71), width * 4 / 5, (int) (height * 0.06));
-                    actions.setBounds(width / 9, (int) (height * 0.87), width * 7 / 9, (int) (height * 0.055));
-                }
-            });
-        }
         setContentPane(surface);
         getRootPane().registerKeyboardAction(event -> dispose(), KeyStroke.getKeyStroke("ESCAPE"),
                 JComponent.WHEN_IN_FOCUSED_WINDOW);
@@ -172,8 +148,8 @@ final class DashboardRecordDialog extends JDialog {
                 loadProgress(title);
             }
         });
-        setSize(ranking ? 560 : 620, ranking ? 800 : 780);
-        setMinimumSize(new Dimension(ranking ? 480 : 500, ranking ? 700 : 680));
+        setSize(ranking ? 560 : 620, ranking ? 700 : 620);
+        setMinimumSize(new Dimension(500, ranking ? 600 : 560));
         setLocationRelativeTo(owner);
         if (ranking) {
             loadRooms();
@@ -183,7 +159,7 @@ final class DashboardRecordDialog extends JDialog {
     }
 
     private JPanel boardSurface() {
-        BufferedImage board = SceneObjectButton.read("leaderboard.png");
+        BufferedImage board = SceneObjectButton.read("leaderboard-window.png");
         return new JPanel() {
             @Override protected void paintComponent(Graphics graphics) {
                 super.paintComponent(graphics);
@@ -253,40 +229,33 @@ final class DashboardRecordDialog extends JDialog {
     }
 
     private void loadProgress(String title) {
-        if ("풀이한 문제".equals(title)) {
-            query(() -> records.solvedProblems(loginId), solved -> {
-                rows.setLayout(new GridLayout(0, 1, 0, 16));
-                for (DashboardRecords.Solved entry : solved) {
-                    rows.add(DashboardRecordSurface.solvedCard(entry));
-                }
-                status.setText("탈출하며 풀었던 문제와 정답을 다시 살펴보세요");
-                status.setFont(SceneObjectButton.PixelFont.at(14));
-                personal.setText("풀이한 문제  " + solved.size() + "개");
-                if (solved.isEmpty()) {
-                    rows.add(label("방을 클리어하면 문제와 정답이 기록됩니다.", 16));
-                }
-                refreshRows();
-            });
-            return;
-        }
-        query(() -> records.progress(loginId), progress -> {
-            rows.setLayout(new GridLayout(0, 1, 0, 8));
-            long completed = progress.stream().filter(entry -> entry.seconds() != null).count();
-            int index      = 0;
-            for (DashboardRecords.Progress entry : progress) {
-                rows.add(DashboardRecordSurface.card(entry, ++index, true));
+        boolean showProblems = "풀이한 문제".equals(title);
+        query(() -> records.roomProgress(loginId), progress -> {
+            rows.setLayout(new GridLayout(0, 1, 0, 10));
+            for (DashboardRecords.RoomProgress entry : progress) {
+                rows.add(showProblems
+                        ? DashboardRecordSurface.problemRow(entry, this::showAnswer)
+                        : DashboardRecordSurface.progressRow(entry));
             }
-            status.setText("방별 탈출 체크리스트 · 완료한 방에 도장을 남겨요");
-            status.setFont(SceneObjectButton.PixelFont.at(14));
-            personal.setText("탈출 달성률  " + (progress.isEmpty() ? 0 : completed * 100 / progress.size())
-                    + "%   ·   " + completed + " / " + progress.size() + "개 방 완료");
-            if (progress.isEmpty()) {
-                JLabel empty = label("등록된 방이 없습니다.", 17);
-                empty.setForeground(new Color(54, 47, 37));
-                rows.add(empty);
-            }
+            status.setText(progress.isEmpty() ? "등록된 방이 없습니다." : "");
+            status.setVisible(progress.isEmpty());
             refreshRows();
         });
+    }
+
+    private void showAnswer(DashboardRecords.Solved entry) {
+        var review = new JDialog(this, "문제와 풀이", ModalityType.DOCUMENT_MODAL);
+        review.setDefaultCloseOperation(DISPOSE_ON_CLOSE);
+        review.setContentPane(new RecordedPuzzleReview(
+                entry.room(), entry.stepNo(), entry.puzzleId(), entry.code(), entry.answer()));
+        review.getRootPane().registerKeyboardAction(event -> review.dispose(), KeyStroke.getKeyStroke("ESCAPE"),
+                JComponent.WHEN_IN_FOCUSED_WINDOW);
+        review.pack();
+        var screen = getGraphicsConfiguration().getBounds();
+        review.setSize(Math.min(review.getWidth(), screen.width - 48),
+                Math.min(review.getHeight(), screen.height - 90));
+        review.setLocationRelativeTo(this);
+        review.setVisible(true);
     }
 
     private void refreshRows() {
@@ -305,6 +274,7 @@ final class DashboardRecordDialog extends JDialog {
         rows.repaint();
         personal.setText("내 기록 —");
         status.setText("기록을 불러오는 중…");
+        status.setVisible(true);
         body.revalidate();
         body.repaint();
         if (records == null) {

@@ -61,6 +61,17 @@ final class StudyLockPanel extends PropBoard {
         });
     }
 
+    void showRecordedAnswer(String answer) {
+        if (answer.length() != (digits.length == 1 ? 4 : 9) || !answer.matches("[0-9]+")) { return; }
+        if (digits.length == 1) {
+            digits[0].setText(answer);
+        } else {
+            for (int index = 0; index < digits.length; index++) {
+                digits[index].setText(answer.substring(index, index + 1));
+            }
+        }
+    }
+
     JTextField firstDigit() { return digits[0]; }
 
     String answer() {

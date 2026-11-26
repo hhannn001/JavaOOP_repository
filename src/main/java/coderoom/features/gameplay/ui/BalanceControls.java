@@ -188,6 +188,17 @@ final class BalanceControls {
                 ? new String(new char[] {(char) ('A' + slots[0] - 1), (char) ('A' + slots[1] - 1)}) : "";
     }
 
+    void showRecordedAnswer(String answer) {
+        if (!answer.matches("[A-D]{2}")) { return; }
+        int light = answer.charAt(0) - 'A' + 1;
+        int heavy = answer.charAt(1) - 'A' + 1;
+        if (light == heavy || 2 * light + 3 * heavy != load) { return; }
+        slots[0] = light;
+        slots[1] = heavy;
+        tilt     = target();
+        updateTargets();
+    }
+
     void stop() {
         movement.stop();
         release.stop();

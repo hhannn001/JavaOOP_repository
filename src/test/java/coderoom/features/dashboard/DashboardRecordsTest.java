@@ -54,6 +54,30 @@ class DashboardRecordsTest {
         assertEquals("01:01:01", DashboardRecords.time(3661));
     }
 
+    @Test void roomProgressIncludesUnsolvedSlotsAndTheUsersSavedVariantAnswer() throws Exception {
+        Database database = new Database(directory.resolve("progress.db").toString());
+        database.initialize();
+        try (var connection = database.open(); var statement = connection.createStatement()) {
+            statement.executeUpdate("INSERT INTO clear_records VALUES (4, 1, 0)");
+            statement.executeUpdate("INSERT INTO solved_puzzles VALUES (4, 1, 1, 1, 'variant code', '1234')");
+        }
+
+        DashboardRecords records = new DashboardRecords(database);
+        var rooms                = records.roomProgress("test");
+        var study                = rooms.get(0);
+        assertEquals(3, rooms.size());
+        assertEquals(0L, study.seconds());
+        assertEquals(2, study.problems().size());
+        assertEquals(1, study.solvedCount());
+        assertEquals(1L, study.problems().get(0).solution().orElseThrow().puzzleId());
+        assertEquals("variant code", study.problems().get(0).solution().orElseThrow().code());
+        assertEquals("1234", study.problems().get(0).solution().orElseThrow().answer());
+        assertEquals(2, study.problems().get(1).number());
+        assertTrue(study.problems().get(1).solution().isEmpty());
+        assertNull(rooms.get(1).seconds());
+        assertEquals(0, records.roomProgress("unknown").get(0).solvedCount());
+    }
+
     @Test void databaseFailureIsNotPresentedAsAnEmptyLeaderboard() {
         DashboardRecords records = new DashboardRecords(new Database(directory.resolve("no-schema.db").toString()));
         assertThrows(StorageException.class, records::rooms);

@@ -22,6 +22,7 @@ final class GutterControls {
     private double progress;
     private int leak = -1;
     private boolean tested;
+    private boolean reviewing;
 
     GutterControls(PropBoard board, PuzzleVariant variant, Runnable complete) {
         supplyHeight  = variant.highGutterInlet() ? HIGH : LEVEL;
@@ -87,6 +88,9 @@ final class GutterControls {
             double water = leak < 0 || i < leak ? Math.min(1, progress - i) : 0;
             channel(g, new int[] {left + 3, left + 42, right - 45, right - 3},
                     new int[] {inlet(i), inlet(i), outlet(i), outlet(i)}, water);
+            if (reviewing) {
+                PropBoard.engraving(g, (i + 1) + "번 · " + (char) ('A' + turns[i]), (left + right) / 2, 345, 25);
+            }
         }
         if (leak >= 0 && progress >= leak + .30) {
             int x = JOINTS[leak];
@@ -127,6 +131,16 @@ final class GutterControls {
         var answer = new StringBuilder();
         for (int turn : turns) { answer.append((char) ('A' + turn)); }
         return answer.toString();
+    }
+
+    void showRecordedAnswer(String answer) {
+        if (!answer.matches("[ABC]{3}")) { return; }
+        for (int index = 0; index < turns.length; index++) {
+            turns[index] = answer.charAt(index) - 'A';
+        }
+        reviewing = true;
+        leak      = firstBreak();
+        progress  = leak < 0 ? 3.6 : leak + .55;
     }
 
     void reset() {

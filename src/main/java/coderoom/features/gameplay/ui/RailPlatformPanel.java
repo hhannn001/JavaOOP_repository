@@ -265,6 +265,15 @@ final class RailPlatformPanel extends JPanel {
         return "AB" + (char) ('B' + railOffsets[0]) + (char) ('B' + railOffsets[1]);
     }
 
+    void showCompletedPlacement() {
+        BridgeArt.Placement solved = BridgeArt.Placement.SOLVED;
+        across         = solved.across();
+        down           = solved.down();
+        centerFitted   = solved.centerFitted();
+        railOffsets[0] = solved.horizontalOffset();
+        railOffsets[1] = solved.verticalOffset();
+    }
+
     void reset() {
         across = 0;
         down   = 0;

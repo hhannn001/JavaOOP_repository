@@ -38,6 +38,7 @@ final class WorkshopPanel extends JPanel {
     private Consumer<BridgeArt.Placement> bridgeChanged = placement -> { };
     private Supplier<String> response;
     private Runnable restore = () -> { };
+    private Consumer<String> showRecordedAnswer = ignored -> { };
 
     WorkshopPanel(WorkshopRoom room, int index, PuzzleVariant variant, int platformDirection) {
         super(new BorderLayout(0, 6));
@@ -58,6 +59,11 @@ final class WorkshopPanel extends JPanel {
         }
         if (room == WorkshopRoom.ENGINE) { buildEngine(index); }
         else { buildGreenhouse(index, platformDirection); }
+    }
+
+    PropBoard boardForReview(String answer) {
+        showRecordedAnswer.accept(answer);
+        return board;
     }
 
     int artworkTop() {
@@ -600,6 +606,7 @@ final class WorkshopPanel extends JPanel {
         response = gutters::answer;
         restore  = gutters::reset;
         cancel   = gutters::stop;
+        showRecordedAnswer = gutters::showRecordedAnswer;
     }
 
     private void platforms() {
@@ -624,6 +631,9 @@ final class WorkshopPanel extends JPanel {
             }
         };
         rail.onPlacementChanged(updateStatus);
+        showRecordedAnswer = answer -> {
+            if ("AB".equals(answer)) { rail.showCompletedPlacement(); }
+        };
         PropBoard.Control horizontal = new PropBoard.Control("adjustHorizontalRail", "레일 위치 조정");
         PropBoard.Control vertical   = new PropBoard.Control("adjustVerticalRail", "레일 위치 조정");
         BufferedImage adjustFace = PropBoard.sprite("rail-adjust-button");
@@ -661,6 +671,7 @@ final class WorkshopPanel extends JPanel {
         var balance = new BalanceControls(board, variant.balanceLoad(), () -> activate.run());
         response = balance::answer;
         restore  = balance::reset;
+        showRecordedAnswer = balance::showRecordedAnswer;
         cancel   = balance::stop;
     }
 
@@ -828,6 +839,12 @@ final class WorkshopPanel extends JPanel {
             PropBoard.engraving(g, "1. " + first.label(), 450, 387, 18);
             PropBoard.engraving(g, "2. " + second.label(), 619, 380, 18);
         });
+        showRecordedAnswer = answer -> {
+            if (answer.matches("[AB]{4}")) {
+                first.set(answer.charAt(0) - 'A');
+                second.set(answer.charAt(1) - 'A');
+            }
+        };
         response = () -> position[0] == 2 ? testRoute[0] + letters(first, second) : "";
         restore = () -> {
             position[0]  = 0;

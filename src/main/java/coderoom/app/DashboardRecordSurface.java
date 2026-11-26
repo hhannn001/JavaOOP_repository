@@ -5,18 +5,23 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics;
+import java.awt.FlowLayout;
 import java.awt.Insets;
 import java.awt.image.BufferedImage;
+import java.util.function.Consumer;
 import javax.swing.BorderFactory;
+import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JProgressBar;
 import javax.swing.SwingConstants;
 
 /** 로비의 책장과 달력을 확장한 픽셀 기록 화면. */
 final class DashboardRecordSurface extends JPanel {
     private static final Color INK   = new Color(239, 216, 174);
-    private static final Color WOOD  = new Color(113, 72, 43);
-    private static final Color PAPER = new Color(226, 208, 169);
+    private static final Color DARK  = new Color(54, 47, 37);
+    private static final Color GREEN = new Color(52, 108, 72);
+    private static final Color GRAY  = new Color(83, 81, 78);
     private final BufferedImage artwork;
 
     DashboardRecordSurface(boolean calendar) {
@@ -33,59 +38,70 @@ final class DashboardRecordSurface extends JPanel {
         graphics.drawImage(artwork, 0, 0, getWidth(), getHeight(), null);
     }
 
-    static JPanel card(DashboardRecords.Progress entry, int index, boolean calendar) {
-        boolean complete = entry.seconds() != null;
-        JPanel card      = new JPanel(new BorderLayout(16, 0));
-        Color accent     = calendar ? new Color(89, 113, 84) : new Color(121, 67, 51);
-        card.setPreferredSize(new Dimension(380, 94));
-        card.setOpaque(false);
-        card.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createMatteBorder(0, 0, calendar ? 3 : 10, 0, calendar ? new Color(160, 144, 113) : WOOD),
-                BorderFactory.createEmptyBorder(10, 12, 10, 12)));
-        JLabel badge = text(calendar ? (complete ? "완료" : "대기") : String.format("%02d", index), 20,
-                complete ? INK : new Color(78, 72, 62));
-        badge.setHorizontalAlignment(SwingConstants.CENTER);
-        badge.setOpaque(true);
-        badge.setBackground(complete ? accent : new Color(198, 182, 150));
-        badge.setPreferredSize(new Dimension(62, 60));
-        badge.setBorder(BorderFactory.createMatteBorder(3, 5, 3, 2, complete ? accent.darker() : PAPER));
-        card.add(badge, BorderLayout.WEST);
-        JPanel details = new JPanel(new java.awt.GridLayout(2, 1, 0, 6));
-        details.setOpaque(false);
-        Color foreground = calendar ? new Color(54, 47, 37) : INK;
-        JLabel room      = text(entry.room(), 19, foreground);
-        room.setToolTipText(entry.room());
-        details.add(room);
-        details.add(text(complete ? "탈출 완료 · 최고 기록 " + DashboardRecords.time(entry.seconds())
-                : "아직 탈출 기록이 없습니다", 15, foreground));
-        card.add(details, BorderLayout.CENTER);
-        card.getAccessibleContext().setAccessibleName(entry.room() + (complete ? " 탈출 완료" : " 기록 없음"));
-        return card;
+    static JPanel progressRow(DashboardRecords.RoomProgress entry) {
+        JPanel row    = recordRow();
+        JPanel header = new JPanel(new BorderLayout(8, 0));
+        header.setOpaque(false);
+        header.add(text(entry.room(), 18, DARK), BorderLayout.CENTER);
+        String best = entry.seconds() == null ? "—" : DashboardRecords.time(entry.seconds());
+        header.add(text("최고기록  " + best, 15, DARK), BorderLayout.EAST);
+        row.add(header, BorderLayout.NORTH);
+
+        int total  = entry.problems().size();
+        int solved = entry.solvedCount();
+        JProgressBar bar = new JProgressBar(0, Math.max(1, total));
+        bar.setUI(new javax.swing.plaf.basic.BasicProgressBarUI() {
+            @Override protected Color getSelectionForeground() { return Color.WHITE; }
+            @Override protected Color getSelectionBackground() { return Color.WHITE; }
+        });
+        bar.setValue(solved);
+        bar.setString(solved + " / " + total);
+        bar.setStringPainted(true);
+        bar.setFont(SceneObjectButton.PixelFont.at(15));
+        bar.setForeground(GREEN);
+        bar.setBackground(GRAY);
+        bar.setOpaque(true);
+        bar.setBorder(BorderFactory.createLineBorder(DARK));
+        bar.setPreferredSize(new Dimension(0, 24));
+        bar.getAccessibleContext().setAccessibleName(entry.room() + " " + bar.getString());
+        row.add(bar, BorderLayout.SOUTH);
+        return row;
     }
 
-    static JPanel solvedCard(DashboardRecords.Solved entry) {
-        JPanel card = new JPanel(new BorderLayout(0, 12));
-        card.setOpaque(false);
-        card.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createMatteBorder(0, 0, 8, 0, WOOD),
-                BorderFactory.createEmptyBorder(12, 12, 16, 12)));
-        JLabel heading = text(entry.room() + " · 문제 " + entry.stepNo(), 18, INK);
-        heading.setToolTipText(heading.getText());
-        card.add(heading, BorderLayout.NORTH);
-        javax.swing.JTextArea code = new javax.swing.JTextArea(entry.code());
-        code.setEditable(false);
-        code.setOpaque(false);
-        code.setForeground(INK);
-        code.setFont(new java.awt.Font(java.awt.Font.MONOSPACED, java.awt.Font.PLAIN, 15));
-        code.setCaretPosition(0);
-        code.getAccessibleContext().setAccessibleName(heading.getText() + " 코드");
-        card.add(code, BorderLayout.CENTER);
-        String answer = entry.answer();
-        if (answer.length() == 9) {
-            answer = answer.substring(0, 3) + " / " + answer.substring(3, 6) + " / " + answer.substring(6);
+    static JPanel problemRow(DashboardRecords.RoomProgress entry, Consumer<DashboardRecords.Solved> open) {
+        JPanel row   = recordRow();
+        JPanel slots = new JPanel(new FlowLayout(FlowLayout.LEADING, 7, 0));
+        slots.setOpaque(false);
+        row.add(text(entry.room(), 18, INK), BorderLayout.NORTH);
+        row.add(slots, BorderLayout.SOUTH);
+        for (DashboardRecords.Problem problem : entry.problems()) {
+            String number  = Integer.toString(problem.number());
+            boolean solved = problem.solution().isPresent();
+            Color fill     = solved ? GREEN : GRAY;
+            JLabel locked  = text(number, 17, INK);
+            JButton button = new JButton(number);
+            javax.swing.JComponent slot = solved ? button : locked;
+            locked.setHorizontalAlignment(SwingConstants.CENTER);
+            button.setFont(SceneObjectButton.PixelFont.at(17));
+            button.setForeground(Color.WHITE);
+            button.setMargin(new Insets(0, 0, 0, 0));
+            problem.solution().ifPresent(answer -> button.addActionListener(event -> open.accept(answer)));
+            slot.setOpaque(true);
+            slot.setBackground(fill);
+            slot.setBorder(BorderFactory.createLineBorder(solved ? new Color(132, 183, 134) : fill.brighter()));
+            slot.setPreferredSize(new Dimension(42, 34));
+            slot.getAccessibleContext().setAccessibleName(entry.room() + " 문제 " + number
+                    + (solved ? " 정답 보기" : " 미달성"));
+            slots.add(slot);
         }
-        card.add(text("정답  " + answer, 18, new Color(224, 184, 103)), BorderLayout.SOUTH);
-        return card;
+        return row;
+    }
+
+    private static JPanel recordRow() {
+        JPanel row = new JPanel(new BorderLayout(0, 6));
+        row.setOpaque(false);
+        row.setBorder(BorderFactory.createEmptyBorder(5, 6, 5, 6));
+        return row;
     }
 
     private static JLabel text(String value, float size, Color color) {

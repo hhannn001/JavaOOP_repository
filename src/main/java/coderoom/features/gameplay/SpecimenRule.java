@@ -11,7 +11,7 @@ public record SpecimenRule(SpecimenMark candidateLeaf, SpecimenMark candidateSta
                 && !(marks[0] == excludedLeaf && marks[2] == excludedStamp);
     }
 
-    String javaConditions() {
+    public String javaConditions() {
         return """
                 boolean validShape =
                     leaf == '%c' || stamp == '%c';
