@@ -39,6 +39,8 @@ import coderoom.widgets.inventory.InventoryPanel;
 import coderoom.widgets.clue.CluePanel;
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Component;
+import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.Dialog;
 import java.awt.FlowLayout;
@@ -100,7 +102,7 @@ final class AppScreens implements AppController.Screens {
             loginService.clearRememberedLogin();
             return true;
         } catch (StorageException exception) {
-            JOptionPane.showMessageDialog(null, "자동 로그인을 해제하지 못했습니다. 다시 시도하세요.",
+            showMessage(null, "자동 로그인을 해제하지 못했습니다. 다시 시도하세요.",
                     "로그아웃", JOptionPane.ERROR_MESSAGE);
             return false;
         }
@@ -148,6 +150,35 @@ final class AppScreens implements AppController.Screens {
         return toggle;
     }
 
+    static boolean confirmExit(Component owner) {
+        var pane = new JOptionPane("기록이 저장되지 않았습니다. 나가시겠습니까?",
+                JOptionPane.QUESTION_MESSAGE, JOptionPane.YES_NO_OPTION);
+        showOptionPane(owner, "기록 저장 확인", pane);
+        return Integer.valueOf(JOptionPane.YES_OPTION).equals(pane.getValue());
+    }
+
+    static void showMessage(Component owner, Object message, String title, int type) {
+        showOptionPane(owner, title, new JOptionPane(message, type));
+    }
+
+    private static void showOptionPane(Component owner, String title, JOptionPane pane) {
+        JDialog dialog = pane.createDialog(owner, title);
+        dialog.setCursor(HandCursor.openHand());
+        installOptionButtons(pane);
+        try {
+            dialog.setVisible(true);
+        } finally {
+            dialog.dispose();
+        }
+    }
+
+    private static void installOptionButtons(Container parent) {
+        for (Component child : parent.getComponents()) {
+            if (child instanceof JButton button) { HandCursor.install(button); }
+            else if (child instanceof Container container) { installOptionButtons(container); }
+        }
+    }
+
     private static void showAudioCredits(JDialog owner) {
         try (var source = AppScreens.class.getResourceAsStream("/audio/CREDITS.txt")) {
             if (source == null) { return; }
@@ -155,10 +186,10 @@ final class AppScreens implements AppController.Screens {
             var text = new javax.swing.JTextArea(credits, 17, 48);
             text.setEditable(false);
             text.setCaretPosition(0);
-            JOptionPane.showMessageDialog(owner, new javax.swing.JScrollPane(text),
+            showMessage(owner, new javax.swing.JScrollPane(text),
                     "오디오 출처", JOptionPane.INFORMATION_MESSAGE);
         } catch (java.io.IOException exception) {
-            JOptionPane.showMessageDialog(owner, "오디오 출처를 읽을 수 없습니다.");
+            showMessage(owner, "오디오 출처를 읽을 수 없습니다.", "오디오 출처", JOptionPane.ERROR_MESSAGE);
         }
     }
 
@@ -181,7 +212,6 @@ final class AppScreens implements AppController.Screens {
     private static JButton settingsButton(Runnable openSettings) {
         JButton settings = DashboardPage.settingsIconButton(openSettings);
         settings.setPreferredSize(new Dimension(64, 64));
-        HandCursor.install(settings);
         return settings;
     }
 
@@ -391,6 +421,7 @@ final class AppScreens implements AppController.Screens {
                 back.run();
             });
             content.add(exit, BorderLayout.SOUTH);
+            dialog.setCursor(HandCursor.openHand());
             dialog.setContentPane(content);
             dialog.setSize(360, 335);
             dialog.setLocationRelativeTo(room);

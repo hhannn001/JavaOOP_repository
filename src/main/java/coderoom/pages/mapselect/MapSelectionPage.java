@@ -1,5 +1,6 @@
 package coderoom.pages.mapselect;
 
+import coderoom.shared.ui.HandCursor;
 import coderoom.features.mapcatalog.MapCard;
 import coderoom.features.mapcatalog.MapCatalogService;
 import coderoom.shared.ui.PixelTheme;
@@ -47,6 +48,7 @@ public final class MapSelectionPage extends JPanel {
     public MapSelectionPage() { this(null, null); }
 
     public MapSelectionPage(LongConsumer openMap, Runnable dashboard) {
+        setCursor(HandCursor.openHand());
         this.openMap   = openMap;
         this.dashboard = dashboard;
         setLayout(null);
@@ -251,6 +253,7 @@ public final class MapSelectionPage extends JPanel {
             };
             back.setContentAreaFilled(false);
             back.setBorderPainted(false);
+            HandCursor.install(back);
             back.setToolTipText("로비로 돌아가기");
             back.getAccessibleContext().setAccessibleName("로비로 돌아가기");
             back.addActionListener(event -> dashboard.run());
@@ -319,6 +322,7 @@ public final class MapSelectionPage extends JPanel {
         };
         button.setContentAreaFilled(false);
         button.setBorderPainted(false);
+        HandCursor.install(button);
         button.setFont(PixelTheme.font(25));
         button.putClientProperty("sceneFont", 25);
         button.addActionListener(event -> action.run());
@@ -402,6 +406,7 @@ public final class MapSelectionPage extends JPanel {
             setToolTipText(getText());
             getAccessibleContext().setAccessibleName(getText());
             setEnabled(card != null && caption);
+            HandCursor.install(this);
             setContentAreaFilled(false);
             setBorderPainted(false);
         }

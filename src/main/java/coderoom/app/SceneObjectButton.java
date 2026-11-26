@@ -1,7 +1,7 @@
 package coderoom.app;
 
+import coderoom.shared.ui.HandCursor;
 import java.awt.AlphaComposite;
-import java.awt.Cursor;
 import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
@@ -83,7 +83,7 @@ final class SceneObjectButton extends JButton {
         setBorderPainted(false);
         setFocusPainted(false);
         setRolloverEnabled(true);
-        setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        HandCursor.install(this);
         setToolTipText(title);
         getAccessibleContext().setAccessibleName(title);
         addFocusListener(new java.awt.event.FocusAdapter() {

@@ -54,15 +54,13 @@ public class Main {
                 MainFrame frame = new MainFrame();
                 AppController controller = new AppController(frame,
                         createScreens(database, PuzzleVariant.rotatingDeck()),
-                        () -> JOptionPane.showConfirmDialog(frame,
-                                "기록이 저장되지 않았습니다. 나가시겠습니까?", "기록 저장 확인",
-                                JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION);
+                        () -> AppScreens.confirmExit(frame));
                 frame.setVisible(true);
                 return controller;
             }
         }, failure -> {
             System.err.println("DB 초기화 실패: " + failure.getMessage());
-            JOptionPane.showMessageDialog(null, "데이터베이스를 준비하지 못했습니다. DB 경로와 접근 권한을 확인하세요.",
+            AppScreens.showMessage(null, "데이터베이스를 준비하지 못했습니다. DB 경로와 접근 권한을 확인하세요.",
                     "CODE ROOM 시작 실패", JOptionPane.ERROR_MESSAGE);
         }));
     }

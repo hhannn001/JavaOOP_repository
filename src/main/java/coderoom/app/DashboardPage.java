@@ -1,10 +1,10 @@
 package coderoom.app;
 
+import coderoom.shared.ui.HandCursor;
 import coderoom.entities.user.LoginUser;
 import coderoom.features.dashboard.DashboardRecords;
 import java.awt.AlphaComposite;
 import java.awt.Color;
-import java.awt.Cursor;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
@@ -115,7 +115,7 @@ final class DashboardPage extends JPanel {
         catInput.setContentAreaFilled(false);
         catInput.setBorderPainted(false);
         catInput.setFocusPainted(false);
-        catInput.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        HandCursor.install(catInput);
         catInput.setToolTipText("고양이 쓰다듬기 · ← → 이동 · ↑ 점프");
         catInput.getAccessibleContext().setAccessibleDescription("클릭하면 눈웃음, 일어서기, 기지개, 짜증, 호기심, 졸림, 부끄러움, 놀람을 표현합니다.");
         catInput.addActionListener(event -> {
@@ -143,6 +143,7 @@ final class DashboardPage extends JPanel {
                 curtain.clearHighlight();
             }
         };
+        HandCursor.install(this, point -> !introVisible && onRoomLabel(point.x, point.y));
         addMouseListener(signInput);
         addMouseMotionListener(signInput);
         getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke("ENTER"), "dismissIntro");
@@ -218,7 +219,6 @@ final class DashboardPage extends JPanel {
         button.setContentAreaFilled(false);
         button.setBorderPainted(false);
         button.setOpaque(false);
-        button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         button.addActionListener(event -> openSettings.run());
         return button;
     }
@@ -359,6 +359,7 @@ final class DashboardPage extends JPanel {
         });
         panel.add(heading);
         panel.add(exit);
+        dialog.setCursor(HandCursor.openHand());
         dialog.setContentPane(panel);
         dialog.setSize(360, 270);
         dialog.setResizable(false);
@@ -400,6 +401,7 @@ final class DashboardPage extends JPanel {
         button.setContentAreaFilled(false);
         button.setBorderPainted(false);
         button.setFocusPainted(false);
+        HandCursor.install(button);
         button.setToolTipText(name);
         button.getAccessibleContext().setAccessibleName(name);
         return button;

@@ -1,5 +1,6 @@
 package coderoom.app;
 
+import coderoom.shared.ui.HandCursor;
 import java.awt.CardLayout;
 import coderoom.shared.ui.PageTransition;
 import java.awt.GraphicsEnvironment;
@@ -47,6 +48,7 @@ public final class MainFrame extends JFrame implements AppController.Host {
     public MainFrame() {
         super("CODE ROOM");
         requireEdt();
+        setCursor(HandCursor.openHand());
         setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
         setIconImage(ICON);
         // 지원되는 데스크톱 환경에서는 Dock·작업 표시줄에도 같은 아이콘을 사용한다.

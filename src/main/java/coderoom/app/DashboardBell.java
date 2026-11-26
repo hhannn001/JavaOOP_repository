@@ -1,7 +1,7 @@
 package coderoom.app;
 
+import coderoom.shared.ui.HandCursor;
 import java.awt.Color;
-import java.awt.Cursor;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
@@ -19,7 +19,7 @@ final class DashboardBell extends JButton {
         setBorderPainted(false);
         setContentAreaFilled(false);
         setFocusPainted(false);
-        setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        HandCursor.install(this);
         setToolTipText("종 울리기 · 고양이 부르기");
         getAccessibleContext().setAccessibleName("종 울리기, 고양이 부르기");
         addActionListener(event -> {

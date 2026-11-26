@@ -1,5 +1,6 @@
 package coderoom.pages.login;
 
+import coderoom.shared.ui.HandCursor;
 import coderoom.entities.user.LoginUser;
 import coderoom.features.auth.LoginResult;
 import coderoom.features.auth.LoginService;
@@ -9,7 +10,6 @@ import java.awt.BasicStroke;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
-import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.GradientPaint;
@@ -140,16 +140,20 @@ public final class LoginPage extends JPanel {
         });
         loginButton.setContentAreaFilled(false);
         loginButton.setBorder(BorderFactory.createEmptyBorder());
-        loginButton.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        HandCursor.install(loginButton);
         loginButton.setPreferredSize(new Dimension(92, 38));
 
         signup.setFont(bodyFont.deriveFont(Font.BOLD));
         signup.setForeground(GOLD);
         signup.setContentAreaFilled(false);
         signup.setBorder(BorderFactory.createEmptyBorder(5, 8, 5, 2));
-        signup.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        HandCursor.install(signup);
         signup.setUI(new javax.swing.plaf.metal.MetalButtonUI());
 
+        setCursor(HandCursor.openHand());
+        HandCursor.install(loginIdField);
+        HandCursor.install(passwordField);
+        HandCursor.install(rememberLogin);
         rememberLogin.setName("rememberLogin");
         rememberLogin.setFont(bodyFont);
         rememberLogin.setOpaque(false);
@@ -160,7 +164,7 @@ public final class LoginPage extends JPanel {
         showPassword.setSelectedIcon(new EyeIcon(true));
         showPassword.setContentAreaFilled(false);
         showPassword.setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 8));
-        showPassword.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        HandCursor.install(showPassword);
         showPassword.setFocusPainted(true);
         showPassword.addActionListener(event -> updatePasswordVisibility());
         updatePasswordVisibility();
