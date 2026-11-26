@@ -187,13 +187,26 @@ class DatabaseGameTest {
         var login = new LoginService(users, new PasswordVerifier());
         char[] secret  = "archive-password".toCharArray();
         char[] confirm = secret.clone();
-        assertEquals(LoginService.Registration.CREATED, login.register("reader", secret, confirm));
+        assertTrue(login.register("reader", secret, confirm).success());
         assertEquals('\0', secret[0]);
         assertEquals('\0', confirm[0]);
-        assertEquals(LoginService.Registration.DUPLICATE,
-                login.register("reader", "replacement".toCharArray(), "replacement".toCharArray()));
+        assertEquals("이미 사용 중인 ID입니다.",
+                login.register("reader", "replacement".toCharArray(), "replacement".toCharArray()).message());
         assertTrue(login.login("reader", "archive-password".toCharArray()).success());
         assertFalse(login.login("reader", "replacement".toCharArray()).success());
+    }
+
+    @Test
+    void registrationRejectsInvalidInputsAndClearsPasswordArrays() {
+        var login = new LoginService(users, new PasswordVerifier());
+        assertFalse(login.register("a!", "valid-password".toCharArray(), "valid-password".toCharArray()).success());
+        assertFalse(login.register("reader", "short".toCharArray(), "short".toCharArray()).success());
+        char[] secret  = "valid-password".toCharArray();
+        char[] confirm = "different-password".toCharArray();
+        assertFalse(login.register("reader", secret, confirm).success());
+        assertEquals('\0', secret[0]);
+        assertEquals('\0', confirm[0]);
+        assertTrue(users.findByLoginId("reader").isEmpty());
     }
 
     @Test

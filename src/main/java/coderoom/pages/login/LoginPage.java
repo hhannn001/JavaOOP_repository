@@ -68,8 +68,11 @@ public final class LoginPage extends JPanel {
 
     private final LoginService service;
     private final Consumer<LoginUser> onLogin;
-    private final JTextField loginIdField      = new JTextField(14);
-    private final JPasswordField passwordField = new JPasswordField(14);
+    private final JTextField loginIdField          = new JTextField(14);
+    private final JPasswordField passwordField     = new JPasswordField(14);
+    private final JPasswordField confirmationField = new JPasswordField(14);
+    private final JLabel confirmationLabel         = new JLabel("비밀번호 확인");
+    private final JPanel confirmationRow;
     private final JButton loginButton          = new JButton("로그인");
     private final JButton signup               = new JButton("회원가입");
     private final JCheckBox rememberLogin      = new JCheckBox("자동 로그인");
@@ -153,6 +156,7 @@ public final class LoginPage extends JPanel {
         setCursor(HandCursor.openHand());
         HandCursor.install(loginIdField);
         HandCursor.install(passwordField);
+        HandCursor.install(confirmationField);
         HandCursor.install(rememberLogin);
         rememberLogin.setName("rememberLogin");
         rememberLogin.setFont(bodyFont);
@@ -171,6 +175,15 @@ public final class LoginPage extends JPanel {
 
         JPanel idRow       = fieldRow(loginIdField, bodyFont, null);
         JPanel passwordRow = fieldRow(passwordField, bodyFont, showPassword);
+
+        confirmationRow = fieldRow(confirmationField, bodyFont, null);
+        confirmationField.setName("passwordConfirmation");
+        confirmationField.getAccessibleContext().setAccessibleName("비밀번호 확인");
+        confirmationLabel.setLabelFor(confirmationField);
+        confirmationLabel.setFont(bodyFont);
+        confirmationLabel.setForeground(TEXT);
+        confirmationLabel.setVisible(false);
+        confirmationRow.setVisible(false);
         loginIdField.getAccessibleContext().setAccessibleName("로그인 ID");
         passwordField.getAccessibleContext().setAccessibleName("비밀번호");
         JLabel idLabel = new JLabel("아이디");
@@ -202,6 +215,8 @@ public final class LoginPage extends JPanel {
         form.add(idLabel, layout);
         layout.gridy++;
         form.add(passwordLabel, layout);
+        layout.gridy++;
+        form.add(confirmationLabel, layout);
 
         layout.gridx   = 1;
         layout.gridy   = 0;
@@ -209,6 +224,8 @@ public final class LoginPage extends JPanel {
         form.add(idRow, layout);
         layout.gridy++;
         form.add(passwordRow, layout);
+        layout.gridy++;
+        form.add(confirmationRow, layout);
 
         layout.gridx      = 2;
         layout.gridy      = 0;
@@ -225,7 +242,7 @@ public final class LoginPage extends JPanel {
         signup.setVisible(service != null && service.canRegister());
 
         layout.gridx      = 0;
-        layout.gridy      = 2;
+        layout.gridy      = 3;
         layout.gridwidth  = 3;
         layout.gridheight = 1;
         layout.fill       = GridBagConstraints.HORIZONTAL;
@@ -241,7 +258,11 @@ public final class LoginPage extends JPanel {
         add(entrance);
 
         loginButton.addActionListener(event -> submitLogin());
-        passwordField.addActionListener(event -> submitLogin());
+        passwordField.addActionListener(event -> {
+            if (registering) { confirmationField.requestFocusInWindow(); }
+            else { submitLogin(); }
+        });
+        confirmationField.addActionListener(event -> submitLogin());
         signup.addActionListener(event -> {
             generation++;
             setRegistrationMode(!registering);
@@ -458,6 +479,8 @@ public final class LoginPage extends JPanel {
 
     private void setRegistrationMode(boolean value) {
         registering = value;
+        confirmationLabel.setVisible(value);
+        confirmationRow.setVisible(value);
         rememberLogin.setVisible(!value && service != null && service.canRememberLogin());
         resetPassword();
         signup.setText(value ? "로그인으로 돌아가기" : "회원가입");
@@ -468,31 +491,31 @@ public final class LoginPage extends JPanel {
     }
 
     private void submitSignup() {
-        String id     = loginIdField.getText();
-        char[] secret = passwordField.getPassword();
+        String id            = loginIdField.getText();
+        char[] secret        = passwordField.getPassword();
+        char[] confirmation = confirmationField.getPassword();
         resetPassword();
         statusMessage.setForeground(TEXT);
         statusMessage.setText("계정을 만드는 중입니다.");
         setBusy(true);
         long token = ++generation;
-        new SwingWorker<LoginService.Registration, Void>() {
-            @Override protected LoginService.Registration doInBackground() {
-                return service.register(id, secret);
+        new SwingWorker<LoginService.RegistrationResult, Void>() {
+            @Override protected LoginService.RegistrationResult doInBackground() {
+                return service.register(id, secret, confirmation);
             }
 
             @Override protected void done() {
                 if (token != generation) { return; }
                 setBusy(false);
                 try {
-                    switch (get()) {
-                        case CREATED -> {
-                            setRegistrationMode(false);
-                            statusMessage.setForeground(SUCCESS);
-                            statusMessage.setText("가입했습니다. 새 계정으로 로그인하세요.");
-                            passwordField.requestFocusInWindow();
-                        }
-                        case DUPLICATE -> showError("이미 사용 중인 ID입니다.");
-                        case EMPTY -> showError("ID와 비밀번호를 입력하세요.");
+                    LoginService.RegistrationResult result = get();
+                    if (result.success()) {
+                        setRegistrationMode(false);
+                        statusMessage.setForeground(SUCCESS);
+                        statusMessage.setText(result.message());
+                        passwordField.requestFocusInWindow();
+                    } else {
+                        showError(result.message());
                     }
                 } catch (InterruptedException exception) {
                     Thread.currentThread().interrupt();
@@ -506,6 +529,7 @@ public final class LoginPage extends JPanel {
 
     private void resetPassword() {
         passwordField.setText("");
+        confirmationField.setText("");
         showPassword.setSelected(false);
         updatePasswordVisibility();
     }
@@ -520,6 +544,7 @@ public final class LoginPage extends JPanel {
         boolean enabled = service != null && !busy && !authenticated;
         loginIdField.setEnabled(enabled);
         passwordField.setEnabled(enabled);
+        confirmationField.setEnabled(enabled);
         loginButton.setEnabled(enabled);
         signup.setEnabled(enabled);
         rememberLogin.setEnabled(enabled);

@@ -75,27 +75,34 @@ public final class LoginService {
         }
     }
 
-    public enum Registration { CREATED, DUPLICATE, EMPTY, MISMATCH }
-
     public boolean canRegister() { return users.canRegister(); }
 
-    public Registration register(String loginId, char[] password) {
-        try {
-            if (loginId == null || loginId.isBlank() || isBlank(password)) {
-                return Registration.EMPTY;
-            }
-            return users.create(loginId, verifier.hash(password)) ? Registration.CREATED : Registration.DUPLICATE;
-        } finally {
-            if (password != null) { Arrays.fill(password, '\0'); }
-        }
-    }
+    /** 회원가입 결과는 로그인된 사용자를 포함하지 않는다. 가입 후 별도로 로그인한다. */
+    public record RegistrationResult(boolean success, String message) { }
 
-    public Registration register(String loginId, char[] password, char[] confirmation) {
+    /**
+     * 신규 ID는 영문·숫자·밑줄 3~32자, 비밀번호는 8~128자이며 공백만 입력할 수 없다.
+     * 기존 계정의 로그인 정책은 변경하지 않는다. 두 암호 배열은 모든 종료 경로에서 지운다.
+     */
+    public RegistrationResult register(String loginId, char[] password, char[] confirmation) {
         try {
-            if (loginId == null || loginId.isBlank() || isBlank(password)) {
-                return Registration.EMPTY;
+            if (loginId == null || !loginId.matches("[A-Za-z0-9_]{3,32}")) {
+                return new RegistrationResult(false, "ID는 영문·숫자·밑줄로 3~32자 입력하세요.");
             }
-            return Arrays.equals(password, confirmation) ? register(loginId, password) : Registration.MISMATCH;
+            if (isBlank(password) || password.length < 8 || password.length > 128) {
+                return new RegistrationResult(false, "비밀번호는 공백만 제외하고 8~128자로 입력하세요.");
+            }
+            if (!Arrays.equals(password, confirmation)) {
+                return new RegistrationResult(false, "비밀번호 확인이 일치하지 않습니다.");
+            }
+            // 해시 생성 전에 빠른 중복 안내. 최종 중복 판정은 DB의 UNIQUE 제약에 맡긴다.
+            if (users.findByLoginId(loginId).isPresent()) {
+                return new RegistrationResult(false, "이미 사용 중인 ID입니다.");
+            }
+            if (!users.create(loginId, verifier.hash(password))) {
+                return new RegistrationResult(false, "이미 사용 중인 ID입니다.");
+            }
+            return new RegistrationResult(true, "회원가입이 완료되었습니다. 로그인하세요.");
         } finally {
             if (password != null) { Arrays.fill(password, '\0'); }
             if (confirmation != null) { Arrays.fill(confirmation, '\0'); }
