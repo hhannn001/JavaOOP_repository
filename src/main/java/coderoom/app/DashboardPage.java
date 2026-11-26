@@ -40,6 +40,7 @@ final class DashboardPage extends JPanel {
     private static final BufferedImage CLEAN_COUNTER = SceneObjectButton.read("/images/dashboard/cat/counter-clean.png");
     private final JLabel account;
     private final JButton settings;
+    private final JButton help;
     private final SceneObjectButton books;
     private final SceneObjectButton curtain;
     private final SceneObjectButton calendar;
@@ -95,6 +96,8 @@ final class DashboardPage extends JPanel {
         account.setFont(SceneObjectButton.PixelFont.at(20));
         account.setForeground(INK);
         settings    = settingsIconButton(this::showSettings);
+        help        = imageButton("도움말", "help");
+        help.addActionListener(event -> new DashboardHelpDialog(this).setVisible(true));
         books       = new SceneObjectButton("풀이한 문제", "bookshelf", 1, () -> openRecords(records, user, "풀이한 문제"));
         curtain     = new SceneObjectButton("방 선택하기", "curtain", 6, openMaps);
         calendar    = new SceneObjectButton("진척도", "calendar", 6, () -> openRecords(records, user, "진척도"));
@@ -120,6 +123,7 @@ final class DashboardPage extends JPanel {
         });
         add(account);
         add(settings);
+        add(help);
         for (SceneObjectButton object : objects()) {
             add(object);
         }
@@ -222,6 +226,7 @@ final class DashboardPage extends JPanel {
     private void applyIntroState() {
         account.setVisible(!introVisible);
         settings.setVisible(!introVisible);
+        help.setVisible(!introVisible);
         bell.setVisible(!introVisible);
         catInput.setVisible(true);
         objects().forEach(object -> object.setVisible(!introVisible));
@@ -309,6 +314,7 @@ final class DashboardPage extends JPanel {
     @Override public void doLayout() {
         place(account, 80, 35, 620, 48);
         place(settings, 1460, 35, 75, 75);
+        place(help, 1376, 35, 75, 75);
         place(books, 65, 430, 470, 400);
         place(curtain, 584, 298, 414, 522);
         place(leaderboard, 1040, 410, 165, 420);
